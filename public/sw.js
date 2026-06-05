@@ -2,7 +2,7 @@
 // This is intentionally minimal; a designer/dev can swap in
 // Workbox or vite-plugin-pwa for a production-grade strategy.
 
-const CACHE = "ironclad-v1";
+const CACHE = "ironclad-v2";
 
 self.addEventListener("install", (event) => {
   self.skipWaiting();

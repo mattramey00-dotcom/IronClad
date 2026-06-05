@@ -45,6 +45,47 @@ const DEMOS = {
   lunge: { label: "Lunge motion", kind: "lunge" },
 };
 
+// ---- Real-photo demo registry ----
+// Maps each exercise name to a folder under /public/exercises/ holding two
+// frames (0.jpg = start, 1.jpg = end) from the public-domain free-exercise-db
+// (https://github.com/yuhonas/free-exercise-db, CC0). The Demo component
+// cross-fades the two frames so the movement reads as a rep. Exercises with no
+// entry here (cardio, mobility, stretching) fall back to the animated SVG.
+const EX_IMG = {
+  "Barbell Bench Press": "Barbell_Bench_Press_-_Medium_Grip",
+  "Dumbbell Incline Press": "Incline_Dumbbell_Press",
+  "Dumbbell Shoulder Press": "Dumbbell_Shoulder_Press",
+  "Dumbbell Lateral Raises": "Side_Lateral_Raise",
+  "Dumbbell Lateral Raise": "Side_Lateral_Raise",
+  "Dumbbell Chest Flyes": "Dumbbell_Flyes",
+  "DB Overhead Triceps Extension": "Standing_Dumbbell_Triceps_Extension",
+  "Barbell Bent-Over Row": "Bent_Over_Barbell_Row",
+  "One-Arm Dumbbell Row": "One-Arm_Dumbbell_Row",
+  "Dumbbell Rows": "One-Arm_Dumbbell_Row",
+  "Dumbbell Rear Delt Fly": "Seated_Bent-Over_Rear_Delt_Raise",
+  "Barbell Romanian Deadlift": "Romanian_Deadlift",
+  "Dumbbell Hammer Curl": "Hammer_Curls",
+  "Barbell Curl": "Barbell_Curl",
+  "Barbell Back Squat": "Barbell_Full_Squat",
+  "Dumbbell Walking Lunges": "Dumbbell_Lunges",
+  "Dumbbell Goblet Squat": "Goblet_Squat",
+  "Goblet Squats": "Goblet_Squat",
+  "DB Standing Calf Raise": "Standing_Dumbbell_Calf_Raise",
+  "Dumbbell Calf Raises": "Standing_Dumbbell_Calf_Raise",
+  "Plank": "Plank",
+  "Russian Twists (DB)": "Russian_Twist",
+  "Leg Raises": "Flat_Bench_Lying_Leg_Raise",
+  "Dumbbell Skull Crushers": "Lying_Dumbbell_Tricep_Extension",
+  "DB Bulgarian Split Squat": "Dumbbell_Rear_Lunge",
+  "Dumbbell Step-Ups": "Dumbbell_Step_Ups",
+  "Barbell Deadlift": "Barbell_Deadlift",
+  "Dumbbell Thrusters": "Kettlebell_Thruster",
+  "Push-Ups": "Pushups",
+};
+
+// Resolve a bundled image path, honoring Vite's base path (e.g. /IronClad/).
+const exImg = (slug, frame) => `${import.meta.env.BASE_URL}exercises/${slug}/${frame}.jpg`;
+
 // ---- Full program data ----
 const PROGRAM = {
   Monday: {
@@ -215,7 +256,26 @@ const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"
 // ============================================================
 //  Animated exercise demo component
 // ============================================================
-function Demo({ kind, size = 64 }) {
+// Cross-fades two real photos (start -> end position) into a looping rep.
+function Flipbook({ slug, size = 64, onError }) {
+  const imgStyle = { position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" };
+  return (
+    <div style={{ position: "relative", width: size, height: size, borderRadius: 10, overflow: "hidden", background: "#0a0d0a" }}>
+      <img src={exImg(slug, 0)} alt="" loading="lazy" decoding="async" onError={onError} style={imgStyle} />
+      <img src={exImg(slug, 1)} alt="" loading="lazy" decoding="async" onError={onError} style={{ ...imgStyle, animation: "flip 1.8s ease-in-out infinite" }} />
+      <div style={{ position: "absolute", inset: 0, boxShadow: `inset 0 0 0 1px ${ACCENT}33`, borderRadius: 10, pointerEvents: "none" }} />
+    </div>
+  );
+}
+
+function Demo({ kind, name, size = 64 }) {
+  const [imgFailed, setImgFailed] = useState(false);
+  const slug = name && EX_IMG[name];
+  // Prefer the real-photo flipbook; fall back to the animated SVG if the
+  // mapping is missing or an image can't load (e.g. fully offline first run).
+  if (slug && !imgFailed) {
+    return <Flipbook slug={slug} size={size} onError={() => setImgFailed(true)} />;
+  }
   const stroke = ACCENT;
   const base = { width: size, height: size, display: "block" };
   // Stable unique id so multiple demos on screen don't share gradient defs
@@ -837,6 +897,7 @@ export default function App() {
         ::-webkit-scrollbar{height:0;width:0}
         @keyframes pop{0%{transform:scale(.6);opacity:0}60%{transform:scale(1.15)}100%{transform:scale(1);opacity:1}}
         @keyframes fade{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes flip{0%,38%{opacity:0}50%,88%{opacity:1}100%{opacity:0}}
       `}</style>
 
       {/* Header */}
@@ -902,7 +963,7 @@ export default function App() {
             return (
               <div key={ei} style={{ ...S.exRow, ...(isDone ? S.exRowDone : {}), flexWrap: "wrap" }}>
                 <div style={S.demoWrap}>
-                  <Demo kind={DEMOS[ex.d]?.kind || "core"} size={56} />
+                  <Demo kind={DEMOS[ex.d]?.kind || "core"} name={ex.n} size={56} />
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ ...S.exName, ...(isDone ? { textDecoration: "line-through", color: "#666" } : {}) }}>{ex.n}</div>
