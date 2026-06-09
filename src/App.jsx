@@ -86,6 +86,43 @@ const EX_IMG = {
 // Resolve a bundled image path, honoring Vite's base path (e.g. /IronClad/).
 const exImg = (slug, frame) => `${import.meta.env.BASE_URL}exercises/${slug}/${frame}.jpg`;
 
+// ---- YouTube demo video registry ----
+// Maps each exercise to a hand-picked, highly rated YouTube form tutorial,
+// alternating male and female coaches. Videos stream from YouTube's
+// privacy-enhanced embed domain, so an internet connection is required;
+// the animated/photo demos above remain the instant offline fallback.
+const EX_VIDEO = {
+  "Barbell Bench Press": { id: "vcBig73ojpE", by: "Jeff Nippard" },
+  "Dumbbell Incline Press": { id: "8iPEnn-ltC8", by: "Scott Herman" },
+  "Dumbbell Shoulder Press": { id: "guW_ENwLOMI", by: "Form tutorial" },
+  "Dumbbell Lateral Raises": { id: "Y29xKcze8Ik", by: "Physique Development" },
+  "Dumbbell Lateral Raise": { id: "Y29xKcze8Ik", by: "Physique Development" },
+  "Dumbbell Chest Flyes": { id: "eozdVDA78K0", by: "Scott Herman" },
+  "DB Overhead Triceps Extension": { id: "wKEONiKiNCk", by: "Megan Davies" },
+  "Barbell Bent-Over Row": { id: "FWJR5Ve8bnQ", by: "2 Minute Tutorials" },
+  "One-Arm Dumbbell Row": { id: "Qx2f4YwJAu4", by: "Bombshell Fitness" },
+  "Dumbbell Rows": { id: "Qx2f4YwJAu4", by: "Bombshell Fitness" },
+  "Dumbbell Rear Delt Fly": { id: "OPy1gX4a6Vg", by: "Megan Davies" },
+  "Barbell Romanian Deadlift": { id: "_oyxCn2iSjU", by: "Jeff Nippard" },
+  "Dumbbell Hammer Curl": { id: "zC3nLlEvin4", by: "Scott Herman" },
+  "Barbell Curl": { id: "dDI8ClxRS04", by: "Bodybuilding.com" },
+  "Barbell Back Squat": { id: "SbgHegC6lEs", by: "Squat University" },
+  "Dumbbell Walking Lunges": { id: "IUMtekTfVVQ", by: "HASfit" },
+  "Dumbbell Goblet Squat": { id: "62bDZajYJm0", by: "Girls Gone Strong" },
+  "Goblet Squats": { id: "62bDZajYJm0", by: "Girls Gone Strong" },
+  "DB Standing Calf Raise": { id: "H6WptvjXkgw", by: "Form tutorial" },
+  "Dumbbell Calf Raises": { id: "H6WptvjXkgw", by: "Form tutorial" },
+  "Plank": { id: "6LqqeBtFn9M", by: "Calisthenic Movement" },
+  "Russian Twists (DB)": { id: "JyUqwkVpsi8", by: "Livestrong Woman" },
+  "Leg Raises": { id: "Wp4BlxcFTkE", by: "Livestrong Woman" },
+  "Dumbbell Skull Crushers": { id: "WLQizQXoeIg", by: "Heather Robertson" },
+  "DB Bulgarian Split Squat": { id: "2C-uNgKwPLE", by: "Scott Herman" },
+  "Dumbbell Step-Ups": { id: "aKj-6hgiViA", by: "Coach Lauren" },
+  "Barbell Deadlift": { id: "tNn7AlPITOw", by: "Meg Squats" },
+  "Dumbbell Thrusters": { id: "M5gEwLTtWbg", by: "CrossFit" },
+  "Push-Ups": { id: "bt5b9x9N0KU", by: "Well+Good" },
+};
+
 // ---- Full program data ----
 const PROGRAM = {
   Monday: {
@@ -509,6 +546,40 @@ function Demo({ kind, name, size = 64 }) {
 }
 
 // ============================================================
+//  Video demo modal — streams a hand-picked YouTube form tutorial
+// ============================================================
+function VideoModal({ video, name, onClose }) {
+  return (
+    <div style={S.modalWrap} onClick={onClose}>
+      <div
+        style={{ ...S.modalCard, maxWidth: 480, padding: 14, textAlign: "left" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontWeight: 700, fontSize: 15 }}>{name}</div>
+            <div style={{ fontSize: 11, color: "#8a9a8a" }}>Demo · {video.by} · via YouTube</div>
+          </div>
+          <button style={{ ...S.btnGhost, padding: "6px 12px" }} onClick={onClose}>✕</button>
+        </div>
+        <div style={{ position: "relative", paddingTop: "56.25%", borderRadius: 12, overflow: "hidden", background: "#000" }}>
+          <iframe
+            src={`https://www.youtube-nocookie.com/embed/${video.id}?rel=0&modestbranding=1&playsinline=1`}
+            title={`${name} demo`}
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", border: 0 }}
+          />
+        </div>
+        <div style={{ fontSize: 11, color: "#667", marginTop: 8 }}>
+          Requires internet · animation stays available offline
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
 //  Timer modal
 // ============================================================
 function TimerModal({ seconds, label, onClose }) {
@@ -751,6 +822,7 @@ export default function App() {
   const [logs, setLogs] = useState({}); // { "Barbell Bench Press": [ {date, sets:[{w,r}]} ] }
   const [openLog, setOpenLog] = useState(null); // exercise name currently expanded
   const [timer, setTimer] = useState(null);
+  const [video, setVideo] = useState(null); // { video: {id, by}, name } currently playing
   const [showHistory, setShowHistory] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [now, setNow] = useState(new Date());
@@ -969,6 +1041,14 @@ export default function App() {
                   <div style={{ ...S.exName, ...(isDone ? { textDecoration: "line-through", color: "#666" } : {}) }}>{ex.n}</div>
                   <div style={S.exSets}>{ex.s}</div>
                   <div style={{ display: "flex", gap: 8, marginTop: 6, flexWrap: "wrap" }}>
+                    {EX_VIDEO[ex.n] && (
+                      <button
+                        style={S.demoBtn}
+                        onClick={() => setVideo({ video: EX_VIDEO[ex.n], name: ex.n })}
+                      >
+                        ▶ Demo
+                      </button>
+                    )}
                     {ex.timer && (
                       <button style={S.timerBtn} onClick={() => setTimer({ seconds: ex.timer, label: ex.n })}>
                         ⏱ Start timer
@@ -1011,6 +1091,7 @@ export default function App() {
       </div>
 
       {timer && <TimerModal seconds={timer.seconds} label={timer.label} onClose={() => setTimer(null)} />}
+      {video && <VideoModal video={video.video} name={video.name} onClose={() => setVideo(null)} />}
       {showHistory && (
         <HistoryModal
           logs={logs}
@@ -1071,6 +1152,7 @@ const S = {
   exName: { fontSize: 15, fontWeight: 600 },
   exSets: { fontSize: 13, color: "#8a9a8a", marginTop: 2 },
   timerBtn: { background: "rgba(57,255,106,.1)", border: "1px solid rgba(57,255,106,.3)", color: ACCENT, borderRadius: 8, fontSize: 12, padding: "4px 10px", cursor: "pointer", fontFamily: "inherit" },
+  demoBtn: { background: "rgba(255,80,80,.08)", border: "1px solid rgba(255,90,90,.3)", color: "#ff7a7a", borderRadius: 8, fontSize: 12, padding: "4px 10px", cursor: "pointer", fontFamily: "inherit" },
   logToggle: { background: "#161b16", border: "1px solid #2a322a", color: "#bbb", borderRadius: 8, fontSize: 12, padding: "4px 10px", cursor: "pointer", fontFamily: "inherit" },
   logToggleOpen: { background: "rgba(57,255,106,.12)", borderColor: "rgba(57,255,106,.35)", color: ACCENT },
   logPanel: { marginTop: 10, padding: 12, background: "#0a0d0a", border: "1px solid #181d18", borderRadius: 12 },
