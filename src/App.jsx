@@ -1115,7 +1115,12 @@ const S = {
     background: "radial-gradient(1200px 600px at 80% -10%, #14241a 0%, #0a0d0b 55%, #060807 100%)",
     color: "#eaeaea",
     fontFamily: "'Outfit', sans-serif",
-    padding: "16px 14px 60px",
+    // viewport-fit=cover draws content under the notch/status bar, so pad by
+    // the safe-area insets to keep the header clear of it on mobile.
+    paddingTop: "calc(16px + env(safe-area-inset-top))",
+    paddingRight: "calc(14px + env(safe-area-inset-right))",
+    paddingBottom: "calc(60px + env(safe-area-inset-bottom))",
+    paddingLeft: "calc(14px + env(safe-area-inset-left))",
     maxWidth: 520,
     margin: "0 auto",
   },
