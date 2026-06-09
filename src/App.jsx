@@ -307,6 +307,10 @@ function Flipbook({ slug, size = 64, onError }) {
 
 function Demo({ kind, name, size = 64 }) {
   const [imgFailed, setImgFailed] = useState(false);
+  // Stable unique id so multiple demos on screen don't share gradient defs.
+  // Must be declared before any early return so the hook order stays constant
+  // across renders (otherwise switching the photo/SVG branch crashes React).
+  const uid = useRef("d" + Math.random().toString(36).slice(2, 8)).current;
   const slug = name && EX_IMG[name];
   // Prefer the real-photo flipbook; fall back to the animated SVG if the
   // mapping is missing or an image can't load (e.g. fully offline first run).
@@ -315,8 +319,6 @@ function Demo({ kind, name, size = 64 }) {
   }
   const stroke = ACCENT;
   const base = { width: size, height: size, display: "block" };
-  // Stable unique id so multiple demos on screen don't share gradient defs
-  const uid = useRef("d" + Math.random().toString(36).slice(2, 8)).current;
 
   // Limb/segment style: rounded "bone" look
   const bone = { stroke, strokeWidth: 5.2, strokeLinecap: "round", fill: "none" };
