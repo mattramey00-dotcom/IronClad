@@ -62,6 +62,7 @@ ironclad/
         ├── HistoryModal.jsx   # progression chart + CSV export
         ├── TabBar.jsx         # bottom nav: Train · Fuel · Insights
         ├── RestTimer.jsx      # sticky between-sets rest countdown
+        ├── MuscleMap.jsx      # front/back target-muscle diagram per exercise
         ├── FuelCard.jsx       # the day's meals, macros and weigh-in
         ├── InsightsView.jsx   # measured TDEE, recomp chart, coach read-out
         └── Setup.jsx          # first-run: create a plan or join with a code

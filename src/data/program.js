@@ -444,4 +444,84 @@ export function prescription(s) {
   return { sets, lowReps, restSecs };
 }
 
+// ---- which muscles an exercise targets --------------------------------
+//  Mapped by NAME, not by animation. The demo `kind` is the movement pattern,
+//  and several movements share one — a calf raise and a lateral raise both
+//  animate as "raise" but train opposite ends of the body. The name is the only
+//  honest key. Order matters: primary movers first, they read left-to-right.
+//
+//  Tokens line up with the zones drawn in components/MuscleMap.jsx.
+
+export const MUSCLE_LABELS = {
+  chest: "Chest", shoulders: "Shoulders", biceps: "Biceps", triceps: "Triceps",
+  forearms: "Forearms", abs: "Abs", obliques: "Obliques", lats: "Lats",
+  traps: "Traps", lowerback: "Lower back", glutes: "Glutes", quads: "Quads",
+  hamstrings: "Hamstrings", calves: "Calves", fullbody: "Full body",
+};
+
+const MUSCLES_BY_NAME = {
+  // press
+  "Barbell Bench Press": ["chest", "shoulders", "triceps"],
+  "Dumbbell Incline Press": ["chest", "shoulders", "triceps"],
+  "Dumbbell Chest Flyes": ["chest", "shoulders"],
+  "Push-Ups": ["chest", "shoulders", "triceps", "abs"],
+  "Dumbbell Shoulder Press": ["shoulders", "triceps"],
+  "Dumbbell Thrusters": ["shoulders", "quads", "glutes", "triceps"],
+  "DB Overhead Triceps Extension": ["triceps"],
+  "Dumbbell Skull Crushers": ["triceps"],
+  // row / pull
+  "Barbell Bent-Over Row": ["lats", "traps", "shoulders", "biceps", "lowerback"],
+  "One-Arm Dumbbell Row": ["lats", "traps", "biceps"],
+  "Dumbbell Rows": ["lats", "traps", "biceps"],
+  "Dumbbell Rear Delt Fly": ["shoulders", "traps"],
+  // curls
+  "Barbell Curl": ["biceps", "forearms"],
+  "Dumbbell Hammer Curl": ["biceps", "forearms"],
+  // delts
+  "Dumbbell Lateral Raise": ["shoulders"],
+  "Dumbbell Lateral Raises": ["shoulders"],
+  // hinge
+  "Barbell Romanian Deadlift": ["hamstrings", "glutes", "lowerback"],
+  "Barbell Deadlift": ["hamstrings", "glutes", "lowerback", "quads", "traps"],
+  // squat / legs
+  "Barbell Back Squat": ["quads", "glutes", "hamstrings", "lowerback"],
+  "Dumbbell Goblet Squat": ["quads", "glutes"],
+  "Goblet Squats": ["quads", "glutes"],
+  "Dumbbell Walking Lunges": ["quads", "glutes", "hamstrings"],
+  "DB Bulgarian Split Squat": ["quads", "glutes", "hamstrings"],
+  "Dumbbell Step-Ups": ["quads", "glutes"],
+  "DB Standing Calf Raise": ["calves"],
+  "Dumbbell Calf Raises": ["calves"],
+  // core
+  "Plank": ["abs", "obliques"],
+  "Leg Raises": ["abs"],
+  "Russian Twists (DB)": ["obliques", "abs"],
+  "Mobility work": ["fullbody"],
+  "Stretching": ["fullbody"],
+  // cardio (treadmill or bike — legs + conditioning either way)
+  "Light walk": ["quads", "hamstrings", "calves"],
+  "Incline walk": ["quads", "hamstrings", "calves"],
+  "Easy run": ["quads", "hamstrings", "calves"],
+  "Easy ride": ["quads", "hamstrings", "calves"],
+  "Steady ride": ["quads", "hamstrings", "calves"],
+};
+
+// Safety net for anything not named above (e.g. a future movement): fall back to
+// a sensible default for its animation pattern rather than showing nothing.
+const MUSCLES_BY_KIND = {
+  vertical: ["chest", "shoulders", "triceps"],
+  horizontal: ["lats", "traps", "biceps"],
+  squat: ["quads", "glutes"],
+  hinge: ["hamstrings", "glutes", "lowerback"],
+  curl: ["biceps", "forearms"],
+  raise: ["shoulders"],
+  core: ["abs"],
+  cardio: ["quads", "hamstrings", "calves"],
+  lunge: ["quads", "glutes", "hamstrings"],
+};
+
+export function musclesFor(ex) {
+  return MUSCLES_BY_NAME[ex.n] || MUSCLES_BY_KIND[DEMOS[ex.d]?.kind] || ["fullbody"];
+}
+
 export const DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];

@@ -111,6 +111,15 @@ export const S = {
   demoWrap: { flex: "0 0 auto", width: 56, height: 56, borderRadius: 12, background: "#0a0d0a", display: "grid", placeItems: "center", border: "1px solid #161b16" },
   exName: { fontSize: 15, fontWeight: 600 },
   exSets: { fontSize: 13, color: "#8a9a8a", marginTop: 2 },
+  // ---- target-muscle sub-row ----
+  muscleRow: {
+    display: "flex", alignItems: "center", gap: 11, marginTop: 8,
+    padding: "7px 9px", background: "#0a0d0a", border: "1px solid #161b16", borderRadius: 10,
+  },
+  muscleText: { minWidth: 0 },
+  muscleLabel: { fontSize: 9, letterSpacing: 1.5, textTransform: "uppercase", color: "#5a6a5a", marginBottom: 2 },
+  muscleList: { fontSize: 12.5, color: "#b8c8b8", lineHeight: 1.35 },
+  musclePrimary: { color: ACCENT, fontWeight: 600 },
   timerBtn: { background: "rgba(57,255,106,.1)", border: "1px solid rgba(57,255,106,.3)", color: ACCENT, borderRadius: 8, fontSize: 12, padding: "4px 10px", cursor: "pointer", fontFamily: "inherit" },
   demoBtn: { background: "rgba(255,80,80,.08)", border: "1px solid rgba(255,90,90,.3)", color: "#ff7a7a", borderRadius: 8, fontSize: 12, padding: "4px 10px", cursor: "pointer", fontFamily: "inherit" },
   logToggle: { background: "#161b16", border: "1px solid #2a322a", color: "#bbb", borderRadius: 8, fontSize: 12, padding: "4px 10px", cursor: "pointer", fontFamily: "inherit" },

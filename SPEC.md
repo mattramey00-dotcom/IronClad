@@ -85,6 +85,11 @@ people this phone belongs to.
 Each row has:
 - An **animated SVG demo** (left) showing the movement pattern.
 - Exercise name + prescribed sets×reps.
+- A **target-muscle map**: a small front-and-back mannequin (inline SVG, tinted in
+  the accent) with the worked muscles lit, plus the muscle names in text (the primary
+  mover in accent). Muscles are mapped by exercise *name*, not by animation — a calf
+  raise and a lateral raise share the "raise" demo but light opposite ends of the body.
+  It's a stylized heat map, not an anatomy chart, matching the demos' honesty.
 - A **timer button** (only on timed movements — planks, sprints, intervals).
 - A **log button** that expands the logging panel; shows today's set count.
 - A circular **completion checkmark** (right) that fills green when tapped.

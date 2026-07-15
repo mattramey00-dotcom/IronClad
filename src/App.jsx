@@ -9,7 +9,9 @@
 // ============================================================
 
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { ACCENT, DEMOS, EX_VIDEO, TOGETHER, REST_DAY, forMachine } from "./data/program.js";
+import {
+  ACCENT, DEMOS, EX_VIDEO, TOGETHER, REST_DAY, forMachine, musclesFor, MUSCLE_LABELS,
+} from "./data/program.js";
 import {
   agendaFor, weekAgenda, blocksFor, exercisesFor, dateKey,
   personById, partnerOf, WORKOUT_SHORTS,
@@ -32,6 +34,7 @@ import FuelCard from "./components/FuelCard.jsx";
 import InsightsView from "./components/InsightsView.jsx";
 import TabBar from "./components/TabBar.jsx";
 import RestTimer from "./components/RestTimer.jsx";
+import MuscleMap from "./components/MuscleMap.jsx";
 
 const DOW = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const MACHINE_ICON = { treadmill: "🏃", bike: "🚴" };
@@ -472,6 +475,30 @@ function Trainer({
                     {ex.n}
                   </div>
                   <div style={S.exSets}>{ex.s}</div>
+                  {(() => {
+                    const muscles = musclesFor(ex);
+                    const full = muscles.includes("fullbody");
+                    return (
+                      <div style={S.muscleRow}>
+                        <MuscleMap muscles={muscles} height={46} />
+                        <div style={S.muscleText}>
+                          <div style={S.muscleLabel}>Targets</div>
+                          <div style={S.muscleList}>
+                            {full ? (
+                              "Full body"
+                            ) : (
+                              muscles.map((m, i) => (
+                                <span key={m} style={i === 0 ? S.musclePrimary : undefined}>
+                                  {MUSCLE_LABELS[m]}
+                                  {i < muscles.length - 1 ? " · " : ""}
+                                </span>
+                              ))
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                   <div style={{ display: "flex", gap: 8, marginTop: 6, flexWrap: "wrap" }}>
                     {EX_VIDEO[ex.n] && (
                       <button style={S.demoBtn} onClick={() => setVideo({ video: EX_VIDEO[ex.n], name: ex.n })}>
