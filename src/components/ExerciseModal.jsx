@@ -20,6 +20,7 @@ import ExerciseGif from "./ExerciseGif.jsx";
 import MuscleMap from "./MuscleMap.jsx";
 import Icon from "./Icon.jsx";
 import RestTimer from "./RestTimer.jsx";
+import HoldTimer from "./HoldTimer.jsx";
 
 const clock = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 
@@ -34,6 +35,12 @@ export default function ExerciseModal({
   const rx = prescription(ex.s); // { sets, lowReps, restSecs } | null
   const nSets = rx?.sets || 0;
   const restSecs = rx?.restSecs;
+
+  // A hold, not reps: "3 × 45–60 sec". These get a stopwatch instead of the
+  // weight×reps box, and each set is a timed hold rather than a logged lift.
+  const timed = nSets > 0 && /\bsec/i.test(ex.s || "");
+  const holdLo = rx?.lowReps || ex.timer || 30;
+  const holdHi = Number((ex.s?.match(/[–-]\s*(\d+)/) || [])[1]) || null;
 
   // Seed the ticks from what's already logged today — or all of them if the
   // exercise is already checked off — so reopening reflects reality.
@@ -73,6 +80,11 @@ export default function ExerciseModal({
       return next;
     });
     const isLast = i === nSets - 1;
+    // A hold has no weight×reps to log — just check it off and rest.
+    if (timed) {
+      if (!isLast && restSecs) onStartRest(ex.n, restSecs);
+      return;
+    }
     const wv = parseFloat(w);
     const rv = parseFloat(r);
     if (Number.isFinite(wv) && Number.isFinite(rv)) {
@@ -81,6 +93,12 @@ export default function ExerciseModal({
     } else if (!isLast && restSecs) {
       onStartRest(ex.n, restSecs);
     }
+  };
+
+  // Stopping the stopwatch checks off the next unfinished hold.
+  const tickNextHold = () => {
+    const i = checked.findIndex((c) => !c);
+    if (i >= 0) tickSet(i);
   };
 
   const stop = (e) => e.stopPropagation();
@@ -147,24 +165,28 @@ export default function ExerciseModal({
               </span>
             </div>
 
-            <div style={ST.logRow}>
-              <div style={ST.inputWrap}>
-                <input
-                  type="number" inputMode="decimal" placeholder="—" value={w}
-                  onChange={(e) => setW(e.target.value)} style={ST.numInput}
-                />
-                <span style={ST.unit}>lb</span>
+            {timed ? (
+              <HoldTimer targetLo={holdLo} targetHi={holdHi} onStop={tickNextHold} />
+            ) : (
+              <div style={ST.logRow}>
+                <div style={ST.inputWrap}>
+                  <input
+                    type="number" inputMode="decimal" placeholder="—" value={w}
+                    onChange={(e) => setW(e.target.value)} style={ST.numInput}
+                  />
+                  <span style={ST.unit}>lb</span>
+                </div>
+                <span style={{ color: "#5a5a70" }}>×</span>
+                <div style={ST.inputWrap}>
+                  <input
+                    type="number" inputMode="numeric" placeholder="—" value={r}
+                    onChange={(e) => setR(e.target.value)} style={ST.numInput}
+                  />
+                  <span style={ST.unit}>reps</span>
+                </div>
+                <span style={ST.optional}>optional · logs to history</span>
               </div>
-              <span style={{ color: "#5a5a70" }}>×</span>
-              <div style={ST.inputWrap}>
-                <input
-                  type="number" inputMode="numeric" placeholder="—" value={r}
-                  onChange={(e) => setR(e.target.value)} style={ST.numInput}
-                />
-                <span style={ST.unit}>reps</span>
-              </div>
-              <span style={ST.optional}>optional · logs to history</span>
-            </div>
+            )}
 
             <div style={ST.setRow}>
               {checked.map((c, i) => (
@@ -182,7 +204,9 @@ export default function ExerciseModal({
             <div style={ST.hint}>
               {finishing
                 ? "Set complete — next up…"
-                : "Tap each set as you finish it. The last one checks off the exercise."}
+                : timed
+                  ? "Start the stopwatch for each hold — it buzzes when you hit the target. Stopping it checks the set off; the last one finishes the exercise."
+                  : "Tap each set as you finish it. The last one checks off the exercise."}
             </div>
           </>
         ) : (
