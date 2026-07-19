@@ -133,6 +133,14 @@ export const loadTargets = (personId) => readJSON(`targets:${personId}`, null);
 export const saveTargets = (personId, targets) =>
   write(`targets:${personId}`, JSON.stringify(targets));
 
+// ---- favourite meals (per profile) ----------------------------------
+//  The meals you eat on repeat, saved so re-logging them is one tap. Logging
+//  friction is what quietly kills the whole TDEE estimate, so this is really a
+//  data-quality feature wearing a convenience hat.
+
+export const loadFavMeals = (personId) => readJSON(`favmeals:${personId}`, []);
+export const saveFavMeals = (personId, favs) => write(`favmeals:${personId}`, JSON.stringify(favs));
+
 // ---- the API key (this device only) ----------------------------------
 //  Deliberately NOT part of the plan, and therefore NOT in the plan code — you
 //  text that code to your partner, and a secret that travels by SMS isn't one.
@@ -186,6 +194,6 @@ export function migrateLegacy(personId) {
 export function resetEverything() {
   ["plan", "me", "apikey", "model", "travel", "wxkey"].forEach(remove);
   ["p1", "p2"].forEach((id) => {
-    ["progress", "logs", "meals", "weights", "targets"].forEach((k) => remove(`${k}:${id}`));
+    ["progress", "logs", "meals", "weights", "targets", "favmeals"].forEach((k) => remove(`${k}:${id}`));
   });
 }

@@ -52,8 +52,8 @@ function Bar({ label, value, target, color, over }) {
 }
 
 export default function FuelCard({
-  meals, weight, targets, apiKey, model, restMode,
-  onAddMeal, onRemoveMeal, onWeigh, onOpenInsights,
+  meals, weight, targets, apiKey, model, restMode, favorites = [],
+  onAddMeal, onRemoveMeal, onLogFavorite, onSaveFavorite, onRemoveFavorite, onWeigh, onOpenInsights,
 }) {
   const [mode, setMode] = useState(null); // null | "text" | "draft"
   const [draft, setDraft] = useState(null);
@@ -243,7 +243,9 @@ export default function FuelCard({
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={S.mealName}>
                   {m.name}
-                  {m.source !== "manual" && <span style={S.srcTag}>{m.source === "photo" ? "photo" : "ai"}</span>}
+                  {(m.source === "photo" || m.source === "text") && (
+                    <span style={S.srcTag}>{m.source === "photo" ? "photo" : "ai"}</span>
+                  )}
                 </div>
                 <div style={S.mealMacros}>
                   {Math.round(m.protein)}p · {Math.round(m.carbs)}c · {Math.round(m.fat)}f
@@ -251,9 +253,45 @@ export default function FuelCard({
                 </div>
               </div>
               <div style={S.mealKcal}>{Math.round(m.kcal).toLocaleString()}</div>
+              <button
+                style={{ background: "transparent", border: "none", color: "#6a6a80", cursor: "pointer", padding: "4px 2px", display: "grid", placeItems: "center", fontFamily: "inherit" }}
+                onClick={() => onSaveFavorite?.(m)}
+                title="Save to Quick add"
+                aria-label={`Save ${m.name} to quick add`}
+              >
+                <Icon name="star" size={14} />
+              </button>
               <button style={S.mealX} onClick={() => onRemoveMeal(m.id)} aria-label="remove meal">×</button>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* quick add — the meals you eat on repeat, one tap to re-log */}
+      {favorites.length > 0 && mode === null && !busy && (
+        <div style={{ marginTop: meals?.length ? 12 : 14 }}>
+          <div style={{ ...S.label, marginBottom: 7 }}>Quick add</div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
+            {favorites.map((f) => (
+              <div key={f.id} style={{ display: "inline-flex", alignItems: "center", background: "#16171f", border: "1px solid #2a2c3b", borderRadius: 99, overflow: "hidden" }}>
+                <button
+                  onClick={() => onLogFavorite(f)}
+                  style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "transparent", border: "none", color: "#c9c9d6", fontFamily: "inherit", fontSize: 12, padding: "7px 4px 7px 11px", cursor: "pointer", maxWidth: 200, minWidth: 0 }}
+                >
+                  <Icon name="plus" size={11} style={{ color: ACCENT }} />
+                  <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.name}</span>
+                  <span style={{ color: "#6a6a80", fontVariantNumeric: "tabular-nums" }}>{Math.round(f.kcal)}</span>
+                </button>
+                <button
+                  onClick={() => onRemoveFavorite(f.id)}
+                  style={{ background: "transparent", border: "none", color: "#5a5a70", cursor: "pointer", padding: "6px 9px 6px 4px", fontSize: 13, fontFamily: "inherit" }}
+                  aria-label={`Remove ${f.name} from quick add`}
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

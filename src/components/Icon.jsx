@@ -133,6 +133,11 @@ const PATHS = {
       <path d="M5 12.5l4.5 4.5L19 6.5" />
     </>
   ),
+  star: (
+    <>
+      <path d="M12 3.2l2.6 5.4 5.9.8-4.3 4.1 1 5.9-5.2-2.8-5.2 2.8 1-5.9L3.5 9.4l5.9-.8L12 3.2Z" />
+    </>
+  ),
 };
 
 // Glyphs that are line drawings (stroked) vs. solid shapes (filled). Filled

@@ -20,6 +20,7 @@ import {
   loadPlan, savePlan, loadMe, saveMe, loadProgress, saveProgress,
   loadLogs, saveLogs, migrateLegacy, encodePlan, resetEverything,
   loadMeals, saveMeals, loadWeights, saveWeights, loadTargets, saveTargets,
+  loadFavMeals, saveFavMeals,
   loadApiKey, saveApiKey, loadModel, saveModel, loadTravel, saveTravel,
   loadWxKey, saveWxKey,
 } from "./lib/storage.js";
@@ -51,6 +52,7 @@ export default function App() {
   const [progress, setProgress] = useState({});
   const [logs, setLogs] = useState({});
   const [meals, setMeals] = useState({});
+  const [favMeals, setFavMeals] = useState([]);
   const [weights, setWeights] = useState({});
   const [targets, setTargets] = useState(DEFAULT_TARGETS);
   const [apiKey, setApiKey] = useState(() => loadApiKey());
@@ -83,6 +85,7 @@ export default function App() {
     setProgress(loadProgress(me));
     setLogs(loadLogs(me));
     setMeals(loadMeals(me));
+    setFavMeals(loadFavMeals(me));
     setWeights(loadWeights(me));
     setTargets(loadTargets(me) || DEFAULT_TARGETS);
   }, [me]);
@@ -126,6 +129,8 @@ export default function App() {
       setLogs={setLogs}
       meals={meals}
       setMeals={setMeals}
+      favMeals={favMeals}
+      setFavMeals={setFavMeals}
       weights={weights}
       setWeights={setWeights}
       targets={targets}
@@ -174,7 +179,7 @@ function Shell({ children }) {
 
 function Trainer({
   plan, me, selected, setSelected, progress, setProgress, logs, setLogs,
-  meals, setMeals, weights, setWeights, targets, setTargets,
+  meals, setMeals, favMeals, setFavMeals, weights, setWeights, targets, setTargets,
   apiKey, model, onSetApiKey, onSetModel, wxKey, onSetWxKey, travel, onSetTravel,
   openLog, setOpenLog, timer, setTimer, video, setVideo,
   showHistory, setShowHistory,
@@ -284,6 +289,30 @@ function Trainer({
 
   const addMeal = (meal) =>
     persistMeals({ ...meals, [selected]: [...(meals[selected] || []), meal] });
+
+  // ---- favourite meals ----
+  const persistFavs = (next) => { setFavMeals(next); saveFavMeals(me, next); };
+
+  const saveFavorite = (meal) => {
+    const name = (meal.name || "Meal").trim();
+    // One entry per name — re-saving updates the numbers rather than piling up.
+    const rest = favMeals.filter((f) => f.name.toLowerCase() !== name.toLowerCase());
+    persistFavs([
+      { id: `fav-${Date.now()}`, name, kcal: meal.kcal, protein: meal.protein, carbs: meal.carbs, fat: meal.fat },
+      ...rest,
+    ].slice(0, 24));
+  };
+
+  const removeFavorite = (favId) => persistFavs(favMeals.filter((f) => f.id !== favId));
+
+  // Re-log a saved favourite onto the selected day, timestamped now.
+  const logFavorite = (fav) =>
+    addMeal({
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      time: new Date().toTimeString().slice(0, 5),
+      name: fav.name, kcal: fav.kcal, protein: fav.protein, carbs: fav.carbs, fat: fav.fat,
+      source: "favorite",
+    });
 
   const removeMeal = (id) => {
     const rest = (meals[selected] || []).filter((m) => m.id !== id);
@@ -636,8 +665,12 @@ function Trainer({
           apiKey={apiKey}
           model={model}
           restMode={agenda.isRest}
+          favorites={favMeals}
           onAddMeal={addMeal}
           onRemoveMeal={removeMeal}
+          onLogFavorite={logFavorite}
+          onSaveFavorite={saveFavorite}
+          onRemoveFavorite={removeFavorite}
           onWeigh={setWeight}
           onOpenInsights={() => setTab("insights")}
         />
