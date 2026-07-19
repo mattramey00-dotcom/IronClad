@@ -86,9 +86,27 @@ export default function App() {
     setTargets(loadTargets(me) || DEFAULT_TARGETS);
   }, [me]);
 
-  const finishSetup = (newPlan, personId) => {
+  const finishSetup = (newPlan, personId, baseline = null) => {
     savePlan(newPlan);
     saveMe(personId);
+    // Seed the baseline collected at setup so Insights works from day one: the
+    // bio (for the day-1 calorie estimate) and a first weigh-in (the start of
+    // the trend). Written to storage before setMe so the profile-load effect
+    // picks them straight up. All fields optional.
+    if (baseline) {
+      if (baseline.goal || baseline.sex || baseline.heightIn || baseline.age) {
+        saveTargets(personId, {
+          ...DEFAULT_TARGETS,
+          goal: baseline.goal || DEFAULT_TARGETS.goal,
+          sex: baseline.sex || null,
+          heightIn: baseline.heightIn || null,
+          age: baseline.age || null,
+        });
+      }
+      if (baseline.weightLb > 0) {
+        saveWeights(personId, { [dateKey(new Date())]: baseline.weightLb });
+      }
+    }
     setPlan(newPlan);
     setMe(personId);
   };

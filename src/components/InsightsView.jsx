@@ -31,6 +31,7 @@ export default function InsightsView({
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [pendingGoal, setPendingGoal] = useState(null); // goal awaiting confirmation
 
   const ins = useMemo(
     () => buildInsights({ meals, weights, logs, targets, endKey: today }),
@@ -410,6 +411,8 @@ export default function InsightsView({
         )}
 
         {/* ---- goal ---- */}
+        {/* Chosen at setup; changing it here recalibrates the calorie/protein
+            plan, so it's gated behind a confirmation. */}
         <label style={{ ...S.label, marginTop: 18 }}>Goal</label>
         <div style={S.segRow}>
           {Object.values(GOALS).map((g) => (
@@ -420,7 +423,7 @@ export default function InsightsView({
                 ...(resolved.goal.id === g.id ? S.segActive : {}),
                 fontSize: 12, padding: "9px 4px",
               }}
-              onClick={() => onSetTargets({ ...(targets || {}), goal: g.id })}
+              onClick={() => { if (g.id !== resolved.goal.id) setPendingGoal(g); }}
             >
               {g.label}
             </button>
@@ -445,6 +448,32 @@ export default function InsightsView({
         </button>
         {note && <div style={S.coachBox}>{note}</div>}
         {error && <div style={S.err}>{error}</div>}
+
+        {/* Changing the goal is a deliberate act — it resets the nutrition plan,
+            so confirm it rather than firing on the first tap. */}
+        {pendingGoal && (
+          <div style={S.modalWrap} onClick={() => setPendingGoal(null)}>
+            <div style={{ ...S.modalCard, maxWidth: 380, textAlign: "left" }} onClick={(e) => e.stopPropagation()}>
+              <div style={{ fontFamily: "'Inter', sans-serif", fontWeight: 800, fontSize: 18, letterSpacing: -0.3, marginBottom: 8 }}>
+                Change goal to “{pendingGoal.label}”?
+              </div>
+              <div style={{ ...S.insightBody, marginBottom: 16 }}>
+                This <b>resets your nutrition plan</b> — your calorie and protein targets are
+                recalculated for {pendingGoal.label.toLowerCase()}. Your logged history, weigh-ins
+                and workouts stay exactly as they are.
+              </div>
+              <button
+                style={{ ...S.btnAccent, width: "100%", marginBottom: 8 }}
+                onClick={() => { onSetTargets({ ...(targets || {}), goal: pendingGoal.id }); setPendingGoal(null); }}
+              >
+                Yes, change to {pendingGoal.label}
+              </button>
+              <button style={{ ...S.btnGhost, width: "100%" }} onClick={() => setPendingGoal(null)}>
+                Keep {resolved.goal.label}
+              </button>
+            </div>
+          </div>
+        )}
     </div>
   );
 }

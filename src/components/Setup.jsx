@@ -3,6 +3,7 @@ import { ACCENT } from "../data/program.js";
 import { S } from "../styles.js";
 import { makePlan, mondayOf, dateKey, WORKOUT_SHORTS } from "../lib/schedule.js";
 import { encodePlan, decodePlan } from "../lib/storage.js";
+import { GOALS } from "../lib/nutrition.js";
 
 // ============================================================
 //  First run — build the shared plan, or join the one your partner made
@@ -10,6 +11,106 @@ import { encodePlan, decodePlan } from "../lib/storage.js";
 //  There is no backend. The two phones stay in agreement because they hold the
 //  same plan config, so one of you creates it and texts the other a plan code.
 //  After that both apps derive the identical calendar forever, offline.
+
+// ---- the baseline both people fill in before their first session ----
+//  Height/age/sex feed the day-one calorie estimate on Insights; the current
+//  weight becomes the first point on the bodyweight trend. Without this the
+//  Insights screen sits empty for the first couple of weeks — so we ask once,
+//  here, while everything else is being set up. Every field is optional.
+function Baseline({ name, onDone, onBack }) {
+  const [sex, setSex] = useState("");
+  const [ft, setFt] = useState("");
+  const [inch, setInch] = useState("");
+  const [age, setAge] = useState("");
+  const [weight, setWeight] = useState("");
+  const [goal, setGoal] = useState("recomp");
+
+  const finish = () => {
+    const heightIn = (Number(ft) || 0) * 12 + (Number(inch) || 0);
+    onDone({
+      sex: sex || null,
+      heightIn: heightIn > 0 ? heightIn : null,
+      age: Number(age) || null,
+      weightLb: parseFloat(weight) || null,
+      goal,
+    });
+  };
+
+  const unit = { fontSize: 12, color: "#8a8a9e" };
+
+  return (
+    <div style={S.setupWrap}>
+      <div style={S.setupTitle}>Your baseline{name ? `, ${name}` : ""}</div>
+      <div style={S.setupBody}>
+        A first weigh-in and a few numbers, so the Insights screen can chart your
+        progress and estimate your calories from day one instead of sitting empty
+        for two weeks. All optional — change any of it later.
+      </div>
+
+      <div style={S.field}>
+        <label style={S.label}>Sex</label>
+        <div style={S.segRow}>
+          {["male", "female"].map((s) => (
+            <button key={s} style={{ ...S.seg, ...(sex === s ? S.segActive : {}) }} onClick={() => setSex(s)}>
+              {s === "male" ? "Male" : "Female"}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div style={S.field}>
+        <label style={S.label}>Height</label>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <input type="number" inputMode="numeric" style={{ ...S.textInput, width: 72 }} placeholder="ft" value={ft} onChange={(e) => setFt(e.target.value)} />
+          <span style={unit}>ft</span>
+          <input type="number" inputMode="numeric" style={{ ...S.textInput, width: 72 }} placeholder="in" value={inch} onChange={(e) => setInch(e.target.value)} />
+          <span style={unit}>in</span>
+        </div>
+      </div>
+
+      <div style={S.field}>
+        <label style={S.label}>Age</label>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <input type="number" inputMode="numeric" style={{ ...S.textInput, width: 92 }} placeholder="years" value={age} onChange={(e) => setAge(e.target.value)} />
+          <span style={unit}>years</span>
+        </div>
+      </div>
+
+      <div style={S.field}>
+        <label style={S.label}>Current weight</label>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <input type="number" inputMode="decimal" step="0.1" style={{ ...S.textInput, width: 110 }} placeholder="lb" value={weight} onChange={(e) => setWeight(e.target.value)} />
+          <span style={unit}>lb · today's weigh-in</span>
+        </div>
+      </div>
+
+      <div style={S.field}>
+        <label style={S.label}>Your goal</label>
+        <div style={S.segRow}>
+          {Object.values(GOALS).map((g) => (
+            <button
+              key={g.id}
+              style={{ ...S.seg, ...(goal === g.id ? S.segActive : {}), fontSize: 12, padding: "9px 4px" }}
+              onClick={() => setGoal(g.id)}
+            >
+              {g.label}
+            </button>
+          ))}
+        </div>
+        <div style={S.note}>Sets your calorie and protein targets. You can change it later, but it recalibrates those targets.</div>
+      </div>
+
+      <button style={{ ...S.btnAccent, width: "100%", marginTop: 8 }} onClick={finish}>
+        Start training
+      </button>
+      {onBack && (
+        <button style={{ ...S.btnGhost, width: "100%", marginTop: 10 }} onClick={onBack}>
+          Back
+        </button>
+      )}
+    </div>
+  );
+}
 
 export default function Setup({ onReady }) {
   const [mode, setMode] = useState("choose");
@@ -51,6 +152,7 @@ function Create({ onReady, onBack }) {
   const [offDayRuns, setOffDayRuns] = useState(2);
   const [plan, setPlan] = useState(null);
   const [copied, setCopied] = useState(false);
+  const [baseline, setBaseline] = useState(false);
 
   const build = () => {
     const p = makePlan({
@@ -62,6 +164,16 @@ function Create({ onReady, onBack }) {
     });
     setPlan(p);
   };
+
+  if (plan && baseline) {
+    return (
+      <Baseline
+        name={plan.people[0].name}
+        onDone={(b) => onReady(plan, "p1", b)}
+        onBack={() => setBaseline(false)}
+      />
+    );
+  }
 
   if (plan) {
     const code = encodePlan(plan);
@@ -94,7 +206,7 @@ function Create({ onReady, onBack }) {
 
         <button
           style={{ ...S.btnAccent, width: "100%", marginTop: 10 }}
-          onClick={() => onReady(plan, "p1")}
+          onClick={() => setBaseline(true)}
         >
           Start training as {plan.people[0].name}
         </button>
@@ -175,6 +287,7 @@ function Join({ onReady, onBack }) {
   const [code, setCode] = useState("");
   const [plan, setPlan] = useState(null);
   const [err, setErr] = useState("");
+  const [who, setWho] = useState(null); // { id, name } once they've picked
 
   const check = () => {
     const p = decodePlan(code);
@@ -185,6 +298,16 @@ function Join({ onReady, onBack }) {
     setErr("");
     setPlan(p);
   };
+
+  if (plan && who) {
+    return (
+      <Baseline
+        name={who.name}
+        onDone={(b) => onReady(plan, who.id, b)}
+        onBack={() => setWho(null)}
+      />
+    );
+  }
 
   if (plan) {
     return (
@@ -198,7 +321,7 @@ function Join({ onReady, onBack }) {
           <button
             key={p.id}
             style={{ ...S.btnGhost, width: "100%", marginBottom: 10, padding: "14px 16px", fontSize: 16 }}
-            onClick={() => onReady(plan, p.id)}
+            onClick={() => setWho({ id: p.id, name: p.name })}
           >
             I'm {p.name}
             <span style={{ color: "#6a6a80", fontSize: 12, display: "block", marginTop: 2 }}>
