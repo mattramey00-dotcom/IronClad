@@ -8,5 +8,9 @@ export default defineConfig({
   server: {
     port: 5173,
     open: true,
+    // Allow the dev server to answer requests proxied through an HTTPS tunnel
+    // (Cloudflare quick-tunnel / localtunnel) for phone testing. Vite otherwise
+    // rejects requests whose Host header isn't localhost with "Blocked request".
+    allowedHosts: [".trycloudflare.com", ".loca.lt", ".ngrok-free.app"],
   },
 });

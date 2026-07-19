@@ -1,83 +1,104 @@
 // ============================================================
 //  IRONCLAD — target-muscle map
 // ============================================================
-//  A small front-and-back mannequin with the worked muscles lit in the accent
-//  colour. Inline SVG, so it costs no network and works in the garage with no
-//  signal — the same reason the movement demos are SVG. It's a stylized heat
-//  map, not an anatomy chart: enough to answer "what does this hit?" at a glance,
-//  matching the honesty of the demos (movement cues, not form tutorials).
+//  A front-and-back anatomical figure with the worked muscles lit in the accent
+//  colour. The muscle polygons are vendored (inline, no network — works in the
+//  garage with no signal) from react-native-body-highlighter (MIT). The app's
+//  own muscle tokens from musclesFor() are translated to that library's slugs
+//  here, so an exercise lights the correct real muscle shapes.
 //
-//  Muscle → zone tokens come from musclesFor() in data/program.js.
+//  Only the view that has something to show is rendered — a biceps curl shows
+//  the front alone (so the figure is bigger), a deadlift the back, a squat both.
+//  Front paths live in x 0–724, back paths in x 724–1448 (pre-shifted); each
+//  view crops the empty head-room and foot-room to fill the row.
 // ============================================================
 
 import React from "react";
 import { ACCENT } from "../data/program.js";
+import { bodyFront, bodyBack, OUTLINE_FRONT, OUTLINE_BACK } from "../data/bodyParts.js";
 
-// Zones as [type, ...coords]. "e" = ellipse [cx,cy,rx,ry]; "r" = rect [x,y,w,h,r].
-// Front figure is centred on x=36, the back figure on x=118 (a +82 shift).
-const FRONT = [
-  { m: "shoulders", s: [["e", 23, 25, 5, 4], ["e", 49, 25, 5, 4]] },
-  { m: "chest", s: [["e", 30, 31, 5.5, 4.5], ["e", 42, 31, 5.5, 4.5]] },
-  { m: "biceps", s: [["e", 17, 35, 3.5, 6], ["e", 55, 35, 3.5, 6]] },
-  { m: "forearms", s: [["e", 15, 47, 3, 6], ["e", 57, 47, 3, 6]] },
-  { m: "abs", s: [["r", 31, 38, 10, 15, 3]] },
-  { m: "obliques", s: [["e", 28, 46, 2.4, 6], ["e", 44, 46, 2.4, 6]] },
-  { m: "quads", s: [["e", 30, 68, 4, 9], ["e", 42, 68, 4, 9]] },
-  { m: "calves", s: [["e", 30, 86, 3, 7], ["e", 42, 86, 3, 7]] },
-];
+// app token → the anatomical slug(s) it lights, per view. `shoulders` is both
+// deltoid heads; `traps`/`triceps`/`calves` read on both sides; `lats` maps to
+// the library's upper-back region. `forearms` is front-only, so an arm-flexor
+// move (curl) stays a single front figure rather than dragging in the back.
+const FRONT_FOR = {
+  chest: ["chest"], shoulders: ["deltoids"], biceps: ["biceps"], triceps: ["triceps"],
+  forearms: ["forearm"], abs: ["abs"], obliques: ["obliques"], traps: ["trapezius"],
+  quads: ["quadriceps"], calves: ["calves"],
+};
+const BACK_FOR = {
+  shoulders: ["deltoids"], triceps: ["triceps"], lats: ["upper-back"], traps: ["trapezius"],
+  lowerback: ["lower-back"], glutes: ["gluteal"], hamstrings: ["hamstring"], calves: ["calves"],
+};
 
-const BACK = [
-  { m: "traps", s: [["e", 118, 25, 8, 5]] },
-  { m: "shoulders", s: [["e", 105, 25, 5, 4], ["e", 131, 25, 5, 4]] },
-  { m: "lats", s: [["e", 112, 37, 4.5, 7], ["e", 124, 37, 4.5, 7]] },
-  { m: "triceps", s: [["e", 99, 35, 3.5, 6], ["e", 137, 35, 3.5, 6]] },
-  { m: "lowerback", s: [["r", 113, 44, 10, 10, 3]] },
-  { m: "glutes", s: [["e", 113, 59, 5, 5], ["e", 123, 59, 5, 5]] },
-  { m: "hamstrings", s: [["e", 112, 70, 4, 8], ["e", 124, 70, 4, 8]] },
-  { m: "calves", s: [["e", 112, 86, 3, 7], ["e", 124, 86, 3, 7]] },
-];
+// Cosmetic parts we don't treat as muscles — the outline already carries the
+// body shape, so a tiny face/hands/feet would only add noise.
+const SKIP = new Set(["head", "hair", "hands", "feet", "ankles", "knees", "neck"]);
 
-function paint(s, i, fill, opacity) {
-  if (s[0] === "e")
-    return <ellipse key={i} cx={s[1]} cy={s[2]} rx={s[3]} ry={s[4]} fill={fill} opacity={opacity} />;
-  return <rect key={i} x={s[1]} y={s[2]} width={s[3]} height={s[4]} rx={s[5] || 3} fill={fill} opacity={opacity} />;
+const BODY_FILL = "#1d2030";
+const BODY_STROKE = "#3d4059";
+const MUSCLE_IDLE = "#343953"; // lighter than the body, so the musculature reads
+
+function activeSlugs(muscles, table) {
+  const all = muscles.includes("fullbody");
+  const out = new Set();
+  Object.keys(table).forEach((tok) => {
+    if (all || muscles.includes(tok)) table[tok].forEach((s) => out.add(s));
+  });
+  return out;
 }
 
-// One grey body outline, shifted by dx so we can reuse it for front and back.
-function Silhouette({ dx }) {
-  const pts = (arr) => arr.map(([x, y]) => `${x + dx},${y}`).join(" ");
+function View({ parts, active }) {
+  return parts
+    .filter((p) => !SKIP.has(p.slug))
+    .map((p) => {
+      const on = active.has(p.slug);
+      const ds = [...(p.path.common || []), ...(p.path.left || []), ...(p.path.right || [])];
+      return (
+        <g key={p.slug} fill={on ? ACCENT : MUSCLE_IDLE} opacity={on ? 0.95 : 1}>
+          {ds.map((d, i) => <path key={i} d={d} />)}
+        </g>
+      );
+    });
+}
+
+function Figure({ viewBox, outline, parts, active, height, label }) {
   return (
-    <g fill="#1b241b" stroke="#31402f" strokeWidth="1" strokeLinejoin="round">
-      <circle cx={36 + dx} cy={11} r={7} />
-      <polygon points={pts([[22, 22], [50, 22], [46, 40], [44, 55], [28, 55], [26, 40]])} />
-      <polygon points={pts([[14, 23], [22, 25], [20, 52], [12, 50]])} />
-      <polygon points={pts([[50, 25], [58, 23], [60, 50], [52, 52]])} />
-      <polygon points={pts([[27, 55], [35, 55], [34, 95], [28, 95]])} />
-      <polygon points={pts([[37, 55], [45, 55], [44, 95], [38, 95]])} />
-    </g>
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
+      <svg viewBox={viewBox} height={height} style={{ display: "block" }} role="img" aria-label={`${label} muscles`}>
+        <path
+          d={outline}
+          fill={BODY_FILL}
+          stroke={BODY_STROKE}
+          strokeWidth="1.5"
+          strokeLinejoin="round"
+          vectorEffect="non-scaling-stroke"
+        />
+        <View parts={parts} active={active} />
+      </svg>
+      <span style={{ fontSize: 9, letterSpacing: 1, textTransform: "uppercase", color: "#5a5a70" }}>{label}</span>
+    </div>
   );
 }
 
-export default function MuscleMap({ muscles = [], height = 46 }) {
-  const set = new Set(muscles);
-  const all = set.has("fullbody");
-  const on = (m) => all || set.has(m);
+export default function MuscleMap({ muscles = [], height = 92 }) {
+  const frontActive = activeSlugs(muscles, FRONT_FOR);
+  const backActive = activeSlugs(muscles, BACK_FOR);
 
-  const zones = (list) =>
-    list.map((z) => (
-      <g key={z.m}>
-        {z.s.map((s, i) => paint(s, i, on(z.m) ? ACCENT : "#28342a", on(z.m) ? 0.92 : 1))}
-      </g>
-    ));
+  // Render only the side that has something lit; if somehow neither does, show
+  // both so the row never collapses to nothing.
+  let showFront = frontActive.size > 0;
+  let showBack = backActive.size > 0;
+  if (!showFront && !showBack) { showFront = true; showBack = true; }
 
   return (
-    <svg viewBox="0 0 154 110" height={height} style={{ display: "block", flex: "0 0 auto" }} role="img" aria-label="Targeted muscles">
-      <Silhouette dx={0} />
-      <Silhouette dx={82} />
-      {zones(FRONT)}
-      {zones(BACK)}
-      <text x="36" y="108" textAnchor="middle" fontSize="7" fill="#5a6a5a" fontFamily="system-ui" letterSpacing="1">FRONT</text>
-      <text x="118" y="108" textAnchor="middle" fontSize="7" fill="#5a6a5a" fontFamily="system-ui" letterSpacing="1">BACK</text>
-    </svg>
+    <div style={{ display: "flex", gap: 12, flex: "0 0 auto", alignItems: "flex-start" }}>
+      {showFront && (
+        <Figure viewBox="0 140 724 1240" outline={OUTLINE_FRONT} parts={bodyFront} active={frontActive} height={height} label="Front" />
+      )}
+      {showBack && (
+        <Figure viewBox="724 140 724 1240" outline={OUTLINE_BACK} parts={bodyBack} active={backActive} height={height} label="Back" />
+      )}
+    </div>
   );
 }

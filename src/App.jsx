@@ -10,7 +10,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
-  ACCENT, DEMOS, EX_VIDEO, TOGETHER, REST_DAY, forMachine, musclesFor, MUSCLE_LABELS,
+  ACCENT, DEMOS, EX_VIDEO, TOGETHER, REST_DAY, forMachine, forTravel, musclesFor, MUSCLE_LABELS,
 } from "./data/program.js";
 import {
   agendaFor, weekAgenda, blocksFor, exercisesFor, dateKey,
@@ -20,14 +20,16 @@ import {
   loadPlan, savePlan, loadMe, saveMe, loadProgress, saveProgress,
   loadLogs, saveLogs, migrateLegacy, encodePlan, resetEverything,
   loadMeals, saveMeals, loadWeights, saveWeights, loadTargets, saveTargets,
-  loadApiKey, saveApiKey, loadModel, saveModel,
+  loadApiKey, saveApiKey, loadModel, saveModel, loadTravel, saveTravel,
+  loadWxKey, saveWxKey,
 } from "./lib/storage.js";
 import { estimateTDEE, resolveTargets, weightTrend, DEFAULT_TARGETS } from "./lib/nutrition.js";
 import { MODELS, DEFAULT_MODEL } from "./lib/claude.js";
 import { S } from "./styles.js";
 import Demo from "./components/Demo.jsx";
 import { TimerModal, VideoModal } from "./components/Modals.jsx";
-import LogPanel from "./components/LogPanel.jsx";
+import ExerciseModal from "./components/ExerciseModal.jsx";
+import ExerciseGif, { preloadGifs, allGifIds } from "./components/ExerciseGif.jsx";
 import HistoryModal from "./components/HistoryModal.jsx";
 import Setup from "./components/Setup.jsx";
 import FuelCard from "./components/FuelCard.jsx";
@@ -35,9 +37,10 @@ import InsightsView from "./components/InsightsView.jsx";
 import TabBar from "./components/TabBar.jsx";
 import RestTimer from "./components/RestTimer.jsx";
 import MuscleMap from "./components/MuscleMap.jsx";
+import Icon from "./components/Icon.jsx";
 
 const DOW = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-const MACHINE_ICON = { treadmill: "🏃", bike: "🚴" };
+const MACHINE_ICON = { treadmill: "run", bike: "bike" };
 const MACHINE_NAME = { treadmill: "Treadmill", bike: "Bike" };
 
 export default function App() {
@@ -51,6 +54,14 @@ export default function App() {
   const [targets, setTargets] = useState(DEFAULT_TARGETS);
   const [apiKey, setApiKey] = useState(() => loadApiKey());
   const [model, setModel] = useState(() => loadModel() || DEFAULT_MODEL);
+  const [wxKey, setWxKey] = useState(() => loadWxKey());
+  const [travel, setTravel] = useState(() => loadTravel());
+
+  // Ask the browser to keep our storage — the cached exercise gifs are paid for
+  // out of a lifetime quota, so an eviction literally costs requests.
+  useEffect(() => {
+    navigator.storage?.persist?.().catch(() => {});
+  }, []);
   const [openLog, setOpenLog] = useState(null);
   const [timer, setTimer] = useState(null);
   const [video, setVideo] = useState(null);
@@ -104,6 +115,10 @@ export default function App() {
       model={model}
       onSetApiKey={(k) => { saveApiKey(k); setApiKey(k); }}
       onSetModel={(m) => { saveModel(m); setModel(m); }}
+      wxKey={wxKey}
+      onSetWxKey={(k) => { saveWxKey(k); setWxKey(k); }}
+      travel={travel}
+      onSetTravel={(v) => { saveTravel(v); setTravel(v); }}
       openLog={openLog}
       setOpenLog={setOpenLog}
       timer={timer}
@@ -125,7 +140,7 @@ function Shell({ children }) {
   return (
     <div style={S.app}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Archivo+Black&family=Outfit:wght@400;500;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
         *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
         ::-webkit-scrollbar{height:0;width:0}
         @keyframes pop{0%{transform:scale(.6);opacity:0}60%{transform:scale(1.15)}100%{transform:scale(1);opacity:1}}
@@ -141,13 +156,14 @@ function Shell({ children }) {
 function Trainer({
   plan, me, selected, setSelected, progress, setProgress, logs, setLogs,
   meals, setMeals, weights, setWeights, targets, setTargets,
-  apiKey, model, onSetApiKey, onSetModel,
+  apiKey, model, onSetApiKey, onSetModel, wxKey, onSetWxKey, travel, onSetTravel,
   openLog, setOpenLog, timer, setTimer, video, setVideo,
   showHistory, setShowHistory,
   showSettings, setShowSettings, now, onSwitchPerson,
 }) {
   const [tab, setTab] = useState("train");
   const [rest, setRest] = useState(null); // { id, secs, label } — the sticky rest timer
+  const [openEx, setOpenEx] = useState(null); // { blockName, ex } — the focused exercise modal
   const today = dateKey(now);
   const person = personById(plan, me);
   const other = partnerOf(plan, me);
@@ -155,7 +171,19 @@ function Trainer({
   const agenda = useMemo(() => agendaFor(plan, me, selected), [plan, me, selected]);
   const week = useMemo(() => weekAgenda(plan, me, selected), [plan, me, selected]);
   const blocks = useMemo(() => blocksFor(agenda), [agenda]);
-  const allExercises = useMemo(() => exercisesFor(agenda), [agenda]);
+  // Count the exercises under the same weight-free lens the rows are drawn with,
+  // so the progress bar tallies the moves you're actually doing today.
+  const allExercises = useMemo(
+    () => exercisesFor(agenda).map((e) => forTravel(e, travel)),
+    [agenda, travel],
+  );
+  const machine = agenda.machine;
+  // The exercises in render order, machine- and travel-resolved. Lets the
+  // exercise modal advance to the next one when a set finishes an exercise.
+  const flatExercises = useMemo(
+    () => blocks.flatMap((b) => b.exercises.map((raw) => ({ blockName: b.name, ex: forTravel(forMachine(raw, machine), travel) }))),
+    [blocks, machine, travel],
+  );
 
   // ---- persistence ----
   const persistProgress = useCallback((next) => {
@@ -177,6 +205,19 @@ function Trainer({
     persistProgress({ ...progress, [k]: !progress[k] });
   };
 
+  // Finish an exercise from its modal: apply its master check, then open the
+  // next not-yet-done exercise's modal — or close, if this was the last.
+  const completeAndAdvance = (blockName, exName) => {
+    const k = doneKey(blockName, exName);
+    if (!progress[k]) persistProgress({ ...progress, [k]: true });
+    const idx = flatExercises.findIndex((f) => f.blockName === blockName && f.ex.n === exName);
+    let next = null;
+    for (let i = idx + 1; i < flatExercises.length; i++) {
+      if (!isDone(flatExercises[i].blockName, flatExercises[i].ex.n)) { next = flatExercises[i]; break; }
+    }
+    setOpenEx(next);
+  };
+
   const logSet = (exName, weight, reps, restSecs) => {
     const next = { ...logs };
     const entries = next[exName] ? [...next[exName]] : [];
@@ -196,6 +237,13 @@ function Trainer({
     if (restSecs && selected === today) {
       setRest({ id: `${exName}-${entry.sets.length}-${Date.now()}`, secs: restSecs, label: exName });
     }
+  };
+
+  // Start the rest clock directly, without needing a set logged first — you tap
+  // it when you rack the bar. Same sticky bar the auto-start uses; a fresh key
+  // each tap restarts it cleanly. Explicit tap, so it runs on any viewed day.
+  const startRest = (exName, secs) => {
+    setRest({ id: `${exName}-rest-${Date.now()}`, secs, label: exName });
   };
 
   const removeSet = (exName, setIdx) => {
@@ -300,7 +348,6 @@ function Trainer({
     s: String(secsLeft % 60).padStart(2, "0"),
   };
 
-  const machine = agenda.machine;
   const warmup = agenda.workout?.warmup?.[machine === "bike" ? "bike" : "treadmill"];
 
   return (
@@ -317,8 +364,12 @@ function Trainer({
             <div style={S.cdTime}>{cd.h}:{cd.m}:{cd.s}</div>
           </div>
           <div style={{ display: "flex", gap: 6 }}>
-            <button style={S.statsBtn} onClick={() => setShowHistory(true)}>📈 Progress</button>
-            <button style={S.statsBtn} onClick={() => setShowSettings(true)}>⚙</button>
+            <button style={S.statsBtn} onClick={() => setShowHistory(true)}>
+              <Icon name="chart" size={15} /> Progress
+            </button>
+            <button style={{ ...S.statsBtn, padding: "7px 10px" }} onClick={() => setShowSettings(true)} aria-label="Settings">
+              <Icon name="settings" size={16} />
+            </button>
           </div>
         </div>
       </div>
@@ -391,7 +442,11 @@ function Trainer({
             <>
               <div style={S.dayTitle}>{agenda.workout.title}</div>
               <div style={S.daySub}>{agenda.workout.subtitle}</div>
-              {warmup && <div style={S.warmup}>🔥 Warm-Up · {warmup}</div>}
+              {warmup && (
+                <div style={{ ...S.warmup, display: "flex", alignItems: "center", gap: 6 }}>
+                  <Icon name="flame" size={14} style={{ color: ACCENT }} /> Warm-Up · {warmup}
+                </div>
+              )}
             </>
           ) : (
             <>
@@ -415,12 +470,20 @@ function Trainer({
 
           {machine && (
             <div style={S.machineChip}>
-              {MACHINE_ICON[machine]} {MACHINE_NAME[machine]}
+              <Icon name={MACHINE_ICON[machine]} size={14} /> {MACHINE_NAME[machine]}
               {agenda.partner.machine && (
                 <span style={{ color: "#5a6a5a" }}>
                   · {other.name} on the {agenda.partner.machine}
                 </span>
               )}
+            </div>
+          )}
+
+          {travel && !agenda.isRest && (
+            <div
+              style={{ ...S.machineChip, marginLeft: machine ? 6 : 0, border: `1px solid ${ACCENT}`, color: ACCENT }}
+            >
+              <Icon name="plane" size={13} /> Weight-free · every lift swapped for bodyweight
             </div>
           )}
 
@@ -431,7 +494,7 @@ function Trainer({
               </div>
               <div style={S.progText}>
                 {complete}/{total} complete
-                {allDone && <span style={{ color: ACCENT, fontWeight: 700 }}> — Day crushed 💪</span>}
+                {allDone && <span style={{ color: ACCENT, fontWeight: 700 }}> — Day crushed</span>}
                 {complete > 0 && <button style={S.resetBtn} onClick={resetDay}>reset</button>}
               </div>
             </>
@@ -445,18 +508,20 @@ function Trainer({
       {/* Blocks */}
       {blocks.map((block, bi) => (
         <div key={bi} style={S.block}>
-          <div style={{ ...S.blockName, ...(block.isTogether ? S.blockNameTogether : {}) }}>
-            {block.isTogether ? `✦ ${block.name} · with ${other.name}` : block.name}
+          <div style={{ ...S.blockName, ...(block.isTogether ? S.blockNameTogether : {}), display: "flex", alignItems: "center", gap: 6 }}>
+            {block.isTogether && <Icon name="sparkle" size={12} />}
+            {block.isTogether ? `${block.name} · with ${other.name}` : block.name}
           </div>
           {(block.isTogether || block.isRecovery) && (
             <div style={S.blockNote}>{block.note}</div>
           )}
 
           {block.exercises.map((raw, ei) => {
-            const ex = forMachine(raw, machine);
+            const ex = forTravel(forMachine(raw, machine), travel);
             const done = isDone(block.name, ex.n);
-            const isOpen = openLog === `${block.name}::${ex.n}`;
             const tSession = sessionOn(ex.n, selected);
+            const muscles = musclesFor(ex);
+            const full = muscles.includes("fullbody");
             return (
               <div
                 key={ei}
@@ -464,58 +529,49 @@ function Trainer({
                   ...S.exRow,
                   ...(block.isTogether ? S.exRowTogether : {}),
                   ...(done ? S.exRowDone : {}),
-                  flexWrap: "wrap",
                 }}
               >
-                <div style={S.demoWrap}>
-                  <Demo kind={DEMOS[ex.d]?.kind || "core"} name={ex.n} size={56} />
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ ...S.exName, ...(done ? { textDecoration: "line-through", color: "#666" } : {}) }}>
-                    {ex.n}
+                {/* the whole card opens the exercise modal */}
+                <div
+                  onClick={() => setOpenEx({ blockName: block.name, ex })}
+                  style={{ display: "flex", alignItems: "center", gap: 12, flex: 1, minWidth: 0, cursor: "pointer" }}
+                >
+                  <div style={S.demoWrap}>
+                    {/* cacheOnly: rows show the real animation once the modal
+                        has paid for it, but never spend a request themselves. */}
+                    <ExerciseGif
+                      name={ex.n}
+                      size={56}
+                      cacheOnly
+                      fallback={<Demo kind={DEMOS[ex.d]?.kind || "core"} name={ex.n} size={56} />}
+                    />
                   </div>
-                  <div style={S.exSets}>{ex.s}</div>
-                  {(() => {
-                    const muscles = musclesFor(ex);
-                    const full = muscles.includes("fullbody");
-                    return (
-                      <div style={S.muscleRow}>
-                        <MuscleMap muscles={muscles} height={46} />
-                        <div style={S.muscleText}>
-                          <div style={S.muscleLabel}>Targets</div>
-                          <div style={S.muscleList}>
-                            {full ? (
-                              "Full body"
-                            ) : (
-                              muscles.map((m, i) => (
-                                <span key={m} style={i === 0 ? S.musclePrimary : undefined}>
-                                  {MUSCLE_LABELS[m]}
-                                  {i < muscles.length - 1 ? " · " : ""}
-                                </span>
-                              ))
-                            )}
-                          </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ ...S.exName, ...(done ? { textDecoration: "line-through", color: "#666" } : {}) }}>
+                      {ex.n}
+                    </div>
+                    <div style={S.exSets}>
+                      {ex.s}
+                      {tSession ? <span style={{ color: ACCENT }}> · {tSession.sets.length} logged</span> : null}
+                    </div>
+                    <div style={S.muscleRow}>
+                      <MuscleMap muscles={muscles} height={84} />
+                      <div style={S.muscleText}>
+                        <div style={S.muscleLabel}>Targets</div>
+                        <div style={S.muscleList}>
+                          {full ? (
+                            "Full body"
+                          ) : (
+                            muscles.map((m, i) => (
+                              <span key={m} style={i === 0 ? S.musclePrimary : undefined}>
+                                {MUSCLE_LABELS[m]}
+                                {i < muscles.length - 1 ? " · " : ""}
+                              </span>
+                            ))
+                          )}
                         </div>
                       </div>
-                    );
-                  })()}
-                  <div style={{ display: "flex", gap: 8, marginTop: 6, flexWrap: "wrap" }}>
-                    {EX_VIDEO[ex.n] && (
-                      <button style={S.demoBtn} onClick={() => setVideo({ video: EX_VIDEO[ex.n], name: ex.n })}>
-                        ▶ Demo
-                      </button>
-                    )}
-                    {ex.timer && (
-                      <button style={S.timerBtn} onClick={() => setTimer({ seconds: ex.timer, label: ex.n })}>
-                        ⏱ Start timer
-                      </button>
-                    )}
-                    <button
-                      style={{ ...S.logToggle, ...(isOpen ? S.logToggleOpen : {}) }}
-                      onClick={() => setOpenLog(isOpen ? null : `${block.name}::${ex.n}`)}
-                    >
-                      📋 Log {tSession ? `(${tSession.sets.length})` : ""}
-                    </button>
+                    </div>
                   </div>
                 </div>
                 <button
@@ -525,18 +581,6 @@ function Trainer({
                 >
                   {done ? <span style={{ animation: "pop .35s ease" }}>✓</span> : ""}
                 </button>
-                {isOpen && (
-                  <div style={{ flexBasis: "100%", animation: "fade .25s ease" }}>
-                    <LogPanel
-                      exName={ex.n}
-                      prescription={ex.s}
-                      today={tSession}
-                      last={lastSession(ex.n)}
-                      onAdd={logSet}
-                      onRemove={removeSet}
-                    />
-                  </div>
-                )}
               </div>
             );
           })}
@@ -590,6 +634,27 @@ function Trainer({
         />
       )}
 
+      {openEx && (
+        <ExerciseModal
+          key={`${openEx.blockName}::${openEx.ex.n}`}
+          ex={openEx.ex}
+          blockName={openEx.blockName}
+          isDone={isDone(openEx.blockName, openEx.ex.n)}
+          todaySession={sessionOn(openEx.ex.n, selected)}
+          lastSession={lastSession(openEx.ex.n)}
+          muscles={musclesFor(openEx.ex)}
+          video={EX_VIDEO[openEx.ex.n]}
+          rest={rest}
+          onCloseRest={() => setRest(null)}
+          wxKey={wxKey}
+          onLogSet={logSet}
+          onStartRest={startRest}
+          onStartTimer={(seconds, label) => setTimer({ seconds, label })}
+          onOpenVideo={(e) => setVideo({ video: EX_VIDEO[e.n], name: e.n })}
+          onComplete={completeAndAdvance}
+          onClose={() => setOpenEx(null)}
+        />
+      )}
       {timer && <TimerModal seconds={timer.seconds} label={timer.label} onClose={() => setTimer(null)} />}
       {video && <VideoModal video={video.video} name={video.name} onClose={() => setVideo(null)} />}
       {showHistory && (
@@ -607,6 +672,10 @@ function Trainer({
           me={me}
           apiKey={apiKey}
           model={model}
+          travel={travel}
+          onSetTravel={onSetTravel}
+          wxKey={wxKey}
+          onSetWxKey={onSetWxKey}
           onSetApiKey={onSetApiKey}
           onSetModel={onSetModel}
           onSwitchPerson={onSwitchPerson}
@@ -614,7 +683,9 @@ function Trainer({
         />
       )}
 
-      {rest && (
+      {/* The sticky bottom bar — but when the exercise modal is showing this
+          rest inline, don't also float it behind the modal. */}
+      {rest && !(openEx && rest.label === openEx.ex.n) && (
         <RestTimer
           key={rest.id}
           seconds={rest.secs}
@@ -637,18 +708,20 @@ function PartnerCard({ agenda, other }) {
   else if (p.runs) what = `Out for a ${p.machine === "bike" ? "ride" : "run"} · on the ${p.machine}`;
   else what = "Mobility — walking and stretching";
 
+  const partnerIcon = p.trains ? "dumbbell" : p.runs ? "run" : agenda.isRest ? "moon" : "stretch";
+
   return (
     <div style={S.partnerCard}>
-      <div style={{ ...S.demoWrap, width: 34, height: 34, fontSize: 15 }}>
-        {p.trains ? "🏋" : p.runs ? "🏃" : agenda.isRest ? "😴" : "🧘"}
+      <div style={{ ...S.demoWrap, width: 34, height: 34, color: "#8a8a9e" }}>
+        <Icon name={partnerIcon} size={17} />
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={S.partnerName}>{other.name}</div>
         <div style={S.partnerWhat}>{what}</div>
       </div>
       {agenda.together && (
-        <div style={{ ...S.machineChip, marginTop: 0, border: "1px solid rgba(57,255,106,.3)", color: ACCENT }}>
-          ✦ Core together
+        <div style={{ ...S.machineChip, marginTop: 0, border: "1px solid rgba(129,140,248,.3)", color: ACCENT }}>
+          <Icon name="sparkle" size={12} /> Core together
         </div>
       )}
     </div>
@@ -656,14 +729,27 @@ function PartnerCard({ agenda, other }) {
 }
 
 // ---- settings ---------------------------------------------------------
-function SettingsModal({ plan, me, apiKey, model, onSetApiKey, onSetModel, onSwitchPerson, onClose }) {
+function SettingsModal({ plan, me, apiKey, model, travel, onSetTravel, wxKey, onSetWxKey, onSetApiKey, onSetModel, onSwitchPerson, onClose }) {
   const [copied, setCopied] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
   const [keyDraft, setKeyDraft] = useState(apiKey);
   const [showKey, setShowKey] = useState(false);
+  const [wxDraft, setWxDraft] = useState(wxKey);
+  const [showWx, setShowWx] = useState(false);
+  const [pre, setPre] = useState(null); // { done, total, ok, stop? } while loading
   const code = encodePlan(plan);
 
+  const runPreload = () => {
+    if (pre) return;
+    const total = allGifIds().length;
+    setPre({ done: 0, total, ok: 0 });
+    preloadGifs(wxKey, (done, t, ok, stop) => setPre({ done, total: t, ok, stop }))
+      .then((ok) => setPre({ done: total, total, ok, finished: true }))
+      .catch(() => setPre(null));
+  };
+
   const keySaved = keyDraft === apiKey && !!apiKey;
+  const wxSaved = wxDraft === wxKey && !!wxKey;
 
   return (
     <div style={S.modalWrap} onClick={onClose}>
@@ -671,7 +757,7 @@ function SettingsModal({ plan, me, apiKey, model, onSetApiKey, onSetModel, onSwi
         style={{ ...S.modalCard, maxWidth: 420, textAlign: "left", maxHeight: "88vh", overflowY: "auto" }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div style={{ fontFamily: "'Archivo Black', sans-serif", fontSize: 20, marginBottom: 14 }}>
+        <div style={{ fontFamily: "'Inter', sans-serif", fontWeight: 800, letterSpacing: -0.4, fontSize: 20, marginBottom: 14 }}>
           Settings
         </div>
 
@@ -686,6 +772,29 @@ function SettingsModal({ plan, me, apiKey, model, onSetApiKey, onSetModel, onSwi
               {p.name}
             </button>
           ))}
+        </div>
+
+        <label style={S.label}>Training</label>
+        <div style={S.segRow}>
+          <button
+            style={{ ...S.seg, ...(!travel ? S.segActive : {}), display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 7 }}
+            onClick={() => onSetTravel(false)}
+          >
+            <Icon name="dumbbell" size={15} /> Full gym
+          </button>
+          <button
+            style={{ ...S.seg, ...(travel ? S.segActive : {}), display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 7 }}
+            onClick={() => onSetTravel(true)}
+          >
+            <Icon name="plane" size={14} /> Weight-free
+          </button>
+        </div>
+        <div style={{ ...S.note, marginBottom: 18 }}>
+          Traveling with no gym? Weight-free mode swaps every barbell and dumbbell lift for a
+          bodyweight or towel-and-chair version that trains the same movement — your runs, planks
+          and push-ups carry over unchanged. It's a switch on this phone only, so it doesn't touch
+          the shared plan or {plan.people.find((p) => p.id !== me)?.name || "your partner"}'s week.
+          Flip it back to Full gym when you're home.
         </div>
 
         <label style={S.label}>Rotation</label>
@@ -730,8 +839,8 @@ function SettingsModal({ plan, me, apiKey, model, onSetApiKey, onSetModel, onSwi
             spellCheck={false}
             onChange={(e) => setKeyDraft(e.target.value.trim())}
           />
-          <button style={{ ...S.btnGhost, padding: "10px 12px" }} onClick={() => setShowKey(!showKey)}>
-            {showKey ? "🙈" : "👁"}
+          <button style={{ ...S.btnGhost, padding: "10px 12px", fontSize: 12 }} onClick={() => setShowKey(!showKey)}>
+            {showKey ? "Hide" : "Show"}
           </button>
         </div>
         <button
@@ -756,6 +865,58 @@ function SettingsModal({ plan, me, apiKey, model, onSetApiKey, onSetModel, onSwi
           unlocked phone could read it. Get one at console.anthropic.com. Everything else in the
           app — the workouts, the logs, manual meal entry, all the maths on the Insights screen —
           works with no key at all.
+        </div>
+
+        {/* ---- the WorkoutX key (animated exercise demos) ---- */}
+        <label style={{ ...S.label, marginTop: 22 }}>WorkoutX key · exercise animations</label>
+        <div style={{ display: "flex", gap: 7 }}>
+          <input
+            type={showWx ? "text" : "password"}
+            style={{ ...S.textInput, flex: 1, fontFamily: "ui-monospace, monospace", fontSize: 13 }}
+            placeholder="wx_…"
+            value={wxDraft}
+            autoComplete="off"
+            spellCheck={false}
+            onChange={(e) => setWxDraft(e.target.value.trim())}
+          />
+          <button style={{ ...S.btnGhost, padding: "10px 12px", fontSize: 12 }} onClick={() => setShowWx(!showWx)}>
+            {showWx ? "Hide" : "Show"}
+          </button>
+        </div>
+        <button
+          style={{ ...S.btnGhost, width: "100%", marginTop: 8, ...(wxSaved ? { color: ACCENT, border: `1px solid ${ACCENT}` } : {}) }}
+          onClick={() => onSetWxKey(wxDraft)}
+        >
+          {wxSaved ? "✓ Key saved on this phone" : wxDraft ? "Save key" : wxKey ? "Remove key" : "Save key"}
+        </button>
+        <div style={S.note}>
+          Turns the movement picture in each exercise into the <b>real animated demo</b>. The free
+          plan is <b>500 requests for the lifetime of the key</b> — it never resets — so each
+          animation is fetched <b>once</b> and then kept on this phone forever, including offline.
+          Your whole program is about 55 of them. Without a key (or once the quota is gone) you
+          simply get the photo instead — nothing else changes. Get one at workoutxapp.com.
+        </div>
+
+        {/* Fill the whole list at once instead of one-tap-at-a-time. */}
+        <button
+          style={{ ...S.btnGhost, width: "100%", marginTop: 10, ...(pre && !pre.finished ? { opacity: 0.7 } : {}) }}
+          disabled={!wxKey || (pre && !pre.finished)}
+          onClick={runPreload}
+        >
+          {pre
+            ? pre.finished
+              ? `✓ ${pre.ok} animations ready`
+              : pre.stop === "rate"
+                ? `Paused at ${pre.done}/${pre.total} — rate limit, try again in a minute`
+                : `Loading animations… ${pre.done}/${pre.total}`
+            : wxKey
+              ? "Load all animations now"
+              : "Add a key first to load animations"}
+        </button>
+        <div style={S.note}>
+          Optional. Pulls every animation into this phone in one pass (~2 minutes, spends about 55
+          of your requests once) so the whole workout list is animated straight away, even offline.
+          Skip it and each one just loads the first time you open that exercise.
         </div>
 
         <label style={{ ...S.label, marginTop: 18 }}>Model</label>

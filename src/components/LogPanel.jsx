@@ -53,7 +53,7 @@ export default function LogPanel({ exName, prescription: presc, today, last, onA
 
       {last && (
         <div style={S.lastRow}>
-          <span style={{ color: "#6a7a6a" }}>Last ({last.date.slice(5)}): </span>
+          <span style={{ color: "#6a6a80" }}>Last ({last.date.slice(5)}): </span>
           {last.sets.map((s, i) => (
             <span key={i} style={S.lastTag}>{s.w}×{s.r}</span>
           ))}
@@ -66,7 +66,7 @@ export default function LogPanel({ exName, prescription: presc, today, last, onA
             <div key={i} style={S.setChip}>
               <span style={{ color: "#888", fontSize: 11 }}>{i + 1}</span>
               <span style={{ fontWeight: 700 }}>{s.w}</span>
-              <span style={{ color: "#6a7a6a", fontSize: 12 }}>lb ×</span>
+              <span style={{ color: "#6a6a80", fontSize: 12 }}>lb ×</span>
               <span style={{ fontWeight: 700 }}>{s.r}</span>
               <button style={S.setX} onClick={() => onRemove(exName, i)}>×</button>
             </div>

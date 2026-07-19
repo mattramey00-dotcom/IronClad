@@ -28,7 +28,19 @@ export const GOALS = {
   gain: { id: "gain", label: "Build", deficit: 300, proteinPerLb: 0.9 },
 };
 
-export const DEFAULT_TARGETS = { goal: "recomp", kcal: null, protein: null };
+export const DEFAULT_TARGETS = {
+  goal: "recomp", kcal: null, protein: null,
+  goalWeight: null, sex: null, heightIn: null, age: null,
+};
+
+// Grams of protein a scoop of whey tends to carry — for the "how much more"
+// nudge. Approximate on purpose; the point is "about a scoop", not a number.
+export const SCOOP_G = 25;
+
+// Muscle protein synthesis saturates around 0.4 g/kg per meal, so protein does
+// more good spread across the day than piled into dinner. Past this share in a
+// single meal, the app suggests spreading it out.
+export const MEAL_BACKLOAD_SHARE = 0.55;
 
 // How much data before any of this means anything. Below these thresholds the
 // app says "not yet" instead of showing a number it can't stand behind.
@@ -423,4 +435,143 @@ export function buildInsights({ meals, weights, logs, targets, endKey }) {
     });
 
   return { tdee, strength, resolved, bodyweight, proteinPerLb, verdict, notes };
+}
+
+// ---- formula TDEE (the day-1 bridge) ---------------------------------
+//  Mifflin–St Jeor × an activity multiplier. This is a *population guess*, not
+//  a measurement — the exact thing the rest of this file exists to replace. Its
+//  only job is to give a sensible starting calorie number in the two weeks
+//  before there's enough logged data to measure the real one. It is always
+//  labelled as an estimate, and it disappears the moment the measured TDEE is
+//  ready. It needs three facts the logs can't supply: sex, height, age.
+
+export const ACTIVITY = 1.55; // moderate-active: a lifting split plus off-day runs
+
+export function formulaTDEE({ sex, heightIn, age, weightLb, activity = ACTIVITY }) {
+  const w = Number(weightLb), h = Number(heightIn), a = Number(age);
+  if (!(w > 0) || !(h > 0) || !(a > 0) || (sex !== "male" && sex !== "female")) return null;
+  const kg = w / 2.2046226;
+  const cm = h * 2.54;
+  const bmr = 10 * kg + 6.25 * cm - 5 * a + (sex === "female" ? -161 : 5);
+  return { bmr: Math.round(bmr), tdee: Math.round((bmr * activity) / 10) * 10, activity };
+}
+
+// ---- metabolic adaptation --------------------------------------------
+//  Diet long enough and your metabolism quietly drops to meet the lower
+//  intake — adaptive thermogenesis. You can't see it in any single TDEE number,
+//  only in the *trend* of that number, so we measure TDEE over the recent window
+//  and over the window before it and compare. A real downward drift while you're
+//  in a deficit is the cue for a diet break or a refeed, not more cutting.
+
+export function tdeeAdaptation(meals, weights, endKey, goalId) {
+  const now = estimateTDEE(meals, weights, endKey);
+  const prior = estimateTDEE(meals, weights, shiftKey(endKey, -21));
+  if (!now.ready || !prior.ready) return { ready: false };
+
+  const delta = now.tdee - prior.tdee;        // negative = metabolism fell
+  const pct = (delta / prior.tdee) * 100;
+  const cutting = goalId === "cut" || goalId === "recomp" || now.balancePerDay < -100;
+  return {
+    ready: true,
+    now: now.tdee,
+    prior: prior.tdee,
+    delta: Math.round(delta),
+    pct: round(pct, 1),
+    cutting,
+    // A meaningful drop (both absolute and relative) while eating at a deficit.
+    adapting: cutting && delta < -80 && pct < -3,
+  };
+}
+
+// ---- bodyweight series (raw dots + the regression trend line) ---------
+//  The same least-squares line weightTrend() drives the TDEE math, but sampled
+//  per day so the chart can draw it *through* the raw weigh-ins. Seeing the
+//  scatter and the line together is the whole point: the daily bounce is water,
+//  the line is you.
+
+export function bodyweightSeries(weights, endKey, days = 42) {
+  const keys = windowKeys(endKey, days);
+  const pts = [];
+  keys.forEach((k, i) => {
+    const lb = Number(weights?.[k]);
+    if (Number.isFinite(lb) && lb > 0) pts.push({ x: i, y: lb });
+  });
+
+  let slope = 0, intercept = null;
+  if (pts.length >= 2) {
+    const mx = mean(pts.map((p) => p.x));
+    const my = mean(pts.map((p) => p.y));
+    const denom = sum(pts.map((p) => (p.x - mx) ** 2));
+    slope = denom ? sum(pts.map((p) => (p.x - mx) * (p.y - my))) / denom : 0;
+    intercept = my - slope * mx;
+  }
+
+  const series = keys.map((k, i) => ({
+    date: k.slice(5).replace("-", "/"),
+    raw: pts.some((p) => p.x === i) ? Number(weights[k]) : null,
+    trend: intercept !== null ? round(intercept + slope * i, 1) : null,
+  }));
+
+  return {
+    series,
+    n: pts.length,
+    slopePerWeek: intercept !== null ? round(slope * 7, 2) : null,
+    // The trend line's value *today* — a smoothed bodyweight that ignores the
+    // last weigh-in's water, better for "where am I really" than the raw number.
+    smoothed: intercept !== null ? round(intercept + slope * (days - 1), 1) : null,
+  };
+}
+
+// ---- goal projection -------------------------------------------------
+//  Where the trend line, extended, crosses your goal weight — and an honest
+//  range around it, because the rate itself carries ±25% of slop. Returns days
+//  from endKey so the caller can turn it into a date with its own clock.
+
+export function projectGoal({ smoothed, goalWeight, slopePerWeek }) {
+  const w = Number(smoothed), g = Number(goalWeight);
+  if (!(w > 0) || !(g > 0) || slopePerWeek == null) return null;
+
+  const remaining = g - w; // signed: negative means you need to lose
+  if (Math.abs(remaining) < 0.4) return { reached: true, remaining: round(remaining, 1) };
+
+  // Are you actually moving toward it?
+  const moving = Math.abs(slopePerWeek) > 0.05 && Math.sign(remaining) === Math.sign(slopePerWeek);
+  if (!moving) return { stalled: true, remaining: round(remaining, 1), slopePerWeek };
+
+  const weeks = remaining / slopePerWeek;
+  const wA = remaining / (slopePerWeek * 1.25);
+  const wB = remaining / (slopePerWeek * 0.75);
+  return {
+    remaining: round(remaining, 1),
+    weeks: round(weeks, 1),
+    etaDays: Math.round(weeks * 7),
+    etaLoDays: Math.round(Math.min(wA, wB) * 7),
+    etaHiDays: Math.round(Math.max(wA, wB) * 7),
+  };
+}
+
+// ---- protein distribution across the day -----------------------------
+//  Uses the per-meal protein and timestamps already stored. Answers two things
+//  the daily total can't: is it spread out, and how much is left to hit target.
+
+export function proteinDistribution(dayMeals, target) {
+  const meals = (dayMeals || [])
+    .map((m) => ({ name: m.name, time: m.time || "", protein: Math.round(Number(m.protein) || 0) }))
+    .filter((m) => m.protein > 0)
+    .sort((a, b) => (a.time || "").localeCompare(b.time || ""));
+
+  const total = sum(meals.map((m) => m.protein));
+  const maxMeal = meals.reduce((a, m) => Math.max(a, m.protein), 0);
+  const maxShare = total ? maxMeal / total : 0;
+  const remaining = Number(target) > 0 ? Math.max(0, Math.round(target - total)) : null;
+
+  return {
+    meals,
+    total,
+    doses: meals.length,
+    maxShare,
+    backLoaded: meals.length >= 2 && maxShare > MEAL_BACKLOAD_SHARE,
+    remaining,
+    scoops: remaining != null ? Math.round((remaining / SCOOP_G) * 10) / 10 : null,
+  };
 }

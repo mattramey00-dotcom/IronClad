@@ -144,6 +144,22 @@ export const saveApiKey = (key) => (key ? write("apikey", key) : remove("apikey"
 export const loadModel = () => read("model") || "";
 export const saveModel = (model) => write("model", model);
 
+// ---- the WorkoutX key, for animated exercise demos (this device only) ----
+//  Same reasoning as the AI key: it's a secret, so it never rides along in the
+//  plan code. Without it the app just shows the photo/SVG demos instead.
+
+export const loadWxKey = () => read("wxkey") || "";
+export const saveWxKey = (key) => (key ? write("wxkey", key) : remove("wxkey"));
+
+// ---- travel (weight-free) mode (this device only) --------------------
+//  A temporary "I'm on the road, no gym" switch, not a change to the shared
+//  program — so it lives on the phone, never in the plan code. Off by default;
+//  each phone flips it for themselves when their trip starts and back when
+//  they're home.
+
+export const loadTravel = () => read("travel") === "1";
+export const saveTravel = (on) => (on ? write("travel", "1") : remove("travel"));
+
 // ---- migration from the single-user app -----------------------------
 //  The old app kept one unnamespaced bucket of logs and progress. Those logs
 //  are real training history and must not be lost, so they move to whichever
@@ -168,7 +184,7 @@ export function migrateLegacy(personId) {
 }
 
 export function resetEverything() {
-  ["plan", "me", "apikey", "model"].forEach(remove);
+  ["plan", "me", "apikey", "model", "travel", "wxkey"].forEach(remove);
   ["p1", "p2"].forEach((id) => {
     ["progress", "logs", "meals", "weights", "targets"].forEach((k) => remove(`${k}:${id}`));
   });

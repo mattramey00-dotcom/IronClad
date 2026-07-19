@@ -14,7 +14,8 @@
 import React, { useState, useRef } from "react";
 import { ACCENT } from "../data/program.js";
 import { S } from "../styles.js";
-import { mealTotals } from "../lib/nutrition.js";
+import Icon from "./Icon.jsx";
+import { mealTotals, proteinDistribution } from "../lib/nutrition.js";
 import {
   compressImage, estimateMealFromPhoto, estimateMealFromText, explainError, DEFAULT_MODEL,
 } from "../lib/claude.js";
@@ -62,6 +63,7 @@ export default function FuelCard({
   const fileRef = useRef(null);
 
   const totals = mealTotals(meals);
+  const pd = proteinDistribution(meals, targets.protein);
 
   const reset = () => {
     setMode(null);
@@ -163,7 +165,7 @@ export default function FuelCard({
           style={{ ...S.statsBtn, marginLeft: "auto", padding: "5px 10px", fontSize: 12 }}
           onClick={onOpenInsights}
         >
-          📊 Insights
+          <Icon name="chart" size={13} /> Insights
         </button>
       </div>
 
@@ -180,6 +182,42 @@ export default function FuelCard({
       ) : (
         <>
           <Bar label="Protein" value={totals.protein} target={targets.protein} color={PROTEIN_COLOR} />
+
+          {/* how protein is spread today + how much is left */}
+          {targets.protein > 0 && (
+            <>
+              {pd.doses >= 2 && (
+                <div style={{ display: "flex", gap: 2, height: 4, marginTop: -3, marginBottom: 7 }} aria-hidden>
+                  {pd.meals.map((m, i) => (
+                    <div
+                      key={i}
+                      title={`${m.name}: ${m.protein} g`}
+                      style={{ flex: m.protein, background: PROTEIN_COLOR, borderRadius: 2, opacity: pd.backLoaded && m.protein === Math.round(pd.maxShare * pd.total) ? 1 : 0.55 }}
+                    />
+                  ))}
+                </div>
+              )}
+              <div style={{ display: "flex", alignItems: "center", fontSize: 11.5, color: "#8a8a9e", marginTop: pd.doses >= 2 ? 0 : -5, marginBottom: 3 }}>
+                {pd.remaining > 0 ? (
+                  <span>
+                    <b style={{ color: PROTEIN_COLOR }}>{pd.remaining} g</b> to go
+                    {pd.scoops >= 0.5 ? ` · ≈ ${pd.scoops} scoop${pd.scoops >= 1.5 ? "s" : ""} whey` : ""}
+                  </span>
+                ) : (
+                  <span style={{ color: "#7a9a7a" }}>✓ protein target hit</span>
+                )}
+                {pd.doses > 0 && (
+                  <span style={{ marginLeft: "auto", color: "#556" }}>{pd.doses} meal{pd.doses === 1 ? "" : "s"}</span>
+                )}
+              </div>
+              {pd.backLoaded && (
+                <div style={{ fontSize: 11, color: "#c9a86a", background: "rgba(224,180,74,.08)", border: "1px solid rgba(224,180,74,.2)", borderRadius: 8, padding: "6px 9px", lineHeight: 1.4, marginBottom: 3 }}>
+                  {Math.round(pd.maxShare * 100)}% of today's protein is in one meal — the same grams build a little more muscle spread across 3–4 meals.
+                </div>
+              )}
+            </>
+          )}
+
           <Bar label="Calories" value={totals.kcal} target={targets.kcal} color={ACCENT} over />
           <div style={S.macroMini}>
             <span>Carbs {Math.round(totals.carbs)} g</span>
@@ -199,7 +237,7 @@ export default function FuelCard({
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={S.mealName}>
                   {m.name}
-                  {m.source !== "manual" && <span style={S.srcTag}>{m.source === "photo" ? "📷" : "ai"}</span>}
+                  {m.source !== "manual" && <span style={S.srcTag}>{m.source === "photo" ? "photo" : "ai"}</span>}
                 </div>
                 <div style={S.mealMacros}>
                   {Math.round(m.protein)}p · {Math.round(m.carbs)}c · {Math.round(m.fat)}f
@@ -216,12 +254,14 @@ export default function FuelCard({
       {/* add a meal */}
       {mode === null && !busy && (
         <div style={{ ...S.addRow, marginTop: meals?.length ? 10 : 13 }}>
-          <button style={{ ...S.addBtn, ...S.addBtnPrimary }} onClick={() => fileRef.current?.click()}>
-            📷 Photo
+          <button style={{ ...S.addBtn, ...S.addBtnPrimary, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }} onClick={() => fileRef.current?.click()}>
+            <Icon name="camera" size={15} /> Photo
           </button>
-          <button style={S.addBtn} onClick={() => { setMode("text"); setError(""); }}>✍️ Describe</button>
-          <button style={S.addBtn} onClick={() => { setDraft({ ...EMPTY_DRAFT }); setMode("draft"); setError(""); }}>
-            ＋ By hand
+          <button style={{ ...S.addBtn, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }} onClick={() => { setMode("text"); setError(""); }}>
+            <Icon name="pencil" size={14} /> Describe
+          </button>
+          <button style={{ ...S.addBtn, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }} onClick={() => { setDraft({ ...EMPTY_DRAFT }); setMode("draft"); setError(""); }}>
+            <Icon name="plus" size={14} /> By hand
           </button>
         </div>
       )}
@@ -323,7 +363,7 @@ export default function FuelCard({
 
       {/* weigh-in — the other half of the TDEE math */}
       <div style={S.weighRow}>
-        <span style={{ fontSize: 14 }}>⚖</span>
+        <span style={{ color: "#8a8a9e", display: "grid", placeItems: "center" }}><Icon name="scale" size={15} /></span>
         {weight ? (
           <>
             <span style={{ ...S.mealKcal, fontSize: 15 }}>{weight} lb</span>

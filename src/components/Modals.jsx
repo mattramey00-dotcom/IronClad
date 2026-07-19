@@ -15,7 +15,7 @@ export function VideoModal({ video, name, onClose }) {
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontWeight: 700, fontSize: 15 }}>{name}</div>
-            <div style={{ fontSize: 11, color: "#8a9a8a" }}>Demo · {video.by} · via YouTube</div>
+            <div style={{ fontSize: 11, color: "#8a8a9e" }}>Demo · {video.by} · via YouTube</div>
           </div>
           <button style={{ ...S.btnGhost, padding: "6px 12px" }} onClick={onClose}>✕</button>
         </div>

@@ -9,11 +9,12 @@
 
 import React from "react";
 import { S } from "../styles.js";
+import Icon from "./Icon.jsx";
 
 const TABS = [
-  { id: "train", icon: "🏋", label: "Train" },
-  { id: "fuel", icon: "🍽", label: "Fuel" },
-  { id: "insights", icon: "📊", label: "Insights" },
+  { id: "train", icon: "dumbbell", label: "Train" },
+  { id: "fuel", icon: "utensils", label: "Fuel" },
+  { id: "insights", icon: "chart", label: "Insights" },
 ];
 
 export default function TabBar({ tab, setTab }) {
@@ -28,7 +29,9 @@ export default function TabBar({ tab, setTab }) {
             onClick={() => setTab(t.id)}
             aria-current={active ? "page" : undefined}
           >
-            <span style={{ ...S.tabIcon, ...(active ? S.tabIconActive : {}) }}>{t.icon}</span>
+            <span style={{ ...S.tabIcon, ...(active ? S.tabIconActive : {}) }}>
+              <Icon name={t.icon} size={21} strokeWidth={active ? 2 : 1.75} />
+            </span>
             {t.label}
           </button>
         );

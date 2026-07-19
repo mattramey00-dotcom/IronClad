@@ -17,8 +17,8 @@
 //             treadmill and the other takes the bike.
 // ============================================================
 
-export const ACCENT = "#39FF6A";
-export const ACCENT_DIM = "#2bcc52";
+export const ACCENT = "#818CF8";
+export const ACCENT_DIM = "#6366F1";
 
 // Equipment an exercise occupies while it is being performed.
 export const EQ = {
@@ -84,6 +84,87 @@ export const EX_IMG = {
 // Resolve a bundled image path, honoring Vite's base path (e.g. /IronClad/).
 export const exImg = (slug, frame) =>
   `${import.meta.env.BASE_URL}exercises/${slug}/${frame}.jpg`;
+
+// ---- animated exercise demos (WorkoutX API) ---------------------------
+//  Maps our movements onto the exercise ids used by workoutxapp's API. The ids
+//  themselves came from the MIT-licensed public index of that dataset; the GIF
+//  bytes are fetched at runtime from workoutxapp with this device's own key and
+//  cached (components/ExerciseGif.jsx). The media is © Gym Visual, licensed to
+//  the API — which is why we consume their service rather than vendoring files.
+//
+//  Anything absent here (Plank, Bodyweight Squats, the towel improvisations, …)
+//  simply has no honest match in the dataset and falls back to the photo/SVG.
+export const EX_GIF = {
+  // push
+  "Barbell Bench Press": "0025",
+  "Dumbbell Incline Press": "0314",
+  "DB Overhead Triceps Extension": "2188",
+  "Dumbbell Shoulder Press": "0405",
+  "Dumbbell Lateral Raises": "0334",
+  "Dumbbell Lateral Raise": "0334",
+  "Dumbbell Chest Flyes": "0308",
+  "Dumbbell Skull Crushers": "0351",
+  // pull
+  "Barbell Bent-Over Row": "0027",
+  "One-Arm Dumbbell Row": "0293",
+  "Dumbbell Rows": "0293",
+  "Dumbbell Rear Delt Fly": "0383",
+  "Barbell Romanian Deadlift": "0085",
+  "Dumbbell Hammer Curl": "0313",
+  "Barbell Curl": "0031",
+  // legs
+  "Barbell Back Squat": "0043",
+  "Barbell Deadlift": "0032",
+  "Dumbbell Walking Lunges": "0336",
+  "Dumbbell Goblet Squat": "1760",
+  "Goblet Squats": "1760",
+  "DB Bulgarian Split Squat": "0410",
+  "Dumbbell Step-Ups": "0431",
+  "DB Standing Calf Raise": "0417",
+  "Dumbbell Calf Raises": "0417",
+  "Dumbbell Thrusters": "3305",
+  // core
+  "Leg Raises": "0620",
+  "Russian Twists (DB)": "0687",
+  "Russian Twists": "0687",
+  // travel / bodyweight stand-ins
+  "Push-Ups": "0662",
+  "Wide Push-Ups": "1311",
+  "Diamond Push-Ups": "0283",
+  "Feet-Elevated Push-Ups": "0279",
+  "Burpees": "1160",
+  "Chair Dips": "0129",
+  "Towel Rows": "3165",
+  "Single-Arm Towel Row": "3161",
+  "Single-Leg RDL": "1757",
+  "Bulgarian Split Squat": "2368",
+  "Walking Lunges": "1460",
+  "Chair Step-Ups": "0431",
+  "Plank Shoulder Taps": "3239",
+  "Single-Leg Calf Raise": "1373",
+  "Prone Reverse Fly": "0383",
+  // the last gaps — no exact match in the set, so the nearest honest motion:
+  // an air-squat pattern, a plank, a pike push-up, and resistance-band curls
+  // standing in for the towel ones. Approximate, but a real demo beats an icon.
+  "Bodyweight Squats": "1685",
+  "Plank": "0464",
+  "Pike Push-Ups": "3662",
+  "Towel Curls": "0968",
+  "Isometric Towel Curls": "3123",
+  // cardio + mobility, so those cards animate too
+  "Easy run": "0685",
+  "Hard sprint": "0685",
+  "Light walk": "3666",
+  "Incline walk": "3666",
+  "Easy ride": "2138",
+  "Steady ride": "2138",
+  "Easy spin": "2138",
+  "Hard effort": "2138",
+  "Mobility work": "1511",
+  "Stretching": "1511",
+};
+
+export const exGifUrl = (id) => `https://api.workoutxapp.com/v1/gifs/${id}.gif`;
 
 // ---- YouTube form-tutorial registry ----
 export const EX_VIDEO = {
@@ -427,6 +508,66 @@ export function forMachine(ex, machine) {
   return { ...ex, n: ex.bike.n, s: ex.bike.s };
 }
 
+// ============================================================
+//  Travel mode — the weight-free version of the whole program
+// ============================================================
+//  A hotel room and a carry-on have no barbell, no dumbbells and no bench, so
+//  when Travel mode is on, every loaded lift is swapped for a bodyweight (or
+//  improvised — a towel, a chair) movement that trains the same pattern. Cardio
+//  and moves that were already bodyweight (planks, push-ups) pass straight
+//  through: a run or a plank needs no gym.
+//
+//  Keyed by exercise NAME, same as the image/video registries. The swap keeps
+//  the movement pattern (`d`) so the animated demo still reads right, and marks
+//  the result bodyweight so nothing in it contends for equipment.
+export const TRAVEL_SUBS = {
+  // press
+  "Barbell Bench Press": { n: "Push-Ups", s: "4 × 12–20", d: "press" },
+  "Dumbbell Incline Press": { n: "Feet-Elevated Push-Ups", s: "3 × 10–15", d: "press" },
+  "Dumbbell Chest Flyes": { n: "Wide Push-Ups", s: "3 × 12–15", d: "press" },
+  "Dumbbell Shoulder Press": { n: "Pike Push-Ups", s: "3 × 8–12", d: "press" },
+  "Dumbbell Thrusters": { n: "Burpees", s: "12 reps", d: "squat" },
+  "DB Overhead Triceps Extension": { n: "Chair Dips", s: "3 × 10–15", d: "press" },
+  "Dumbbell Skull Crushers": { n: "Diamond Push-Ups", s: "3 × 10–15", d: "press" },
+  // pull — no bar, so rows go under a sturdy table with a towel
+  "Barbell Bent-Over Row": { n: "Towel Rows", s: "4 × 12–15", d: "row" },
+  "One-Arm Dumbbell Row": { n: "Single-Arm Towel Row", s: "3 × 12 each", d: "row" },
+  "Dumbbell Rows": { n: "Towel Rows", s: "12 each", d: "row" },
+  "Dumbbell Rear Delt Fly": { n: "Prone Reverse Fly", s: "3 × 15", d: "raise" },
+  // delts
+  "Dumbbell Lateral Raises": { n: "Plank Shoulder Taps", s: "3 × 20", d: "raise" },
+  "Dumbbell Lateral Raise": { n: "Plank Shoulder Taps", s: "3 × 20", d: "raise" },
+  // curls — self-resisted with a towel
+  "Dumbbell Hammer Curl": { n: "Towel Curls", s: "3 × 12", d: "curl" },
+  "Barbell Curl": { n: "Isometric Towel Curls", s: "3 × 30 sec", d: "curl" },
+  // hinge
+  "Barbell Romanian Deadlift": { n: "Single-Leg RDL", s: "3 × 10 each", d: "hinge" },
+  "Barbell Deadlift": { n: "Single-Leg RDL", s: "10 each", d: "hinge" },
+  // squat / legs
+  "Barbell Back Squat": { n: "Bodyweight Squats", s: "4 × 20–25", d: "squat" },
+  "Dumbbell Goblet Squat": { n: "Bulgarian Split Squat", s: "3 × 12 each", d: "lunge" },
+  "Goblet Squats": { n: "Bodyweight Squats", s: "20 reps", d: "squat" },
+  "Dumbbell Walking Lunges": { n: "Walking Lunges", s: "3 × 12 each", d: "lunge" },
+  "DB Bulgarian Split Squat": { n: "Bulgarian Split Squat", s: "3 × 12 each", d: "lunge" },
+  "Dumbbell Step-Ups": { n: "Chair Step-Ups", s: "3 × 12 each", d: "lunge" },
+  "DB Standing Calf Raise": { n: "Single-Leg Calf Raise", s: "4 × 15–20 each", d: "raise" },
+  "Dumbbell Calf Raises": { n: "Single-Leg Calf Raise", s: "4 × 15–20 each", d: "raise" },
+  // core
+  "Russian Twists (DB)": { n: "Russian Twists", s: "3 × 20", d: "core" },
+};
+
+// Resolve an exercise for a weight-free (traveling) session. A move with a
+// bodyweight stand-in is swapped for it — carrying over the pattern (`d`) so the
+// demo animates right and the timer, if any, survives — and marked bodyweight so
+// nothing in a travel session contends for equipment. Everything else (cardio,
+// moves already bodyweight) passes straight through.
+export function forTravel(ex, travel) {
+  if (!travel) return ex;
+  const sub = TRAVEL_SUBS[ex.n];
+  if (!sub) return ex;
+  return { ...ex, ...sub, eq: EQ.BODYWEIGHT };
+}
+
 // Read the prescription string ("4 × 6–8", "3 × 10 each", "4 × 15–20") into the
 // numbers the logger needs: how many sets, and a sensible rest between them.
 //
@@ -440,7 +581,9 @@ export function prescription(s) {
   if (!m) return null;
   const sets = +m[1];
   const lowReps = +m[2];
-  const restSecs = lowReps <= 6 ? 150 : lowReps <= 10 ? 120 : 75;
+  // A short 45s default keeps the pace up; the timer's 1:00 / 1:30 chips are
+  // there for the heavier sets where you want a longer breather.
+  const restSecs = 45;
   return { sets, lowReps, restSecs };
 }
 
@@ -496,6 +639,26 @@ const MUSCLES_BY_NAME = {
   "Plank": ["abs", "obliques"],
   "Leg Raises": ["abs"],
   "Russian Twists (DB)": ["obliques", "abs"],
+  // travel-mode bodyweight stand-ins (see TRAVEL_SUBS)
+  "Feet-Elevated Push-Ups": ["chest", "shoulders", "triceps"],
+  "Wide Push-Ups": ["chest", "shoulders"],
+  "Diamond Push-Ups": ["triceps", "chest"],
+  "Pike Push-Ups": ["shoulders", "triceps"],
+  "Chair Dips": ["triceps", "chest", "shoulders"],
+  "Burpees": ["quads", "glutes", "chest", "shoulders"],
+  "Plank Shoulder Taps": ["shoulders", "abs"],
+  "Towel Rows": ["lats", "traps", "biceps"],
+  "Single-Arm Towel Row": ["lats", "traps", "biceps"],
+  "Prone Reverse Fly": ["shoulders", "traps"],
+  "Towel Curls": ["biceps", "forearms"],
+  "Isometric Towel Curls": ["biceps", "forearms"],
+  "Single-Leg RDL": ["hamstrings", "glutes", "lowerback"],
+  "Bodyweight Squats": ["quads", "glutes"],
+  "Bulgarian Split Squat": ["quads", "glutes", "hamstrings"],
+  "Walking Lunges": ["quads", "glutes", "hamstrings"],
+  "Chair Step-Ups": ["quads", "glutes"],
+  "Single-Leg Calf Raise": ["calves"],
+  "Russian Twists": ["obliques", "abs"],
   "Mobility work": ["fullbody"],
   "Stretching": ["fullbody"],
   // cardio (treadmill or bike — legs + conditioning either way)

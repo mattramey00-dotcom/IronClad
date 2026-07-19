@@ -16,8 +16,10 @@ import {
 } from "recharts";
 import { ACCENT } from "../data/program.js";
 import { S } from "../styles.js";
+import Icon from "./Icon.jsx";
 import {
-  buildInsights, weeklySeries, GOALS, MIN_DAYS, MIN_INTAKE_DAYS, MIN_WEIGH_INS,
+  buildInsights, weeklySeries, bodyweightSeries, projectGoal, tdeeAdaptation, formulaTDEE, shiftKey,
+  GOALS, MIN_DAYS, MIN_INTAKE_DAYS, MIN_WEIGH_INS,
 } from "../lib/nutrition.js";
 import { coachNote, explainError, DEFAULT_MODEL } from "../lib/claude.js";
 
@@ -41,6 +43,55 @@ export default function InsightsView({
 
   const { tdee, strength, resolved, bodyweight } = ins;
   const hasChart = series.some((p) => p.weight !== null) || series.some((p) => p.strength !== null);
+
+  const bw = useMemo(() => bodyweightSeries(weights, today), [weights, today]);
+  const adapt = useMemo(
+    () => tdeeAdaptation(meals, weights, today, resolved.goal.id),
+    [meals, weights, today, resolved.goal.id],
+  );
+  const formula = useMemo(
+    () => formulaTDEE({ sex: targets?.sex, heightIn: targets?.heightIn, age: targets?.age, weightLb: bodyweight }),
+    [targets?.sex, targets?.heightIn, targets?.age, bodyweight],
+  );
+  const goalProj = useMemo(
+    () => projectGoal({ smoothed: bw.smoothed, goalWeight: targets?.goalWeight, slopePerWeek: bw.slopePerWeek }),
+    [bw.smoothed, bw.slopePerWeek, targets?.goalWeight],
+  );
+  // Widen the weight axis to include the goal, so its marker is actually on the
+  // chart instead of scrolled off below the weigh-ins.
+  const wDomain = useMemo(() => {
+    const vals = bw.series.flatMap((p) => [p.raw, p.trend]).filter((v) => v != null);
+    if (!vals.length) return ["dataMin - 1", "dataMax + 1"];
+    const g = Number(targets?.goalWeight);
+    const lo = Math.min(...vals, g > 0 ? g : Infinity);
+    const hi = Math.max(...vals, g > 0 ? g : -Infinity);
+    return [Math.floor(lo - 1), Math.ceil(hi + 1)];
+  }, [bw.series, targets?.goalWeight]);
+
+  const setT = (patch) => onSetTargets({ ...(targets || {}), ...patch });
+  const fmtDate = (key) => new Date(`${key}T00:00:00`).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  const curFt = targets?.heightIn ? Math.floor(targets.heightIn / 12) : "";
+  const curIn = targets?.heightIn ? targets.heightIn % 12 : "";
+  const setHeight = (ft, inch) => {
+    const hi = (Number(ft) || 0) * 12 + (Number(inch) || 0);
+    setT({ heightIn: hi > 0 ? hi : null });
+  };
+
+  // One axis, not two. Bodyweight (lb) and the strength index live on wildly
+  // different scales, so rather than a dual-axis chart — which lets you slide
+  // one curve past the other just by choosing where each axis starts — both are
+  // indexed to their own first data point (100 = start). Now a single axis reads
+  // honestly: the two lines crossing *is* the recomposition, not an artifact of
+  // scaling. Bodyweight keeps its real lb value in the tooltip.
+  const STRENGTH_COLOR = ACCENT;      // indigo — the metric you want to climb
+  const WEIGHT_COLOR = "#E0B44A";     // amber — the app's second data colour; CVD-distinct from indigo
+  const wBase = series.find((p) => p.weight != null)?.weight || null;
+  const chartData = series.map((p) => ({
+    week: p.week,
+    strength: p.strength,
+    weightLb: p.weight,
+    weightIdx: wBase && p.weight != null ? Math.round((p.weight / wBase) * 1000) / 10 : null,
+  }));
 
   // The coach is handed the *computed* figures, never the raw logs. It has
   // nothing to do but interpret — which is the only part it's better at than
@@ -77,6 +128,13 @@ export default function InsightsView({
           days_of_meals_logged: tdee.intake.daysLogged,
           days_of_weigh_ins: tdee.trend.n,
           data_is_sufficient_for_tdee: tdee.ready,
+          formula_tdee_estimate_kcal: !tdee.ready && formula ? formula.tdee : null,
+          tdee_trend: adapt.ready
+            ? { recent_kcal: adapt.now, prior_kcal: adapt.prior, change_kcal: adapt.delta, metabolic_adaptation: adapt.adapting }
+            : null,
+          goal_weight_lb: Number(targets?.goalWeight) || null,
+          weeks_to_goal_at_current_rate:
+            goalProj && !goalProj.reached && !goalProj.stalled ? goalProj.weeks : null,
         },
       });
       setNote(text);
@@ -89,10 +147,10 @@ export default function InsightsView({
 
   return (
     <div style={{ textAlign: "left", animation: "fade .3s ease" }}>
-        <div style={{ fontFamily: "'Archivo Black', sans-serif", fontSize: 26, marginBottom: 3 }}>
+        <div style={{ fontFamily: "'Inter', sans-serif", fontWeight: 800, letterSpacing: -0.6, fontSize: 26, marginBottom: 3 }}>
           Insights
         </div>
-        <div style={{ fontSize: 12, color: "#667", marginBottom: 18 }}>{who} · measured from your own logs</div>
+        <div style={{ fontSize: 12, color: "#6a6a80", marginBottom: 18 }}>{who} · measured from your own logs</div>
 
         {/* ---- TDEE ---- */}
         <label style={S.label}>Your measured TDEE</label>
@@ -112,13 +170,65 @@ export default function InsightsView({
             </div>
           </>
         ) : (
-          <div style={{ ...S.insightCard, ...S.insightWarn }}>
-            <div style={S.insightTitle}>Not enough data yet</div>
+          <>
+            {formula && (
+              <>
+                <div style={S.bigStat}>
+                  <span style={S.bigNum}>~{formula.tdee.toLocaleString()}</span>
+                  <span style={S.bigUnit}>kcal/day · formula estimate</span>
+                </div>
+                <div style={S.note}>
+                  A <b>population guess</b> (Mifflin–St Jeor × activity), not a measurement — a
+                  starting point so your targets aren't blank on day one. It's replaced by your
+                  <b> measured</b> TDEE, below, as soon as there's enough logged data.
+                </div>
+              </>
+            )}
+            <div style={{ ...S.insightCard, ...S.insightWarn }}>
+              <div style={S.insightTitle}>{formula ? "Measuring your real TDEE" : "Not enough data yet"}</div>
+              <div style={S.insightBody}>
+                Still short on: {tdee.reasons.join(", ")}. It takes about {MIN_DAYS} days —{" "}
+                {MIN_INTAKE_DAYS} of them with meals logged and {MIN_WEIGH_INS} weigh-ins — before a
+                bodyweight trend can be separated from water weight.{" "}
+                {formula ? "Until then, the estimate above stands in." : "Anything sooner would be a number made up to fill the space."}
+              </div>
+            </div>
+
+            {/* About you — the three facts the logs can't supply, for the estimate. */}
+            <label style={{ ...S.label, marginTop: 14 }}>About you {formula ? "" : "· unlocks a starting estimate"}</label>
+            <div style={S.segRow}>
+              {["male", "female"].map((s) => (
+                <button
+                  key={s}
+                  style={{ ...S.seg, ...(targets?.sex === s ? S.segActive : {}), fontSize: 12 }}
+                  onClick={() => setT({ sex: s })}
+                >
+                  {s === "male" ? "Male" : "Female"}
+                </button>
+              ))}
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
+              <input type="number" inputMode="numeric" style={{ ...S.textInput, width: 60 }} placeholder="ft" value={curFt} onChange={(e) => setHeight(e.target.value, curIn)} />
+              <span style={{ fontSize: 12, color: "#8a8a9e" }}>ft</span>
+              <input type="number" inputMode="numeric" style={{ ...S.textInput, width: 60 }} placeholder="in" value={curIn} onChange={(e) => setHeight(curFt, e.target.value)} />
+              <span style={{ fontSize: 12, color: "#8a8a9e" }}>in</span>
+              <input type="number" inputMode="numeric" style={{ ...S.textInput, width: 64, marginLeft: "auto" }} placeholder="age" value={targets?.age || ""} onChange={(e) => setT({ age: Number(e.target.value) || null })} />
+              <span style={{ fontSize: 12, color: "#8a8a9e" }}>yrs</span>
+            </div>
+          </>
+        )}
+
+        {/* ---- metabolic adaptation ---- */}
+        {adapt.ready && adapt.adapting && (
+          <div style={{ ...S.insightCard, ...S.insightWarn, marginTop: 12 }}>
+            <div style={S.insightTitle}>Your metabolism is adapting</div>
             <div style={S.insightBody}>
-              Still short on: {tdee.reasons.join(", ")}. It takes about {MIN_DAYS} days —{" "}
-              {MIN_INTAKE_DAYS} of them with meals logged and {MIN_WEIGH_INS} weigh-ins — before a
-              bodyweight trend can be separated from water weight. Anything sooner would be a number
-              made up to fill the space.
+              Your measured TDEE has slid from ~{adapt.prior.toLocaleString()} to ~{adapt.now.toLocaleString()} kcal
+              ({adapt.delta} kcal · {adapt.pct}%) over the last few weeks of dieting. That's adaptive
+              thermogenesis — your body meeting the lower intake, and the reason a cut stalls even when
+              the food hasn't changed. A <b>3–5 day break at maintenance</b> (or a couple of higher-carb
+              refeed days) usually restores it and makes the next stretch work again. Cutting harder here
+              tends to backfire.
             </div>
           </div>
         )}
@@ -128,7 +238,7 @@ export default function InsightsView({
           <div style={S.statBox}>
             <div style={S.statLabel}>Bodyweight</div>
             <div style={S.statValue}>{bodyweight ? `${bodyweight.toFixed(1)} lb` : "—"}</div>
-            <div style={{ fontSize: 11, color: "#7a8a7a", marginTop: 2 }}>
+            <div style={{ fontSize: 11, color: "#8a8a9e", marginTop: 2 }}>
               {tdee.trend.slopePerWeek !== null
                 ? `${tdee.trend.slopePerWeek >= 0 ? "+" : ""}${tdee.trend.slopePerWeek.toFixed(2)} lb/wk`
                 : "log a few weigh-ins"}
@@ -144,7 +254,7 @@ export default function InsightsView({
             >
               {strength.pct !== null ? `${strength.pct >= 0 ? "+" : ""}${strength.pct.toFixed(1)}%` : "—"}
             </div>
-            <div style={{ fontSize: 11, color: "#7a8a7a", marginTop: 2 }}>
+            <div style={{ fontSize: 11, color: "#8a8a9e", marginTop: 2 }}>
               {strength.n ? `est. 1RM across ${strength.n} lift${strength.n === 1 ? "" : "s"}` : "log some sets"}
             </div>
           </div>
@@ -153,7 +263,7 @@ export default function InsightsView({
             <div style={S.statValue}>
               {tdee.intake.avgProtein ? `${Math.round(tdee.intake.avgProtein)} g` : "—"}
             </div>
-            <div style={{ fontSize: 11, color: "#7a8a7a", marginTop: 2 }}>
+            <div style={{ fontSize: 11, color: "#8a8a9e", marginTop: 2 }}>
               {ins.proteinPerLb ? `${ins.proteinPerLb.toFixed(2)} g/lb · aim 0.7–1.0` : "daily average"}
             </div>
           </div>
@@ -162,11 +272,73 @@ export default function InsightsView({
             <div style={S.statValue}>
               {tdee.intake.avgKcal ? Math.round(tdee.intake.avgKcal).toLocaleString() : "—"}
             </div>
-            <div style={{ fontSize: 11, color: "#7a8a7a", marginTop: 2 }}>
+            <div style={{ fontSize: 11, color: "#8a8a9e", marginTop: 2 }}>
               {tdee.intake.daysLogged}/{tdee.intake.days} days logged
             </div>
           </div>
         </div>
+
+        {/* ---- bodyweight trend (raw dots + regression line) ---- */}
+        {bw.n >= 2 && (
+          <>
+            <label style={{ ...S.label, marginTop: 20 }}>Bodyweight trend</label>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 2 }}>
+              <span style={{ fontFamily: "'Inter', sans-serif", fontWeight: 800, fontSize: 22, letterSpacing: -0.4 }}>
+                {bw.smoothed?.toFixed(1)} lb
+              </span>
+              <span style={{ fontSize: 12, color: "#8a8a9e" }}>
+                trend · {bw.slopePerWeek >= 0 ? "+" : ""}{bw.slopePerWeek?.toFixed(2)} lb/wk
+              </span>
+            </div>
+            <div style={{ height: 170, marginTop: 4 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart data={bw.series} margin={{ top: 6, right: 6, bottom: 0, left: -2 }}>
+                  <CartesianGrid stroke="#1c1d28" vertical={false} />
+                  <XAxis dataKey="date" tick={{ fill: "#6a6a80", fontSize: 10 }} axisLine={false} tickLine={false} interval="preserveStartEnd" minTickGap={26} />
+                  <YAxis domain={wDomain} allowDecimals={false} tickFormatter={(v) => Math.round(v)} tick={{ fill: "#6a6a80", fontSize: 10 }} axisLine={false} tickLine={false} width={34} />
+                  <Tooltip
+                    contentStyle={{ background: "#111219", border: "1px solid #262838", borderRadius: 10, fontSize: 12 }}
+                    labelStyle={{ color: "#8a8a9e" }}
+                    itemStyle={{ padding: 0 }}
+                    formatter={(v, n) => [`${v} lb`, n]}
+                  />
+                  {Number(targets?.goalWeight) > 0 && (
+                    <ReferenceLine y={Number(targets.goalWeight)} stroke={ACCENT} strokeDasharray="4 4" strokeOpacity={0.55} />
+                  )}
+                  <Line name="Trend" type="monotone" dataKey="trend" stroke={WEIGHT_COLOR} strokeWidth={2} dot={false} connectNulls isAnimationActive={false} />
+                  <Line name="Weigh-in" dataKey="raw" stroke="transparent" connectNulls={false} isAnimationActive={false} dot={{ r: 2.6, fill: "#9a9ab0", strokeWidth: 0 }} activeDot={{ r: 4, strokeWidth: 0 }} />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </div>
+            <div style={S.legendRow}>
+              <span><i style={{ ...S.dot, background: "#9a9ab0" }} />Daily weigh-in</span>
+              <span><i style={{ ...S.dot, background: WEIGHT_COLOR }} />Trend line</span>
+              {Number(targets?.goalWeight) > 0 && <span><i style={{ ...S.dot, background: ACCENT }} />Goal</span>}
+            </div>
+
+            {/* goal weight + projected arrival */}
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10 }}>
+              <span style={{ fontSize: 12, color: "#8a8a9e" }}>Goal weight</span>
+              <input
+                type="number" inputMode="decimal" step="0.1"
+                style={{ ...S.weighInput, width: 84 }}
+                placeholder="lb"
+                value={targets?.goalWeight || ""}
+                onChange={(e) => setT({ goalWeight: Number(e.target.value) || null })}
+              />
+              <span style={{ fontSize: 12, color: "#8a8a9e" }}>lb</span>
+            </div>
+            <div style={S.note}>
+              {!goalProj
+                ? "Set a goal weight and this projects when your trend line reaches it."
+                : goalProj.reached
+                  ? "You're at your goal weight — hold here or set a new one."
+                  : goalProj.stalled
+                    ? `At the current trend you aren't moving toward ${Number(targets.goalWeight)} lb (${goalProj.remaining > 0 ? "+" : ""}${goalProj.remaining} lb away). If that's still the goal, the intake gap needs to change.`
+                    : `${goalProj.remaining > 0 ? "+" : ""}${goalProj.remaining} lb to go. At ${bw.slopePerWeek >= 0 ? "+" : ""}${bw.slopePerWeek} lb/wk you'd reach ${Number(targets.goalWeight)} lb around ${fmtDate(shiftKey(today, goalProj.etaDays))} — likely ${fmtDate(shiftKey(today, goalProj.etaLoDays))} to ${fmtDate(shiftKey(today, goalProj.etaHiDays))}.`}
+            </div>
+          </>
+        )}
 
         {/* ---- the recomp chart ---- */}
         {hasChart && (
@@ -174,50 +346,52 @@ export default function InsightsView({
             <label style={{ ...S.label, marginTop: 20 }}>Weight vs strength</label>
             <div style={{ height: 190, marginTop: 4 }}>
               <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={series} margin={{ top: 6, right: 4, bottom: 0, left: -14 }}>
-                  <CartesianGrid stroke="#1a201a" vertical={false} />
-                  <XAxis dataKey="week" tick={{ fill: "#667", fontSize: 10 }} axisLine={false} tickLine={false} />
+                <ComposedChart data={chartData} margin={{ top: 6, right: 6, bottom: 0, left: -2 }}>
+                  <CartesianGrid stroke="#1c1d28" vertical={false} />
+                  <XAxis dataKey="week" tick={{ fill: "#6a6a80", fontSize: 10 }} axisLine={false} tickLine={false} />
                   <YAxis
-                    yAxisId="w"
-                    domain={["dataMin - 3", "dataMax + 3"]}
-                    tick={{ fill: "#667", fontSize: 10 }}
+                    domain={["dataMin - 2", "dataMax + 2"]}
+                    allowDecimals={false}
+                    tickFormatter={(v) => Math.round(v)}
+                    tick={{ fill: "#6a6a80", fontSize: 10 }}
                     axisLine={false}
                     tickLine={false}
-                  />
-                  <YAxis
-                    yAxisId="s"
-                    orientation="right"
-                    domain={["dataMin - 4", "dataMax + 4"]}
-                    tick={{ fill: "#667", fontSize: 10 }}
-                    axisLine={false}
-                    tickLine={false}
+                    width={34}
                   />
                   <Tooltip
-                    contentStyle={{ background: "#0e120e", border: "1px solid #232a23", borderRadius: 10, fontSize: 12 }}
-                    labelStyle={{ color: "#8a9a8a" }}
-                    formatter={(v, n) => [n === "Strength" ? `${v} (100 = start)` : `${v} lb`, n]}
+                    contentStyle={{ background: "#111219", border: "1px solid #262838", borderRadius: 10, fontSize: 12 }}
+                    labelStyle={{ color: "#8a8a9e" }}
+                    itemStyle={{ padding: 0 }}
+                    formatter={(v, n, item) =>
+                      n === "Bodyweight"
+                        ? [item?.payload?.weightLb != null ? `${item.payload.weightLb} lb · ${v}` : `${v}`, n]
+                        : [`${v} · 100 = start`, n]
+                    }
                   />
-                  {/* 100 = where every lift started. Above the line is progress. */}
-                  <ReferenceLine yAxisId="s" y={100} stroke="#2a322a" strokeDasharray="2 3" />
+                  {/* 100 = where both lines started. Above it is progress. */}
+                  <ReferenceLine y={100} stroke="#2c2e3d" strokeDasharray="2 3" />
                   <Line
-                    yAxisId="w" name="Bodyweight" type="monotone" dataKey="weight"
-                    stroke={ACCENT} strokeWidth={2.5} dot={{ r: 3, fill: ACCENT }} connectNulls
+                    name="Strength" type="monotone" dataKey="strength"
+                    stroke={STRENGTH_COLOR} strokeWidth={2} connectNulls
+                    dot={{ r: 3, fill: STRENGTH_COLOR, strokeWidth: 0 }} activeDot={{ r: 5, strokeWidth: 0 }}
                   />
                   <Line
-                    yAxisId="s" name="Strength" type="monotone" dataKey="strength"
-                    stroke="#5aa9ff" strokeWidth={2} strokeDasharray="5 4" dot={{ r: 3, fill: "#5aa9ff" }} connectNulls
+                    name="Bodyweight" type="monotone" dataKey="weightIdx"
+                    stroke={WEIGHT_COLOR} strokeWidth={2} strokeDasharray="5 4" connectNulls
+                    dot={{ r: 3, fill: WEIGHT_COLOR, strokeWidth: 0 }} activeDot={{ r: 5, strokeWidth: 0 }}
                   />
                 </ComposedChart>
               </ResponsiveContainer>
             </div>
             <div style={S.legendRow}>
-              <span><i style={{ ...S.dot, background: ACCENT }} />Bodyweight (lb)</span>
-              <span><i style={{ ...S.dot, background: "#5aa9ff" }} />Strength index (100 = start)</span>
+              <span><i style={{ ...S.dot, background: STRENGTH_COLOR }} />Strength · 100 = start</span>
+              <span><i style={{ ...S.dot, background: WEIGHT_COLOR }} />Bodyweight · indexed</span>
             </div>
             <div style={S.note}>
-              Green down and blue up at the same time is a recomposition — losing weight while getting
-              stronger. Each lift is scored against its own starting point, so the rotation putting
-              squats in one week and presses in the next doesn't move the line.
+              Both lines start at 100 and move relative to that, so they share one axis honestly:
+              strength up while bodyweight drifts down — the two crossing — is a recomposition. Each
+              lift is scored against its own starting point, so the rotation putting squats in one week
+              and presses in the next doesn't move the line. Bodyweight keeps its real lb in the tooltip.
             </div>
           </>
         )}
@@ -262,11 +436,12 @@ export default function InsightsView({
 
         {/* ---- the coach ---- */}
         <button
-          style={{ ...S.btnGhost, width: "100%", marginTop: 18 }}
+          style={{ ...S.btnGhost, width: "100%", marginTop: 18, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 7 }}
           onClick={askCoach}
           disabled={busy}
         >
-          {busy ? "Reading…" : note ? "Ask again" : "✨ What does this say about my training?"}
+          {!busy && !note && <Icon name="sparkle" size={14} style={{ color: ACCENT }} />}
+          {busy ? "Reading…" : note ? "Ask again" : "What does this say about my training?"}
         </button>
         {note && <div style={S.coachBox}>{note}</div>}
         {error && <div style={S.err}>{error}</div>}

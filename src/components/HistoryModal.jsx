@@ -2,6 +2,11 @@ import React, { useState } from "react";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { ACCENT } from "../data/program.js";
 import { S } from "../styles.js";
+import Icon from "./Icon.jsx";
+
+// Est. 1RM shares the app's amber second-data colour — clearly distinct from the
+// indigo top-set line for colour-blind readers (and dashed as a second cue).
+const E1RM_COLOR = "#E0B44A";
 
 // ============================================================
 //  History + progression chart modal
@@ -45,10 +50,12 @@ export default function HistoryModal({ logs, exercises, who, onClose, onExport }
       <div style={{ ...S.modalCard, maxWidth: 460, textAlign: "left" }} onClick={(e) => e.stopPropagation()}>
         <div style={{ display: "flex", alignItems: "center", marginBottom: 14 }}>
           <div>
-            <div style={{ fontFamily: "'Archivo Black', sans-serif", fontSize: 20 }}>Progression</div>
-            {who && <div style={{ fontSize: 11, color: "#6a7a6a", marginTop: 2 }}>{who}</div>}
+            <div style={{ fontFamily: "'Inter', sans-serif", fontWeight: 800, letterSpacing: -0.4, fontSize: 20 }}>Progression</div>
+            {who && <div style={{ fontSize: 11, color: "#6a6a80", marginTop: 2 }}>{who}</div>}
           </div>
-          <button style={{ ...S.btnGhost, marginLeft: "auto", padding: "6px 12px" }} onClick={onExport}>⬇ CSV</button>
+          <button style={{ ...S.btnGhost, marginLeft: "auto", padding: "6px 12px", display: "inline-flex", alignItems: "center", gap: 6 }} onClick={onExport}>
+            <Icon name="download" size={14} /> CSV
+          </button>
         </div>
 
         {exercises.length === 0 ? (
@@ -66,16 +73,18 @@ export default function HistoryModal({ logs, exercises, who, onClose, onExport }
             {hasNumbers ? (
               <div style={{ height: 230, marginTop: 16 }}>
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={data} margin={{ top: 8, right: 12, left: -12, bottom: 0 }}>
-                    <CartesianGrid stroke="#1c241c" vertical={false} />
-                    <XAxis dataKey="date" stroke="#667" fontSize={11} tickLine={false} />
-                    <YAxis stroke="#667" fontSize={11} tickLine={false} width={36} />
+                  <LineChart data={data} margin={{ top: 8, right: 12, left: -2, bottom: 0 }}>
+                    <CartesianGrid stroke="#1c1d28" vertical={false} />
+                    <XAxis dataKey="date" stroke="#6a6a80" fontSize={11} tickLine={false} axisLine={{ stroke: "#262838" }} />
+                    <YAxis stroke="#6a6a80" fontSize={11} tickLine={false} axisLine={false} width={40} domain={["dataMin - 15", "dataMax + 15"]} allowDecimals={false} />
                     <Tooltip
-                      contentStyle={{ background: "#0e120e", border: "1px solid #2a322a", borderRadius: 10, fontSize: 12 }}
-                      labelStyle={{ color: "#aaa" }}
+                      contentStyle={{ background: "#111219", border: "1px solid #262838", borderRadius: 10, fontSize: 12 }}
+                      labelStyle={{ color: "#8a8a9e" }}
+                      itemStyle={{ padding: 0 }}
+                      formatter={(v, n) => [`${v} lb`, n]}
                     />
-                    <Line type="monotone" dataKey="top" name="Top set (lb)" stroke={ACCENT} strokeWidth={2.5} dot={{ r: 3, fill: ACCENT }} />
-                    <Line type="monotone" dataKey="e1rm" name="Est. 1RM" stroke="#7a8aff" strokeWidth={2} strokeDasharray="4 3" dot={{ r: 2 }} />
+                    <Line type="monotone" dataKey="top" name="Top set" stroke={ACCENT} strokeWidth={2} dot={{ r: 3, fill: ACCENT, strokeWidth: 0 }} activeDot={{ r: 5, strokeWidth: 0 }} />
+                    <Line type="monotone" dataKey="e1rm" name="Est. 1RM" stroke={E1RM_COLOR} strokeWidth={2} strokeDasharray="5 4" dot={{ r: 3, fill: E1RM_COLOR, strokeWidth: 0 }} activeDot={{ r: 5, strokeWidth: 0 }} />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
@@ -87,13 +96,13 @@ export default function HistoryModal({ logs, exercises, who, onClose, onExport }
 
             <div style={S.legendRow}>
               <span><span style={{ ...S.dot, background: ACCENT }} /> Heaviest set</span>
-              <span><span style={{ ...S.dot, background: "#7a8aff" }} /> Est. 1-rep max</span>
+              <span><span style={{ ...S.dot, background: E1RM_COLOR }} /> Est. 1-rep max</span>
             </div>
 
             <div style={{ maxHeight: 140, overflowY: "auto", marginTop: 12 }}>
               {[...(logs[sel] || [])].sort((a, b) => b.date.localeCompare(a.date)).map((entry, i) => (
                 <div key={i} style={S.histRow}>
-                  <span style={{ color: "#7a8a7a", fontSize: 12, minWidth: 48 }}>{entry.date.slice(5)}</span>
+                  <span style={{ color: "#8a8a9e", fontSize: 12, minWidth: 48 }}>{entry.date.slice(5)}</span>
                   <span style={{ fontSize: 13 }}>
                     {entry.sets.map((s, j) => (
                       <span key={j} style={S.histTag}>{s.w}×{s.r}</span>

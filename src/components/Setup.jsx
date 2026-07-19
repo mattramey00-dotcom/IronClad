@@ -201,7 +201,7 @@ function Join({ onReady, onBack }) {
             onClick={() => onReady(plan, p.id)}
           >
             I'm {p.name}
-            <span style={{ color: "#6a7a6a", fontSize: 12, display: "block", marginTop: 2 }}>
+            <span style={{ color: "#6a6a80", fontSize: 12, display: "block", marginTop: 2 }}>
               starts on {p.start === "A" ? "Mon · Wed · Fri" : "Tue · Thu · Sat"}
             </span>
           </button>
