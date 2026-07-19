@@ -409,12 +409,11 @@ function Trainer({
               {a.date === today && <span style={S.todayDot} />}
               <div style={S.weekDow}>{DOW[a.weekday - 1]}</div>
               <div style={{ ...S.weekWorkout, color: a.trains ? ACCENT : "#9aa" }}>{label}</div>
+              {/* the partner's day, at a glance — the name is dropped because
+                  it's always the same partner, so their workout + the together
+                  ✦ is all that needs to fit in a narrow cell. */}
               <div style={S.weekMeta}>
-                {a.isRest
-                  ? "both"
-                  : a.partner.trains
-                    ? `${other.name.slice(0, 4)} ${a.partner.workout.short}`
-                    : ""}
+                {a.isRest ? "both" : a.partner.trains ? a.partner.workout.short : ""}
                 {a.together ? " ✦" : ""}
               </div>
             </button>

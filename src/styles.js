@@ -71,18 +71,20 @@ export const S = {
   },
 
   // ---- week strip ----
-  weekRow: { display: "flex", gap: 6, overflowX: "auto", paddingBottom: 6, marginBottom: 14 },
+  // All seven days share the width evenly (a 7-col grid), so the whole week is
+  // visible at once on a phone instead of scrolling sideways.
+  weekRow: { display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4, marginBottom: 14 },
   weekCell: {
-    flex: "0 0 auto", width: 62, background: "#14151d", border: "1px solid #22232f",
-    borderRadius: 12, padding: "8px 6px", cursor: "pointer", position: "relative",
+    minWidth: 0, background: "#14151d", border: "1px solid #22232f",
+    borderRadius: 11, padding: "7px 2px", cursor: "pointer", position: "relative",
     fontFamily: "inherit", color: "#b0b0c0", textAlign: "center",
   },
   weekCellActive: { border: `1px solid ${ACCENT}`, background: "rgba(129,140,248,.1)" },
   weekCellYours: { background: "#191b28", border: "1px solid #2f3244" },
-  weekDow: { fontSize: 11, color: "#7a7a90", letterSpacing: 1, textTransform: "uppercase" },
-  weekWorkout: { fontSize: 12, fontWeight: 700, marginTop: 3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" },
-  weekMeta: { fontSize: 10, color: "#64647a", marginTop: 2, height: 12 },
-  todayDot: { width: 5, height: 5, borderRadius: "50%", background: ACCENT, position: "absolute", top: 4, right: 5 },
+  weekDow: { fontSize: 10, color: "#7a7a90", letterSpacing: 0.3, textTransform: "uppercase" },
+  weekWorkout: { fontSize: 10.5, fontWeight: 700, marginTop: 3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" },
+  weekMeta: { fontSize: 9, color: "#64647a", marginTop: 2, height: 12, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" },
+  todayDot: { width: 5, height: 5, borderRadius: "50%", background: ACCENT, position: "absolute", top: 3, right: 4 },
 
   // ---- day card ----
   dayCard: { background: "linear-gradient(135deg,#16172040,#0e0f16), #12131b", border: "1px solid #22232f", borderRadius: 18, padding: 18, marginBottom: 18 },
