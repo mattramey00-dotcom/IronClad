@@ -17,6 +17,7 @@ import {
 import { ACCENT } from "../data/program.js";
 import { S } from "../styles.js";
 import Icon from "./Icon.jsx";
+import Hint from "./Hint.jsx";
 import {
   buildInsights, weeklySeries, bodyweightSeries, projectGoal, tdeeAdaptation, formulaTDEE, shiftKey,
   GOALS, MIN_DAYS, MIN_INTAKE_DAYS, MIN_WEIGH_INS,
@@ -152,6 +153,12 @@ export default function InsightsView({
           Insights
         </div>
         <div style={{ fontSize: 12, color: "#6a6a80", marginBottom: 18 }}>{who} · measured from your own logs</div>
+
+        <Hint id="insights">
+          Every number here is measured from what you log — no calculators. Log your weight on the
+          Fuel tab and your meals over a couple of weeks, and the estimates sharpen into your real
+          numbers.
+        </Hint>
 
         {/* ---- TDEE ---- */}
         <label style={S.label}>Your measured TDEE</label>

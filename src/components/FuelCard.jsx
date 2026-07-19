@@ -15,6 +15,7 @@ import React, { useState, useRef } from "react";
 import { ACCENT } from "../data/program.js";
 import { S } from "../styles.js";
 import Icon from "./Icon.jsx";
+import Hint from "./Hint.jsx";
 import { mealTotals, proteinDistribution } from "../lib/nutrition.js";
 import {
   compressImage, estimateMealFromPhoto, estimateMealFromText, explainError, DEFAULT_MODEL,
@@ -168,6 +169,11 @@ export default function FuelCard({
           <Icon name="chart" size={13} /> Insights
         </button>
       </div>
+
+      <Hint id="fuel">
+        Add meals by photo, a sentence, or by hand — and tap <b>Log weight</b> at the bottom once a
+        day, same time each morning. Both feed the numbers on Insights.
+      </Hint>
 
       {/* On Sunday this is a record, not a scoreboard. No bars, no targets, no
           implication that there's something left to finish. The intake still has

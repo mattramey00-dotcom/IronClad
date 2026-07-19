@@ -30,6 +30,7 @@ import Demo from "./components/Demo.jsx";
 import { TimerModal, VideoModal } from "./components/Modals.jsx";
 import ExerciseModal from "./components/ExerciseModal.jsx";
 import ExerciseGif, { preloadGifs, allGifIds } from "./components/ExerciseGif.jsx";
+import Hint from "./components/Hint.jsx";
 import HistoryModal from "./components/HistoryModal.jsx";
 import Setup from "./components/Setup.jsx";
 import FuelCard from "./components/FuelCard.jsx";
@@ -521,6 +522,13 @@ function Trainer({
 
       {/* What the other one is doing */}
       <PartnerCard agenda={agenda} other={other} />
+
+      {(agenda.trains || blocks.length > 0) && (
+        <Hint id="train">
+          Tap any exercise to open it — check off each set as you finish, a rest timer runs
+          between sets, and planks get a stopwatch. The last set checks the whole exercise off.
+        </Hint>
+      )}
 
       {/* Blocks */}
       {blocks.map((block, bi) => (
