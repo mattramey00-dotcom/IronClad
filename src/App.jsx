@@ -20,7 +20,7 @@ import {
   loadPlan, savePlan, loadMe, saveMe, loadProgress, saveProgress,
   loadLogs, saveLogs, migrateLegacy, encodePlan, resetEverything,
   loadMeals, saveMeals, loadWeights, saveWeights, loadTargets, saveTargets,
-  loadFavMeals, saveFavMeals,
+  loadFavMeals, saveFavMeals, loadPhotos, savePhotos,
   loadApiKey, saveApiKey, loadModel, saveModel, loadTravel, saveTravel,
   loadWxKey, saveWxKey,
 } from "./lib/storage.js";
@@ -32,6 +32,8 @@ import { TimerModal, VideoModal } from "./components/Modals.jsx";
 import ExerciseModal from "./components/ExerciseModal.jsx";
 import ExerciseGif, { preloadGifs, allGifIds } from "./components/ExerciseGif.jsx";
 import Hint from "./components/Hint.jsx";
+import PhotosModal from "./components/PhotosModal.jsx";
+import { putPhoto, deletePhoto, compressToBlob } from "./lib/photos.js";
 import HistoryModal from "./components/HistoryModal.jsx";
 import Setup from "./components/Setup.jsx";
 import FuelCard from "./components/FuelCard.jsx";
@@ -53,6 +55,8 @@ export default function App() {
   const [logs, setLogs] = useState({});
   const [meals, setMeals] = useState({});
   const [favMeals, setFavMeals] = useState([]);
+  const [photos, setPhotos] = useState([]);
+  const [showPhotos, setShowPhotos] = useState(false);
   const [weights, setWeights] = useState({});
   const [targets, setTargets] = useState(DEFAULT_TARGETS);
   const [apiKey, setApiKey] = useState(() => loadApiKey());
@@ -86,6 +90,7 @@ export default function App() {
     setLogs(loadLogs(me));
     setMeals(loadMeals(me));
     setFavMeals(loadFavMeals(me));
+    setPhotos(loadPhotos(me));
     setWeights(loadWeights(me));
     setTargets(loadTargets(me) || DEFAULT_TARGETS);
   }, [me]);
@@ -131,6 +136,10 @@ export default function App() {
       setMeals={setMeals}
       favMeals={favMeals}
       setFavMeals={setFavMeals}
+      photos={photos}
+      setPhotos={setPhotos}
+      showPhotos={showPhotos}
+      setShowPhotos={setShowPhotos}
       weights={weights}
       setWeights={setWeights}
       targets={targets}
@@ -179,7 +188,8 @@ function Shell({ children }) {
 
 function Trainer({
   plan, me, selected, setSelected, progress, setProgress, logs, setLogs,
-  meals, setMeals, favMeals, setFavMeals, weights, setWeights, targets, setTargets,
+  meals, setMeals, favMeals, setFavMeals, photos, setPhotos, showPhotos, setShowPhotos,
+  weights, setWeights, targets, setTargets,
   apiKey, model, onSetApiKey, onSetModel, wxKey, onSetWxKey, travel, onSetTravel,
   openLog, setOpenLog, timer, setTimer, video, setVideo,
   showHistory, setShowHistory,
@@ -304,6 +314,25 @@ function Trainer({
   };
 
   const removeFavorite = (favId) => persistFavs(favMeals.filter((f) => f.id !== favId));
+
+  // ---- progress photos ----
+  const persistPhotos = (next) => { setPhotos(next); savePhotos(me, next); };
+
+  const addPhoto = async (angle, file) => {
+    const blob = await compressToBlob(file);
+    const id = `ph-${me}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    await putPhoto(id, blob);
+    const date = dateKey(new Date());
+    // One shot per angle per day — re-taking replaces the old one.
+    const dup = photos.find((p) => p.date === date && p.angle === angle);
+    if (dup) { try { await deletePhoto(dup.id); } catch { /* orphan is harmless */ } }
+    persistPhotos([{ id, date, angle }, ...photos.filter((p) => !(p.date === date && p.angle === angle))]);
+  };
+
+  const removePhoto = async (id) => {
+    try { await deletePhoto(id); } catch { /* metadata is the source of truth */ }
+    persistPhotos(photos.filter((p) => p.id !== id));
+  };
 
   // Re-log a saved favourite onto the selected day, timestamped now.
   const logFavorite = (fav) =>
@@ -689,6 +718,7 @@ function Trainer({
           apiKey={apiKey}
           model={model}
           onSetTargets={persistTargets}
+          onOpenPhotos={() => setShowPhotos(true)}
         />
       )}
 
@@ -738,6 +768,15 @@ function Trainer({
           onSetModel={onSetModel}
           onSwitchPerson={onSwitchPerson}
           onClose={() => setShowSettings(false)}
+        />
+      )}
+
+      {showPhotos && (
+        <PhotosModal
+          photos={photos}
+          onAdd={addPhoto}
+          onRemove={removePhoto}
+          onClose={() => setShowPhotos(false)}
         />
       )}
 

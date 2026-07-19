@@ -141,6 +141,13 @@ export const saveTargets = (personId, targets) =>
 export const loadFavMeals = (personId) => readJSON(`favmeals:${personId}`, []);
 export const saveFavMeals = (personId, favs) => write(`favmeals:${personId}`, JSON.stringify(favs));
 
+// ---- progress photo index (per profile) -----------------------------
+//  Just the index — [{ id, date, angle }] — pointing at blobs held in
+//  IndexedDB (lib/photos.js). The scale wobbles week to week; a photo doesn't.
+
+export const loadPhotos = (personId) => readJSON(`photos:${personId}`, []);
+export const savePhotos = (personId, photos) => write(`photos:${personId}`, JSON.stringify(photos));
+
 // ---- the API key (this device only) ----------------------------------
 //  Deliberately NOT part of the plan, and therefore NOT in the plan code — you
 //  text that code to your partner, and a secret that travels by SMS isn't one.

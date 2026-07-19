@@ -27,7 +27,7 @@ import { coachNote, explainError, DEFAULT_MODEL } from "../lib/claude.js";
 const TONE = { good: S.insightGood, warn: S.insightWarn, info: {} };
 
 export default function InsightsView({
-  meals, weights, logs, targets, today, who, apiKey, model, onSetTargets,
+  meals, weights, logs, targets, today, who, apiKey, model, onSetTargets, onOpenPhotos,
 }) {
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
@@ -285,6 +285,16 @@ export default function InsightsView({
             </div>
           </div>
         </div>
+
+        {/* progress photos — the check the scale can't give you */}
+        {onOpenPhotos && (
+          <button
+            style={{ ...S.btnGhost, width: "100%", marginTop: 14, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+            onClick={onOpenPhotos}
+          >
+            <Icon name="camera" size={15} /> Progress photos
+          </button>
+        )}
 
         {/* ---- bodyweight trend (raw dots + regression line) ---- */}
         {bw.n >= 2 && (
