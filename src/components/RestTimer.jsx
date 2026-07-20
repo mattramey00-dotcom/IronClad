@@ -37,7 +37,7 @@ function chime() {
   }
 }
 
-export default function RestTimer({ seconds, label, onClose, embedded = false }) {
+export default function RestTimer({ seconds, label, onClose, onSetDuration, embedded = false }) {
   const [total, setTotal] = useState(seconds);
   const [remaining, setRemaining] = useState(seconds);
   const [running, setRunning] = useState(true);
@@ -77,6 +77,8 @@ export default function RestTimer({ seconds, label, onClose, embedded = false })
     setRunning(true);
     setTotal(secs);
     setRemaining(secs);
+    // Remember this choice so the next set's rest starts here, not back at 45s.
+    onSetDuration?.(secs);
   };
 
   const done = remaining === 0;

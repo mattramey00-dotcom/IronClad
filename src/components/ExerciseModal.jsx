@@ -26,7 +26,7 @@ const clock = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 
 export default function ExerciseModal({
   ex, blockName, isDone, todaySession, lastSession, pr, origName, subbed, onSwap, muscles = [], video,
-  rest, onCloseRest, wxKey,
+  rest, restPref, onSetRestPref, onCloseRest, wxKey,
   onLogSet, onStartRest, onStartTimer, onOpenVideo, onComplete, onClose,
 }) {
   const [swapping, setSwapping] = useState(false);
@@ -37,7 +37,9 @@ export default function ExerciseModal({
   const restHere = rest && rest.label === ex.n ? rest : null;
   const rx = prescription(ex.s); // { sets, lowReps, restSecs } | null
   const nSets = rx?.sets || 0;
-  const restSecs = rx?.restSecs;
+  // The rest length to use: whatever you last set it to this session, else the
+  // prescribed default — so picking 1:30 on set one carries to the sets after it.
+  const effRest = restPref ?? rx?.restSecs;
 
   // A hold, not reps: "3 × 45–60 sec". These get a stopwatch instead of the
   // weight×reps box, and each set is a timed hold rather than a logged lift.
@@ -85,16 +87,16 @@ export default function ExerciseModal({
     const isLast = i === nSets - 1;
     // A hold has no weight×reps to log — just check it off and rest.
     if (timed) {
-      if (!isLast && restSecs) onStartRest(ex.n, restSecs);
+      if (!isLast && effRest) onStartRest(ex.n, effRest);
       return;
     }
     const wv = parseFloat(w);
     const rv = parseFloat(r);
     if (Number.isFinite(wv) && Number.isFinite(rv)) {
       // logSet already starts the rest clock for non-final sets logged today
-      onLogSet(ex.n, wv, rv, isLast ? 0 : restSecs);
-    } else if (!isLast && restSecs) {
-      onStartRest(ex.n, restSecs);
+      onLogSet(ex.n, wv, rv, isLast ? 0 : effRest);
+    } else if (!isLast && effRest) {
+      onStartRest(ex.n, effRest);
     }
   };
 
@@ -281,7 +283,7 @@ export default function ExerciseModal({
             the modal — starts when you tick a set, override or skip in place. */}
         {restHere && (
           <div style={{ marginTop: 10 }}>
-            <RestTimer key={restHere.id} embedded seconds={restHere.secs} label={restHere.label} onClose={onCloseRest} />
+            <RestTimer key={restHere.id} embedded seconds={restHere.secs} label={restHere.label} onSetDuration={onSetRestPref} onClose={onCloseRest} />
           </div>
         )}
       </div>

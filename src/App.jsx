@@ -203,6 +203,7 @@ function Trainer({
 }) {
   const [tab, setTab] = useState("train");
   const [rest, setRest] = useState(null); // { id, secs, label } — the sticky rest timer
+  const [restPref, setRestPref] = useState(null); // last rest length you set — remembered across sets
   const [openEx, setOpenEx] = useState(null); // { blockName, ex } — the focused exercise modal
   const [lastBackup, setLastBackup] = useState(() => loadLastBackup());
   const [backupNudge, setBackupNudge] = useState(() => loadBackupNudge());
@@ -800,7 +801,7 @@ function Trainer({
                     />
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ ...S.exName, ...(done ? { textDecoration: "line-through", color: "#666" } : {}) }}>
+                    <div style={{ ...S.exName, ...(done ? { textDecoration: "line-through", color: "#6f9c82" } : {}) }}>
                       {ex.n}
                       {pr && <span style={S.prBadge}><Icon name="star" size={10} /> PR</span>}
                     </div>
@@ -927,6 +928,8 @@ function Trainer({
           muscles={musclesFor(openEx.ex)}
           video={EX_VIDEO[openEx.ex.n]}
           rest={rest}
+          restPref={restPref}
+          onSetRestPref={setRestPref}
           onCloseRest={() => setRest(null)}
           wxKey={wxKey}
           onLogSet={logSet}
@@ -983,6 +986,7 @@ function Trainer({
           key={rest.id}
           seconds={rest.secs}
           label={rest.label}
+          onSetDuration={setRestPref}
           onClose={() => setRest(null)}
         />
       )}

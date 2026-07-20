@@ -114,7 +114,7 @@ export const S = {
   blockNameTogether: { color: ACCENT },
   blockNote: { fontSize: 12, color: "#6a6a80", marginBottom: 8, paddingLeft: 4 },
   exRow: { display: "flex", alignItems: "center", gap: 12, background: "#111219", border: "1px solid #1c1d28", borderRadius: 14, padding: 10, marginBottom: 8, transition: "all .25s ease" },
-  exRowDone: { background: "rgba(129,140,248,.06)", border: "1px solid rgba(129,140,248,.28)" },
+  exRowDone: { background: "rgba(84,179,126,.11)", border: "1px solid rgba(84,179,126,.45)" },
   exRowTogether: { border: "1px solid rgba(129,140,248,.22)", background: "rgba(129,140,248,.04)" },
   demoWrap: { flex: "0 0 auto", width: 56, height: 56, borderRadius: 12, background: "#0b0c11", display: "grid", placeItems: "center", border: "1px solid #1a1b24" },
   exName: { fontSize: 15, fontWeight: 600 },
@@ -136,7 +136,7 @@ export const S = {
     flex: "0 0 auto", width: 38, height: 38, borderRadius: "50%", border: "2px solid #2a2c3b",
     background: "transparent", color: ACCENT, fontSize: 20, fontWeight: 800, cursor: "pointer", display: "grid", placeItems: "center",
   },
-  checkDone: { background: ACCENT, border: `2px solid ${ACCENT}`, color: ON_ACCENT },
+  checkDone: { background: "#54b37e", border: "2px solid #54b37e", color: "#06130b" },
 
   // ---- set tracker (header of the log panel) ----
   setTrack: {
