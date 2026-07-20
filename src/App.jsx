@@ -851,7 +851,8 @@ function Trainer({
         style={{ ...S.btnGhost, width: "100%", marginTop: 12, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8 }}
         onClick={() => setShowMuscleTarget(true)}
       >
-        <Icon name="stretch" size={16} style={{ color: ACCENT }} /> Target a muscle group
+        <Icon name="stretch" size={16} style={{ color: ACCENT }} />
+        <span><span style={{ color: "var(--text-dim)", fontWeight: 400 }}>Optional · </span>Add a target muscle group for today</span>
       </button>
 
       {(agenda.trains || blocks.length > 0) && (
