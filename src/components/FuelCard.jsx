@@ -310,13 +310,13 @@ export default function FuelCard({
         </div>
       )}
 
-      {/* capture="environment" opens the rear camera straight away on a phone,
-          while still allowing the library on desktop. */}
+      {/* No `capture` attribute on purpose: on a phone this lets the picker
+          offer BOTH "Take Photo" and "Photo Library", so an existing picture
+          can be uploaded and analysed — not only a shot taken on the spot. */}
       <input
         ref={fileRef}
         type="file"
         accept="image/*"
-        capture="environment"
         onChange={onPhoto}
         style={{ display: "none" }}
       />
