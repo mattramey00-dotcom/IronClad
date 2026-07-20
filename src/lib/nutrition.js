@@ -456,6 +456,18 @@ export function formulaTDEE({ sex, heightIn, age, weightLb, activity = ACTIVITY 
   return { bmr: Math.round(bmr), tdee: Math.round((bmr * activity) / 10) * 10, activity };
 }
 
+// ---- water target ----------------------------------------------------
+//  A daily fluid recommendation, in fluid ounces. ~0.6 oz per lb of bodyweight
+//  sits in the middle of the common "0.5–1 oz/lb" band for active people, with
+//  a sensible floor. Rounded to whole cups (8 oz) so the target reads cleanly.
+//  A guideline, not a prescription — thirst, sweat and climate move it.
+export const CUP_OZ = 8;
+export function waterTargetOz(bodyweightLb) {
+  const bw = Number(bodyweightLb);
+  const raw = bw > 0 ? bw * 0.6 : 80;
+  return Math.max(64, Math.round(raw / CUP_OZ) * CUP_OZ);
+}
+
 // ---- BMI (reference only) --------------------------------------------
 //  The crude height-to-weight ratio. It can't tell muscle from fat, so it
 //  over-reads for anyone who lifts — the measured bodyweight trend and the

@@ -133,6 +133,12 @@ export const loadTargets = (personId) => readJSON(`targets:${personId}`, null);
 export const saveTargets = (personId, targets) =>
   write(`targets:${personId}`, JSON.stringify(targets));
 
+// ---- water intake (per profile) -------------------------------------
+//  Ounces of water per day, keyed by date: { "2026-07-20": 88 }. A per-profile
+//  daily tally, reset by nature each day (a new date key starts at zero).
+export const loadWater = (personId) => readJSON(`water:${personId}`, {});
+export const saveWater = (personId, water) => write(`water:${personId}`, JSON.stringify(water));
+
 // ---- favourite meals (per profile) ----------------------------------
 //  The meals you eat on repeat, saved so re-logging them is one tap. Logging
 //  friction is what quietly kills the whole TDEE estimate, so this is really a
@@ -274,6 +280,6 @@ export function migrateLegacy(personId) {
 export function resetEverything() {
   ["plan", "me", "apikey", "model", "travel", "wxkey", "lastbackup", "backupnudge", "restnotify", "theme"].forEach(remove);
   ["p1", "p2"].forEach((id) => {
-    ["progress", "logs", "meals", "weights", "targets", "favmeals", "subs", "extras", "weeklyseen"].forEach((k) => remove(`${k}:${id}`));
+    ["progress", "logs", "meals", "weights", "targets", "favmeals", "subs", "extras", "weeklyseen", "water"].forEach((k) => remove(`${k}:${id}`));
   });
 }

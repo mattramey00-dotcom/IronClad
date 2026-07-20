@@ -21,13 +21,14 @@ import {
   loadLogs, saveLogs, migrateLegacy, encodePlan, resetEverything,
   loadMeals, saveMeals, loadWeights, saveWeights, loadTargets, saveTargets,
   loadFavMeals, saveFavMeals, loadPhotos, savePhotos, loadSubs, saveSubs, loadExtras, saveExtras,
+  loadWater, saveWater,
   loadApiKey, saveApiKey, loadModel, saveModel, loadTravel, saveTravel,
   loadWxKey, saveWxKey,
   loadLastBackup, saveLastBackup, loadBackupNudge, saveBackupNudge,
   loadTheme, saveTheme, loadWeeklySeen, saveWeeklySeen,
 } from "./lib/storage.js";
 import { downloadBackup, backupReminderDue, monthKeyOf } from "./lib/backup.js";
-import { estimateTDEE, resolveTargets, weightTrend, bestE1RM, shiftKey, daysBetween, mealTotals, weeklySummary, DEFAULT_TARGETS } from "./lib/nutrition.js";
+import { estimateTDEE, resolveTargets, weightTrend, bestE1RM, shiftKey, daysBetween, mealTotals, weeklySummary, waterTargetOz, DEFAULT_TARGETS } from "./lib/nutrition.js";
 import { MODELS, DEFAULT_MODEL } from "./lib/claude.js";
 import { S } from "./styles.js";
 import Demo from "./components/Demo.jsx";
@@ -63,6 +64,7 @@ export default function App() {
   const [favMeals, setFavMeals] = useState([]);
   const [subs, setSubs] = useState({});
   const [extras, setExtras] = useState({});
+  const [water, setWater] = useState({});
   const [photos, setPhotos] = useState([]);
   const [showPhotos, setShowPhotos] = useState(false);
   const [weights, setWeights] = useState({});
@@ -108,6 +110,7 @@ export default function App() {
     setFavMeals(loadFavMeals(me));
     setSubs(loadSubs(me));
     setExtras(loadExtras(me));
+    setWater(loadWater(me));
     setPhotos(loadPhotos(me));
     setWeights(loadWeights(me));
     setTargets(loadTargets(me) || DEFAULT_TARGETS);
@@ -158,6 +161,8 @@ export default function App() {
       setSubs={setSubs}
       extras={extras}
       setExtras={setExtras}
+      water={water}
+      setWater={setWater}
       photos={photos}
       setPhotos={setPhotos}
       showPhotos={showPhotos}
@@ -212,7 +217,7 @@ function Shell({ children }) {
 
 function Trainer({
   plan, me, selected, setSelected, progress, setProgress, logs, setLogs,
-  meals, setMeals, favMeals, setFavMeals, subs, setSubs, extras, setExtras, photos, setPhotos, showPhotos, setShowPhotos,
+  meals, setMeals, favMeals, setFavMeals, subs, setSubs, extras, setExtras, water, setWater, photos, setPhotos, showPhotos, setShowPhotos,
   weights, setWeights, targets, setTargets,
   apiKey, model, onSetApiKey, onSetModel, wxKey, onSetWxKey, travel, onSetTravel,
   openLog, setOpenLog, timer, setTimer, video, setVideo,
@@ -540,6 +545,15 @@ function Trainer({
     persistWeights(next);
   };
 
+  // Add (or subtract, to correct an overshoot) water for the selected day, in oz.
+  const addWater = (deltaOz) => {
+    const oz = Math.max(0, (water[selected] || 0) + deltaOz);
+    const next = { ...water };
+    if (oz > 0) next[selected] = oz; else delete next[selected];
+    setWater(next);
+    saveWater(me, next);
+  };
+
   // The calorie/protein targets shown on the day card are derived from the
   // measured TDEE, so they move as the measurement sharpens.
   const tdee = useMemo(
@@ -554,6 +568,7 @@ function Trainer({
     () => resolveTargets(targets, tdee, bodyweight),
     [targets, tdee, bodyweight],
   );
+  const waterTarget = useMemo(() => waterTargetOz(bodyweight), [bodyweight]);
 
   const sessionOn = (exName, date) => (logs[exName] || []).find((e) => e.date === date) || null;
   const lastSession = (exName) =>
@@ -1024,6 +1039,9 @@ function Trainer({
           model={model}
           restMode={agenda.isRest}
           favorites={favMeals}
+          water={water[selected] || 0}
+          waterTarget={waterTarget}
+          onAddWater={addWater}
           compose={fuelCompose}
           setCompose={setFuelCompose}
           onAddMeal={addMeal}

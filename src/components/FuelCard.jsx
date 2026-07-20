@@ -24,6 +24,7 @@ import {
 } from "../lib/claude.js";
 
 const PROTEIN_COLOR = "#e0b44a";
+const WATER_COLOR = "#56b6d9";
 const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 
 // Blank draft — what "add by hand" starts from, and the shape the model fills.
@@ -55,6 +56,7 @@ function Bar({ label, value, target, color, over }) {
 
 export default function FuelCard({
   meals, allMeals, today, weight, targets, apiKey, model, restMode, favorites = [],
+  water = 0, waterTarget = 80, onAddWater,
   compose, setCompose,
   onAddMeal, onRemoveMeal, onEditMeal, onRelogMeal, onLogFavorite, onSaveFavorite, onRemoveFavorite, onWeigh, onOpenInsights,
 }) {
@@ -299,6 +301,51 @@ export default function FuelCard({
             )}
           </div>
         </>
+      )}
+
+      {/* water — a daily hydration tally against a bodyweight-based rec */}
+      {onAddWater && (
+        <div style={{ marginTop: restMode ? 6 : 12 }}>
+          <div style={S.macroTop}>
+            <span style={{ ...S.macroName, display: "inline-flex", alignItems: "center", gap: 5 }}>
+              <Icon name="drop" size={13} style={{ color: WATER_COLOR }} /> Water
+            </span>
+            <span style={S.macroVal}>
+              {water}
+              <span style={{ color: "var(--text-faint)", fontWeight: 400 }}> / {waterTarget} oz</span>
+            </span>
+          </div>
+          <div style={S.macroBar}>
+            <div style={{ ...S.macroFill, width: `${waterTarget ? Math.min(100, (water / waterTarget) * 100) : 0}%`, background: WATER_COLOR }} />
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 7, flexWrap: "wrap" }}>
+            {[8, 16, 24].map((oz) => (
+              <button
+                key={oz}
+                onClick={() => onAddWater(oz)}
+                style={{ background: "rgba(86,182,217,.1)", border: "1px solid rgba(86,182,217,.4)", color: WATER_COLOR, borderRadius: 999, padding: "6px 12px", fontSize: 12.5, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}
+              >
+                +{oz} oz
+              </button>
+            ))}
+            {water > 0 && (
+              <button
+                onClick={() => onAddWater(-8)}
+                style={{ background: "transparent", border: "1px solid var(--border-hi)", color: "var(--text-dim)", borderRadius: 999, padding: "6px 11px", fontSize: 12.5, cursor: "pointer", fontFamily: "inherit" }}
+                aria-label="Remove 8 ounces"
+              >
+                −8
+              </button>
+            )}
+            {water >= waterTarget ? (
+              <span style={{ marginLeft: "auto", fontSize: 11.5, color: "#7a9a7a" }}>✓ hydrated</span>
+            ) : (
+              <span style={{ marginLeft: "auto", fontSize: 11.5, color: "var(--text-dim)" }}>
+                {Math.max(0, Math.round((waterTarget - water) / 8))} cup{Math.round((waterTarget - water) / 8) === 1 ? "" : "s"} to go
+              </span>
+            )}
+          </div>
+        </div>
       )}
 
       {/* meals */}
