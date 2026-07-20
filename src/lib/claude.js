@@ -107,6 +107,18 @@ const MEAL_SCHEMA = {
   additionalProperties: false,
 };
 
+// We get structured JSON back by giving the model exactly one tool and forcing
+// it to call that tool — its arguments ARE the meal estimate. This is the
+// oldest, most portable way to constrain Claude's output: no beta headers, no
+// `output_config`, works on every model and every key. (An earlier version used
+// output_config.format and the API rejected it outright — "Extra inputs are not
+// permitted" — so tool-forcing is both the safer and the more compatible path.)
+const MEAL_TOOL = {
+  name: "log_meal",
+  description: "Record the estimated nutrition for the meal shown or described.",
+  input_schema: MEAL_SCHEMA,
+};
+
 const SYSTEM = `You estimate the nutrition content of meals for a strength-training app.
 
 Be a good estimator, not a confident one. Specifically:
@@ -120,17 +132,13 @@ Be a good estimator, not a confident one. Specifically:
 
 The user will correct anything you get wrong before it is saved. An honest wide estimate is far more useful to them than a precise-looking wrong one.`;
 
-// Pull the JSON out of a response. With output_config.format the model is
-// constrained to emit exactly one JSON text block, but content is a union and
-// may carry other block types, so narrow rather than trusting content[0].
-function parseJSON(response) {
-  const text = response.content
-    .filter((b) => b.type === "text")
-    .map((b) => b.text)
-    .join("")
-    .trim();
-  if (!text) throw new Error("The model returned no content.");
-  return JSON.parse(text);
+// Pull the meal out of a response. We forced `log_meal`, so the estimate rides
+// in as the input of a tool_use block. Content is a union that may also carry
+// text/thinking blocks, so find the tool call rather than trusting content[0].
+function parseMeal(response) {
+  const call = response.content.find((b) => b.type === "tool_use" && b.name === "log_meal");
+  if (!call || !call.input) throw new Error("The model returned no meal estimate.");
+  return call.input;
 }
 
 // The wire format wants raw base64 and a media type; a canvas gives us a data
@@ -192,10 +200,11 @@ export async function estimateMealFromPhoto({ apiKey, model = DEFAULT_MODEL, ima
         ],
       },
     ],
-    output_config: { format: { type: "json_schema", name: "meal", schema: MEAL_SCHEMA } },
+    tools: [MEAL_TOOL],
+    tool_choice: { type: "tool", name: "log_meal" },
   });
 
-  return parseJSON(response);
+  return parseMeal(response);
 }
 
 // ---- 2. text → meal ---------------------------------------------------
@@ -216,10 +225,11 @@ export async function estimateMealFromText({ apiKey, model = DEFAULT_MODEL, text
 If a portion isn't given, assume an ordinary serving for an adult who lifts, and say what you assumed in the caveat.`,
       },
     ],
-    output_config: { format: { type: "json_schema", name: "meal", schema: MEAL_SCHEMA } },
+    tools: [MEAL_TOOL],
+    tool_choice: { type: "tool", name: "log_meal" },
   });
 
-  return parseJSON(response);
+  return parseMeal(response);
 }
 
 // ---- 3. the coach -----------------------------------------------------
