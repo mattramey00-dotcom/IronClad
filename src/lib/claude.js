@@ -45,8 +45,24 @@ export const DEFAULT_MODEL = "claude-opus-4-8";
 let Anthropic = null;
 
 async function sdk() {
-  if (!Anthropic) Anthropic = (await import("@anthropic-ai/sdk")).default;
-  return Anthropic;
+  if (Anthropic) return Anthropic;
+  try {
+    Anthropic = (await import("@anthropic-ai/sdk")).default;
+    return Anthropic;
+  } catch (err) {
+    // The SDK is loaded lazily on first AI use. If a newer version has been
+    // deployed since this tab loaded, its code files were renamed and this
+    // fetch 404s ("Importing a module script failed"). Reload once to pick up
+    // the fresh build, then surface a clear message so a retry isn't confusing.
+    try {
+      const last = Number(sessionStorage.getItem("chunkReloadAt")) || 0;
+      if (Date.now() - last > 10000) {
+        sessionStorage.setItem("chunkReloadAt", String(Date.now()));
+        window.location.reload();
+      }
+    } catch { /* sessionStorage unavailable — just report it */ }
+    throw new Error("The app updated in the background — reloading. If it doesn't, close and reopen it, then try again.");
+  }
 }
 
 const client = async (apiKey) => {
