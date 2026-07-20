@@ -18,20 +18,18 @@ import { ACCENT } from "../data/program.js";
 import { S } from "../styles.js";
 import Icon from "./Icon.jsx";
 import Hint from "./Hint.jsx";
+import CoachModal from "./CoachModal.jsx";
 import {
   buildInsights, weeklySeries, bodyweightSeries, projectGoal, tdeeAdaptation, formulaTDEE, shiftKey,
   GOALS, MIN_DAYS, MIN_INTAKE_DAYS, MIN_WEIGH_INS,
 } from "../lib/nutrition.js";
-import { coachNote, explainError, DEFAULT_MODEL } from "../lib/claude.js";
 
 const TONE = { good: S.insightGood, warn: S.insightWarn, info: {} };
 
 export default function InsightsView({
   meals, weights, logs, targets, today, who, apiKey, model, onSetTargets, onOpenPhotos,
 }) {
-  const [note, setNote] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
+  const [showCoach, setShowCoach] = useState(false);
   const [pendingGoal, setPendingGoal] = useState(null); // goal awaiting confirmation
 
   const ins = useMemo(
@@ -97,55 +95,53 @@ export default function InsightsView({
 
   // The coach is handed the *computed* figures, never the raw logs. It has
   // nothing to do but interpret — which is the only part it's better at than
-  // the arithmetic already on this screen.
-  const askCoach = async () => {
-    if (!apiKey) {
-      setError("Add your Anthropic API key in Settings to get a read on this.");
-      return;
-    }
-    setBusy(true);
-    setError("");
-    try {
-      const text = await coachNote({
-        apiKey,
-        model: model || DEFAULT_MODEL,
-        snapshot: {
-          goal: resolved.goal.label,
-          bodyweight_lb: bodyweight,
-          measured_tdee_kcal: tdee.tdee,
-          tdee_plausible_range: tdee.ready ? [tdee.lo, tdee.hi] : null,
-          avg_daily_intake_kcal: Math.round(tdee.intake.avgKcal) || null,
-          avg_daily_protein_g: Math.round(tdee.intake.avgProtein) || null,
-          protein_g_per_lb: ins.proteinPerLb ? Number(ins.proteinPerLb.toFixed(2)) : null,
-          bodyweight_change_lb_per_week:
-            tdee.trend.slopePerWeek !== null ? Number(tdee.trend.slopePerWeek.toFixed(2)) : null,
-          est_1rm_change_pct_28d: strength.pct !== null ? Number(strength.pct.toFixed(1)) : null,
-          lifts_tracked: strength.n,
-          training_volume_lb_28d: strength.volume,
-          per_lift_change_pct: strength.moves.slice(0, 6).map((m) => ({
-            lift: m.name,
-            change_pct: Number(m.pct.toFixed(1)),
-            sessions: m.sessions,
-          })),
-          days_of_meals_logged: tdee.intake.daysLogged,
-          days_of_weigh_ins: tdee.trend.n,
-          data_is_sufficient_for_tdee: tdee.ready,
-          formula_tdee_estimate_kcal: !tdee.ready && formula ? formula.tdee : null,
-          tdee_trend: adapt.ready
-            ? { recent_kcal: adapt.now, prior_kcal: adapt.prior, change_kcal: adapt.delta, metabolic_adaptation: adapt.adapting }
-            : null,
-          goal_weight_lb: Number(targets?.goalWeight) || null,
-          weeks_to_goal_at_current_rate:
-            goalProj && !goalProj.reached && !goalProj.stalled ? goalProj.weeks : null,
-        },
-      });
-      setNote(text);
-    } catch (err) {
-      setError(explainError(err));
-    } finally {
-      setBusy(false);
-    }
-  };
+  // the arithmetic already on this screen. This snapshot is the whole of what it
+  // sees; the conversation and the timeline tool live in CoachModal / claude.js.
+  const snapshot = useMemo(
+    () => ({
+      goal: resolved.goal.label,
+      bodyweight_lb: bodyweight,
+      measured_tdee_kcal: tdee.tdee,
+      tdee_plausible_range: tdee.ready ? [tdee.lo, tdee.hi] : null,
+      avg_daily_intake_kcal: Math.round(tdee.intake.avgKcal) || null,
+      avg_daily_protein_g: Math.round(tdee.intake.avgProtein) || null,
+      protein_g_per_lb: ins.proteinPerLb ? Number(ins.proteinPerLb.toFixed(2)) : null,
+      bodyweight_change_lb_per_week:
+        tdee.trend.slopePerWeek !== null ? Number(tdee.trend.slopePerWeek.toFixed(2)) : null,
+      est_1rm_change_pct_28d: strength.pct !== null ? Number(strength.pct.toFixed(1)) : null,
+      lifts_tracked: strength.n,
+      training_volume_lb_28d: strength.volume,
+      per_lift_change_pct: strength.moves.slice(0, 6).map((m) => ({
+        lift: m.name,
+        change_pct: Number(m.pct.toFixed(1)),
+        sessions: m.sessions,
+      })),
+      days_of_meals_logged: tdee.intake.daysLogged,
+      days_of_weigh_ins: tdee.trend.n,
+      data_is_sufficient_for_tdee: tdee.ready,
+      formula_tdee_estimate_kcal: !tdee.ready && formula ? formula.tdee : null,
+      tdee_trend: adapt.ready
+        ? { recent_kcal: adapt.now, prior_kcal: adapt.prior, change_kcal: adapt.delta, metabolic_adaptation: adapt.adapting }
+        : null,
+      goal_weight_lb: Number(targets?.goalWeight) || null,
+      weeks_to_goal_at_current_rate:
+        goalProj && !goalProj.reached && !goalProj.stalled ? goalProj.weeks : null,
+    }),
+    [resolved.goal.label, bodyweight, tdee, ins.proteinPerLb, strength, formula, adapt, targets?.goalWeight, goalProj],
+  );
+
+  // What the timeline tool computes against: current smoothed weight, the best
+  // TDEE we have (measured if ready, else the formula estimate), and the trend.
+  const planCtx = useMemo(
+    () => ({
+      currentLb: bw.smoothed ?? bodyweight,
+      tdee: tdee.ready ? tdee.tdee : formula ? formula.tdee : null,
+      tdeeMeasured: tdee.ready,
+      ratePerWeek: bw.slopePerWeek,
+      today,
+    }),
+    [bw.smoothed, bw.slopePerWeek, bodyweight, tdee.ready, tdee.tdee, formula, today],
+  );
 
   return (
     <div style={{ textAlign: "left", animation: "fade .3s ease" }}>
@@ -456,15 +452,26 @@ export default function InsightsView({
 
         {/* ---- the coach ---- */}
         <button
-          style={{ ...S.btnGhost, width: "100%", marginTop: 18, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 7 }}
-          onClick={askCoach}
-          disabled={busy}
+          style={{ ...S.btnAccent, width: "100%", marginTop: 18, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 7 }}
+          onClick={() => setShowCoach(true)}
         >
-          {!busy && !note && <Icon name="sparkle" size={14} style={{ color: ACCENT }} />}
-          {busy ? "Reading…" : note ? "Ask again" : "What does this say about my training?"}
+          <Icon name="sparkle" size={15} /> Talk to your coach
         </button>
-        {note && <div style={S.coachBox}>{note}</div>}
-        {error && <div style={S.err}>{error}</div>}
+        <div style={{ ...S.note, textAlign: "center" }}>
+          Ask anything — including how long it'd take to lose or gain a given amount. It answers off the
+          numbers above.
+        </div>
+
+        {showCoach && (
+          <CoachModal
+            apiKey={apiKey}
+            model={model}
+            snapshot={snapshot}
+            planCtx={planCtx}
+            who={who}
+            onClose={() => setShowCoach(false)}
+          />
+        )}
 
         {/* Changing the goal is a deliberate act — it resets the nutrition plan,
             so confirm it rather than firing on the first tap. */}

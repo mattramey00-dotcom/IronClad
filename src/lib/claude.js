@@ -28,6 +28,8 @@
 //  because the key belongs to the person typing it in.
 // ============================================================
 
+import { planWeightChange } from "./nutrition.js";
+
 export const MODELS = {
   "claude-opus-4-8": { label: "Opus 4.8 — most accurate", cost: "~2¢ / photo" },
   "claude-haiku-4-5": { label: "Haiku 4.5 — cheapest", cost: "~0.4¢ / photo" },
@@ -265,6 +267,91 @@ ${JSON.stringify(snapshot, null, 2)}`,
     .map((b) => b.text)
     .join("")
     .trim();
+}
+
+// ---- 4. the interactive coach ----------------------------------------
+//  Same principle as coachNote — the model interprets, it does not compute — but
+//  now it's a conversation. The one thing it's allowed to reach for is a single
+//  tool, `weight_plan`, which runs entirely in lib/nutrition.js on the user's
+//  measured data. So "how long to lose 10 lb?" is answered by our arithmetic and
+//  narrated by the model, never estimated by it. The tool is the seam that keeps
+//  a chat coach from quietly inventing a timeline.
+
+const WEIGHT_PLAN_TOOL = {
+  name: "weight_plan",
+  description:
+    "Compute an honest weight-change timeline from the trainee's MEASURED data — do NOT do this arithmetic yourself. " +
+    "Call it whenever they ask how long a change will take, what calorie deficit to run, or whether a deadline is realistic. " +
+    "Give either `lose_lb` (pounds to lose; use a negative number to gain) or `to_weight_lb` (a target scale weight). " +
+    "Optionally add `in_weeks` if they named a deadline, and/or `daily_kcal_change` to evaluate one specific deficit/surplus size. " +
+    "It returns the timeline at their current trend, at 250/500/750 kcal deficits (or the one you asked for), and for any deadline — " +
+    "each flagged `aggressive` when it exceeds ~1% of bodyweight per week.",
+  input_schema: {
+    type: "object",
+    properties: {
+      lose_lb: { type: "number", description: "Pounds to lose. Use a negative value to gain." },
+      to_weight_lb: { type: "number", description: "A target bodyweight in lb (use instead of lose_lb)." },
+      in_weeks: { type: "number", description: "A deadline in weeks, if the user named one." },
+      daily_kcal_change: { type: "number", description: "A specific daily deficit/surplus to evaluate, e.g. 500." },
+    },
+  },
+};
+
+const COACH_SYSTEM = `You are the strength-and-nutrition coach inside a training app, talking with a lifter about their own logged data.
+
+Ground rules:
+- The data block below was MEASURED from their logs and computed by the app. Read it; never recompute it, never restate figures they can already see, and never contradict it.
+- For anything about timelines, calorie targets, or "how long / how fast / what deficit", CALL the weight_plan tool and speak from what it returns. Do not estimate weeks or deficits in your head — the tool exists so you don't have to, and so the numbers match the rest of the app.
+- When the tool flags an option as aggressive (more than ~1% of bodyweight a week), say so plainly and steer toward the sustainable rate.
+- If their TDEE is a formula estimate rather than measured yet, say the timeline is a starting guess that will sharpen as they log.
+- Talk like a good coach: direct, specific, a few sentences, no bullet-point dumps, no hedging boilerplate, no "consult a professional". Lead with the answer. If the data is too thin to answer honestly, say that instead of inventing a number.
+- No medical advice, no supplement protocols beyond ordinary protein/creatine common sense.`;
+
+export async function coachChat({ apiKey, model = DEFAULT_MODEL, snapshot, planCtx, messages }) {
+  const anthropic = await client(apiKey);
+  const convo = messages.map((m) => ({ role: m.role, content: m.content }));
+  const system = `${COACH_SYSTEM}
+
+The trainee's current measured data (computed by the app — interpret it, don't recompute it):
+${JSON.stringify(snapshot, null, 2)}`;
+
+  // A short tool loop: the model may call weight_plan, we run it locally on the
+  // measured data, hand back the result, and let it answer. Capped so a model
+  // that keeps calling tools can't spin forever.
+  for (let hop = 0; hop < 4; hop++) {
+    const res = await anthropic.messages.create({
+      model,
+      max_tokens: 1500,
+      system,
+      tools: [WEIGHT_PLAN_TOOL],
+      messages: convo,
+    });
+
+    const toolUses = res.content.filter((b) => b.type === "tool_use");
+    if (res.stop_reason === "tool_use" && toolUses.length) {
+      convo.push({ role: "assistant", content: res.content });
+      convo.push({
+        role: "user",
+        content: toolUses.map((t) => ({
+          type: "tool_result",
+          tool_use_id: t.id,
+          content: JSON.stringify(
+            t.name === "weight_plan" ? planWeightChange(t.input, planCtx) : { error: "unknown_tool" },
+          ),
+        })),
+      });
+      continue;
+    }
+
+    const text = res.content
+      .filter((b) => b.type === "text")
+      .map((b) => b.text)
+      .join("")
+      .trim();
+    return text || "I don't have enough logged yet to say anything useful there.";
+  }
+
+  throw new Error("The coach kept reaching for the calculator without answering — try rephrasing.");
 }
 
 // ---- errors -----------------------------------------------------------

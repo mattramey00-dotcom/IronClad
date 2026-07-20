@@ -575,3 +575,96 @@ export function proteinDistribution(dayMeals, target) {
     scoops: remaining != null ? Math.round((remaining / SCOOP_G) * 10) / 10 : null,
   };
 }
+
+// ---- "how long will it take?" — answered in code, never by the model ----
+//  The coach (lib/claude.js) can ask any weight question the user throws at it —
+//  "lose 10 lb", "get to 175", "in time for the wedding" — and this is what does
+//  the arithmetic. It never guesses; it reads three lenses off the measured data:
+//
+//    at_current_trend  — extend the bodyweight trend you're actually on
+//    at_calorie_change — pick a deficit (or show 250/500/750) and convert it
+//    for_your_deadline — if they named a date, what rate/deficit that demands
+//
+//  1% of bodyweight per week is the rough ceiling for losing fat without shedding
+//  muscle, so each option carries an `aggressive` flag the coach can warn on. The
+//  model's whole job is to read this back in plain English — the numbers are ours.
+//
+//  Convention: lose_lb is positive to lose, negative to gain; or give to_weight_lb.
+export function planWeightChange(
+  { lose_lb, to_weight_lb, in_weeks, daily_kcal_change } = {},
+  { currentLb, tdee, tdeeMeasured, ratePerWeek, today } = {},
+) {
+  // How much to move, and which way. + delta = need to lose, − = need to gain.
+  let delta = null;
+  if (Number(lose_lb)) delta = Number(lose_lb);
+  else if (Number(to_weight_lb) > 0 && Number(currentLb) > 0) delta = Number(currentLb) - Number(to_weight_lb);
+  if (delta == null || Math.abs(delta) < 0.1)
+    return { error: "no_target", note: "Ask for a number of pounds to lose/gain, or a goal weight." };
+
+  const losing = delta > 0;
+  const absLb = Math.abs(delta);
+  const cur = Number(currentLb) > 0 ? Number(currentLb) : null;
+  const T = Number(tdee) > 0 ? Number(tdee) : null;
+
+  const etaOf = (weeks) => {
+    if (!(weeks > 0) || !today) return {};
+    const days = Math.round(weeks * 7);
+    return { eta_days: days, eta_date: shiftKey(today, days) };
+  };
+
+  const out = {
+    goal: `${losing ? "lose" : "gain"} ${round(absLb, 1)} lb`,
+    current_weight_lb: cur != null ? round(cur, 1) : null,
+    tdee_kcal: T != null ? Math.round(T) : null,
+    tdee_is_measured: !!tdeeMeasured, // false = a formula estimate, treat as softer
+    max_sustainable_rate_lb_per_week: cur != null ? round(cur * 0.01, 2) : null,
+  };
+
+  // Lens A — extend the trend they're actually on.
+  if (ratePerWeek != null && Math.abs(ratePerWeek) > 0.05 && (losing ? ratePerWeek < 0 : ratePerWeek > 0)) {
+    const weeks = absLb / Math.abs(ratePerWeek);
+    out.at_current_trend = { rate_lb_per_week: round(ratePerWeek, 2), weeks: round(weeks, 1), ...etaOf(weeks) };
+  } else {
+    out.at_current_trend = {
+      rate_lb_per_week: ratePerWeek != null ? round(ratePerWeek, 2) : null,
+      moving_toward_goal: false,
+      note: "Their current trend isn't moving toward this goal — the intake gap has to change first.",
+    };
+  }
+
+  // Lens B — convert a calorie deficit/surplus. Their chosen one, else 250/500/750.
+  if (T != null) {
+    const sizes = Number(daily_kcal_change) > 0 ? [Number(daily_kcal_change)] : [250, 500, 750];
+    out.at_calorie_change = sizes.map((k) => {
+      const rate = (k * 7) / KCAL_PER_LB; // lb/week the gap moves
+      const weeks = absLb / rate;
+      const pctBw = cur != null ? (rate / cur) * 100 : null;
+      return {
+        daily_kcal_change: losing ? -k : k,
+        target_intake_kcal: Math.round(T + (losing ? -k : k)),
+        rate_lb_per_week: round(rate, 2),
+        weeks: round(weeks, 1),
+        percent_bodyweight_per_week: pctBw != null ? round(pctBw, 2) : null,
+        aggressive: pctBw != null ? pctBw > 1 : false,
+        ...etaOf(weeks),
+      };
+    });
+  }
+
+  // Lens C — hit a named deadline: what it takes, and whether that's sane.
+  if (Number(in_weeks) > 0) {
+    const reqRate = absLb / Number(in_weeks);
+    const reqKcal = Math.round((reqRate * KCAL_PER_LB) / 7);
+    const pctBw = cur != null ? (reqRate / cur) * 100 : null;
+    out.for_your_deadline = {
+      weeks: Number(in_weeks),
+      required_rate_lb_per_week: round(reqRate, 2),
+      required_daily_kcal_change: losing ? -reqKcal : reqKcal,
+      target_intake_kcal: T != null ? Math.round(T + (losing ? -reqKcal : reqKcal)) : null,
+      percent_bodyweight_per_week: pctBw != null ? round(pctBw, 2) : null,
+      aggressive: pctBw != null ? pctBw > 1 : false,
+    };
+  }
+
+  return out;
+}
