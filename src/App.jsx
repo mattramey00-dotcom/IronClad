@@ -849,7 +849,7 @@ function Trainer({
       {/* Target a muscle — a blown-up, tappable body map for adding accessory
           work on top of the day's plan. */}
       <button
-        style={{ ...S.btnGhost, width: "100%", marginTop: 12, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+        style={{ ...S.btnGhost, width: "100%", marginTop: 2, marginBottom: 14, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8 }}
         onClick={() => setShowMuscleTarget(true)}
       >
         <Icon name="stretch" size={16} style={{ color: ACCENT }} />
