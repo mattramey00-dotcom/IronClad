@@ -727,6 +727,18 @@ export function programScheme(name) {
   return ALL_EX[name]?.s || null;
 }
 
+// Every strength movement in the program that trains a given muscle token, with
+// the exercises that hit it as a primary mover listed first. Powers the
+// tap-a-muscle targeted-work picker.
+export function exercisesForMuscle(token) {
+  const list = Object.values(ALL_EX).filter((c) => (MUSCLES_BY_NAME[c.n] || []).includes(token));
+  list.sort(
+    (a, b) =>
+      Number((MUSCLES_BY_NAME[b.n] || [])[0] === token) - Number((MUSCLES_BY_NAME[a.n] || [])[0] === token),
+  );
+  return list;
+}
+
 export function swapSuggestions(exName) {
   const base = ALL_EX[exName];
   const primary = (MUSCLES_BY_NAME[exName] || [])[0];

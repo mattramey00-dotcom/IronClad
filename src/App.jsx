@@ -43,6 +43,7 @@ import InsightsView from "./components/InsightsView.jsx";
 import TabBar from "./components/TabBar.jsx";
 import RestTimer from "./components/RestTimer.jsx";
 import MuscleMap from "./components/MuscleMap.jsx";
+import MuscleTargetModal from "./components/MuscleTargetModal.jsx";
 import Confetti from "./components/Confetti.jsx";
 import Icon from "./components/Icon.jsx";
 
@@ -206,6 +207,7 @@ function Trainer({
   const [rest, setRest] = useState(null); // { id, secs, label } — the sticky rest timer
   const [restPref, setRestPref] = useState(null); // last rest length you set — remembered across sets
   const [celebrate, setCelebrate] = useState(0); // bump to fire a confetti burst
+  const [showMuscleTarget, setShowMuscleTarget] = useState(false); // the tap-a-muscle picker
   const [openEx, setOpenEx] = useState(null); // { blockName, ex } — the focused exercise modal
   const fireConfetti = () => setCelebrate((c) => c + 1);
   const [lastBackup, setLastBackup] = useState(() => loadLastBackup());
@@ -313,9 +315,13 @@ function Trainer({
     const k = doneKey(blockName, exName);
     if (!progress[k]) persistProgress({ ...progress, [k]: true });
     const idx = flatExercises.findIndex((f) => f.blockName === blockName && f.ex.n === exName);
+    // idx < 0 means this wasn't one of the day's prescribed moves (e.g. targeted
+    // accessory work) — just close rather than jumping into the plan.
     let next = null;
-    for (let i = idx + 1; i < flatExercises.length; i++) {
-      if (!isDone(flatExercises[i].blockName, flatExercises[i].ex.n)) { next = flatExercises[i]; break; }
+    if (idx >= 0) {
+      for (let i = idx + 1; i < flatExercises.length; i++) {
+        if (!isDone(flatExercises[i].blockName, flatExercises[i].ex.n)) { next = flatExercises[i]; break; }
+      }
     }
     setOpenEx(next);
   };
@@ -762,6 +768,15 @@ function Trainer({
       {/* What the other one is doing */}
       <PartnerCard agenda={agenda} other={other} />
 
+      {/* Target a muscle — a blown-up, tappable body map for adding accessory
+          work on top of the day's plan. */}
+      <button
+        style={{ ...S.btnGhost, width: "100%", marginTop: 12, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+        onClick={() => setShowMuscleTarget(true)}
+      >
+        <Icon name="stretch" size={16} style={{ color: ACCENT }} /> Target a muscle group
+      </button>
+
       {(agenda.trains || blocks.length > 0) && (
         <Hint id="train">
           Tap any exercise to open it — check off each set as you finish, a rest timer runs
@@ -951,6 +966,12 @@ function Trainer({
           onCelebrate={fireConfetti}
           onComplete={completeAndAdvance}
           onClose={() => setOpenEx(null)}
+        />
+      )}
+      {showMuscleTarget && (
+        <MuscleTargetModal
+          onPickExercise={(ex) => { setShowMuscleTarget(false); setOpenEx({ blockName: "Extra", ex }); }}
+          onClose={() => setShowMuscleTarget(false)}
         />
       )}
       {timer && <TimerModal seconds={timer.seconds} label={timer.label} onClose={() => setTimer(null)} />}
