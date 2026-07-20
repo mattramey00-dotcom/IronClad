@@ -121,6 +121,9 @@ export const S = {
   exRow: { display: "flex", alignItems: "center", gap: 12, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, padding: 10, marginBottom: 8, transition: "all .25s ease" },
   exRowDone: { background: "rgba(84,179,126,.11)", border: "1px solid rgba(84,179,126,.45)" },
   exRowTogether: { border: "1px solid rgba(129,140,248,.22)", background: "rgba(129,140,248,.04)" },
+  // Accessory work you added — a distinct indigo border (kept even when done) so
+  // it reads as an addition, not part of the prescribed program.
+  exRowExtra: { border: "1px solid rgba(129,140,248,.5)" },
   demoWrap: { flex: "0 0 auto", width: 56, height: 56, borderRadius: 12, background: "var(--sunken)", display: "grid", placeItems: "center", border: "1px solid var(--surface-2)" },
   exName: { fontSize: 15, fontWeight: 600 },
   exSets: { fontSize: 13, color: "var(--text-mute)", marginTop: 2 },

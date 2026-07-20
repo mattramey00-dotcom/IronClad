@@ -884,6 +884,7 @@ function Trainer({
                   ...S.exRow,
                   ...(block.isTogether ? S.exRowTogether : {}),
                   ...(done ? S.exRowDone : {}),
+                  ...(block.isExtra ? S.exRowExtra : {}),
                 }}
               >
                 {/* the whole card opens the exercise modal */}
