@@ -8,12 +8,12 @@
 //  no pull day, forever). See lib/schedule.js for how the calendar is derived.
 // ============================================================
 
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
   ACCENT, DEMOS, EX_VIDEO, TOGETHER, REST_DAY, forMachine, forTravel, forSub, musclesFor, MUSCLE_LABELS,
 } from "./data/program.js";
 import {
-  agendaFor, weekAgenda, blocksFor, exercisesFor, dateKey,
+  agendaFor, weekAgenda, blocksFor, exercisesFor, dateKey, mondayOf,
   personById, partnerOf, WORKOUT_SHORTS,
 } from "./lib/schedule.js";
 import {
@@ -24,10 +24,10 @@ import {
   loadApiKey, saveApiKey, loadModel, saveModel, loadTravel, saveTravel,
   loadWxKey, saveWxKey,
   loadLastBackup, saveLastBackup, loadBackupNudge, saveBackupNudge,
-  loadTheme, saveTheme,
+  loadTheme, saveTheme, loadWeeklySeen, saveWeeklySeen,
 } from "./lib/storage.js";
 import { downloadBackup, backupReminderDue, monthKeyOf } from "./lib/backup.js";
-import { estimateTDEE, resolveTargets, weightTrend, bestE1RM, shiftKey, daysBetween, mealTotals, DEFAULT_TARGETS } from "./lib/nutrition.js";
+import { estimateTDEE, resolveTargets, weightTrend, bestE1RM, shiftKey, daysBetween, mealTotals, weeklySummary, DEFAULT_TARGETS } from "./lib/nutrition.js";
 import { MODELS, DEFAULT_MODEL } from "./lib/claude.js";
 import { S } from "./styles.js";
 import Demo from "./components/Demo.jsx";
@@ -45,6 +45,7 @@ import TabBar from "./components/TabBar.jsx";
 import RestTimer from "./components/RestTimer.jsx";
 import MuscleMap from "./components/MuscleMap.jsx";
 import MuscleTargetModal from "./components/MuscleTargetModal.jsx";
+import WeeklySummaryModal from "./components/WeeklySummaryModal.jsx";
 import Confetti from "./components/Confetti.jsx";
 import Icon from "./components/Icon.jsx";
 
@@ -235,6 +236,27 @@ function Trainer({
   const today = dateKey(now);
   const person = personById(plan, me);
   const other = partnerOf(plan, me);
+
+  // ---- weekly summary ----
+  // Recap of the most recently finished week (last Mon–Sun). Auto-pops once on
+  // the first launch of a new week; re-openable from Insights.
+  const [showWeekly, setShowWeekly] = useState(false);
+  const lastWeek = useMemo(() => {
+    const thisMon = mondayOf(today);
+    return weeklySummary({
+      meals, weights, logs,
+      startKey: shiftKey(thisMon, -7),
+      endKey: shiftKey(thisMon, -1),
+    });
+  }, [today, meals, weights, logs]);
+  const weeklyCheckedFor = useRef(null);
+  useEffect(() => {
+    if (!me || weeklyCheckedFor.current === me) return;
+    if (!lastWeek.hasActivity) return; // wait until this profile's data has loaded
+    weeklyCheckedFor.current = me;
+    if (lastWeek.endKey !== loadWeeklySeen(me)) setShowWeekly(true);
+  }, [me, lastWeek]);
+  const dismissWeekly = () => { saveWeeklySeen(me, lastWeek.endKey); setShowWeekly(false); };
 
   // ---- backup ----
   const exportBackup = async () => {
@@ -1031,6 +1053,7 @@ function Trainer({
           theme={theme}
           onSetTargets={persistTargets}
           onOpenPhotos={() => setShowPhotos(true)}
+          onOpenWeekly={() => setShowWeekly(true)}
         />
       )}
 
@@ -1067,6 +1090,14 @@ function Trainer({
         <MuscleTargetModal
           onPickExercise={(ex) => { addExtra(ex); setShowMuscleTarget(false); setOpenEx({ blockName: "Added", ex }); }}
           onClose={() => setShowMuscleTarget(false)}
+        />
+      )}
+      {showWeekly && (
+        <WeeklySummaryModal
+          summary={lastWeek}
+          who={person.name}
+          onAddPhoto={() => { dismissWeekly(); setShowPhotos(true); }}
+          onClose={dismissWeekly}
         />
       )}
       {timer && <TimerModal seconds={timer.seconds} label={timer.label} onClose={() => setTimer(null)} />}

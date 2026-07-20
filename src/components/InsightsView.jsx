@@ -27,7 +27,7 @@ import {
 const TONE = { good: S.insightGood, warn: S.insightWarn, info: {} };
 
 export default function InsightsView({
-  meals, weights, logs, targets, today, who, apiKey, model, theme, onSetTargets, onOpenPhotos,
+  meals, weights, logs, targets, today, who, apiKey, model, theme, onSetTargets, onOpenPhotos, onOpenWeekly,
 }) {
   // Chart colours can't use CSS variables (Recharts writes them as SVG
   // attributes, where var() doesn't resolve), so derive concrete values here.
@@ -161,8 +161,17 @@ export default function InsightsView({
           numbers.
         </Hint>
 
+        {onOpenWeekly && (
+          <button
+            style={{ ...S.btnGhost, width: "100%", marginBottom: 4, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+            onClick={onOpenWeekly}
+          >
+            <Icon name="clock" size={15} style={{ color: ACCENT }} /> Last week's summary
+          </button>
+        )}
+
         {/* ---- TDEE ---- */}
-        <label style={S.label}>Your measured TDEE</label>
+        <label style={{ ...S.label, marginTop: 14 }}>Your measured TDEE</label>
         {tdee.ready ? (
           <>
             <div style={S.bigStat}>

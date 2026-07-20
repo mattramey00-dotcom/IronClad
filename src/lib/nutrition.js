@@ -686,3 +686,51 @@ export function planWeightChange(
 
   return out;
 }
+
+// ---- weekly summary --------------------------------------------------
+//  A recap of a finished week: how much you trained, any new PRs, total
+//  volume, the week's bodyweight move, and how the eating went. All measured
+//  from the same logs everything else on Insights reads. `startKey`..`endKey`
+//  are the week's Monday..Sunday.
+export function weeklySummary({ meals, weights, logs, startKey, endKey }) {
+  const keys = windowKeys(endKey, 7); // = startKey .. endKey (Mon..Sun)
+
+  const trainDates = new Set();
+  let volume = 0;
+  const prs = [];
+  Object.entries(logs || {}).forEach(([name, entries]) => {
+    const inWeek = (entries || []).filter((e) => e.date >= startKey && e.date <= endKey && (e.sets?.length || 0) > 0);
+    inWeek.forEach((e) => {
+      trainDates.add(e.date);
+      (e.sets || []).forEach((s) => { volume += (Number(s.w) || 0) * (Number(s.r) || 0); });
+    });
+    const weekBest = Math.max(0, ...inWeek.map((e) => bestE1RM(e)));
+    const priorBest = Math.max(0, ...(entries || []).filter((e) => e.date < startKey).map((e) => bestE1RM(e)));
+    if (weekBest > 0 && priorBest > 0 && weekBest > priorBest + 0.01) prs.push(name);
+  });
+
+  const wKeys = keys.filter((k) => Number(weights?.[k]) > 0);
+  const bwStart = wKeys.length ? Number(weights[wKeys[0]]) : null;
+  const bwEnd = wKeys.length ? Number(weights[wKeys[wKeys.length - 1]]) : null;
+
+  const loggedDays = keys.filter((k) => (meals?.[k]?.length || 0) > 0);
+  const avgKcal = mean(loggedDays.map((k) => dayTotals(meals, k).kcal));
+  const avgProtein = mean(loggedDays.map((k) => dayTotals(meals, k).protein));
+
+  const workouts = trainDates.size;
+  return {
+    startKey,
+    endKey,
+    workouts,
+    volume: Math.round(volume),
+    prs,
+    bwStart: bwStart != null ? round(bwStart, 1) : null,
+    bwEnd: bwEnd != null ? round(bwEnd, 1) : null,
+    bwChange: bwStart != null && bwEnd != null ? round(bwEnd - bwStart, 1) : null,
+    weighIns: wKeys.length,
+    mealDays: loggedDays.length,
+    avgKcal: Math.round(avgKcal) || null,
+    avgProtein: Math.round(avgProtein) || null,
+    hasActivity: workouts > 0 || loggedDays.length > 0 || wKeys.length > 0,
+  };
+}

@@ -152,6 +152,13 @@ export const saveFavMeals = (personId, favs) => write(`favmeals:${personId}`, JS
 export const loadSubs = (personId) => readJSON(`subs:${personId}`, {});
 export const saveSubs = (personId, subs) => write(`subs:${personId}`, JSON.stringify(subs));
 
+// ---- weekly summary (per profile) -----------------------------------
+//  The Sunday (endKey) of the most recent week whose summary this person has
+//  already seen — so the launch pop-up fires once per finished week, not on
+//  every open. Reopening it from Insights doesn't depend on this.
+export const loadWeeklySeen = (personId) => read(`weeklyseen:${personId}`) || "";
+export const saveWeeklySeen = (personId, endKey) => write(`weeklyseen:${personId}`, endKey);
+
 // ---- added / accessory exercises (per profile) ----------------------
 //  Extra movements a person tacks onto a day from the "Target a muscle" picker,
 //  keyed by date → [{ n, s, d }]. They show up in that day's exercise list on
@@ -267,6 +274,6 @@ export function migrateLegacy(personId) {
 export function resetEverything() {
   ["plan", "me", "apikey", "model", "travel", "wxkey", "lastbackup", "backupnudge", "restnotify", "theme"].forEach(remove);
   ["p1", "p2"].forEach((id) => {
-    ["progress", "logs", "meals", "weights", "targets", "favmeals", "subs", "extras"].forEach((k) => remove(`${k}:${id}`));
+    ["progress", "logs", "meals", "weights", "targets", "favmeals", "subs", "extras", "weeklyseen"].forEach((k) => remove(`${k}:${id}`));
   });
 }
