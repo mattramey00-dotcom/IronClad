@@ -258,7 +258,7 @@ export default function InsightsView({
             <div
               style={{
                 ...S.statValue,
-                color: strength.pct === null ? "#eaeaea" : strength.pct > 0 ? ACCENT : "#e08a6a",
+                color: strength.pct === null ? "var(--text)" : strength.pct > 0 ? ACCENT : "#e08a6a",
               }}
             >
               {strength.pct !== null ? `${strength.pct >= 0 ? "+" : ""}${strength.pct.toFixed(1)}%` : "—"}

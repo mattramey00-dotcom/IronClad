@@ -1364,7 +1364,7 @@ function SettingsModal({ plan, me, apiKey, model, wxKey, onSetWxKey, onSetApiKey
         <button
           style={{
             ...S.btnGhost, width: "100%", marginTop: 18,
-            border: `1px solid ${confirmReset ? "#5a2a2a" : "#2a322a"}`,
+            border: `1px solid ${confirmReset ? "#5a2a2a" : "var(--border-hi)"}`,
             color: confirmReset ? "#ff7a7a" : "var(--text-mute)",
           }}
           onClick={() => {

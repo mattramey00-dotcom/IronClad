@@ -367,7 +367,7 @@ const ST = {
   logRow: { display: "flex", alignItems: "center", gap: 8, marginBottom: 10, flexWrap: "wrap" },
   inputWrap: { position: "relative", display: "flex", alignItems: "center", width: 92 },
   numInput: {
-    width: "100%", background: "#0e0f15", border: "1px solid var(--border)", borderRadius: 9,
+    width: "100%", background: "var(--sunken)", border: "1px solid var(--border)", borderRadius: 9,
     color: "var(--text)", fontSize: 16, padding: "9px 30px 9px 10px", fontFamily: "inherit", outline: "none",
   },
   unit: { position: "absolute", right: 9, fontSize: 11, color: "var(--text-dim)" },

@@ -49,7 +49,7 @@ export default function Demo({ kind, name, size = 64 }) {
     <div
       style={{
         display: "grid", placeItems: "center", width: size, height: size,
-        borderRadius: 10, background: "#0f1017",
+        borderRadius: 10, background: "var(--sunken)",
         boxShadow: `inset 0 0 0 1px ${ACCENT}22`, color: `${ACCENT}66`,
       }}
       aria-hidden

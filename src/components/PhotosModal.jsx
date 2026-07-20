@@ -139,7 +139,7 @@ export default function PhotosModal({ photos = [], onAdd, onRemove, onClose }) {
                     return p ? (
                       <PhotoImg key={a.key} id={p.id} style={{ flex: 1, aspectRatio: "3 / 4", borderRadius: 10 }} onClick={() => setEnlarge(p.id)} />
                     ) : (
-                      <div key={a.key} style={{ flex: 1, aspectRatio: "3 / 4", borderRadius: 10, background: "var(--sunken)", border: "1px dashed #26283a", display: "grid", placeItems: "center", color: "var(--text-faint)", fontSize: 11 }}>
+                      <div key={a.key} style={{ flex: 1, aspectRatio: "3 / 4", borderRadius: 10, background: "var(--sunken)", border: "1px dashed var(--border-hi)", display: "grid", placeItems: "center", color: "var(--text-faint)", fontSize: 11 }}>
                         {a.label}
                       </div>
                     );
