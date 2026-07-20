@@ -291,10 +291,6 @@ function Trainer({
   };
   // Count the exercises under the same weight-free lens the rows are drawn with,
   // so the progress bar tallies the moves you're actually doing today.
-  const allExercises = useMemo(
-    () => exercisesFor(agenda).map((e) => forTravel(forSub(e, subs), travel)),
-    [agenda, travel, subs],
-  );
   const machine = agenda.machine;
   // One place resolves a raw program exercise into what you actually train:
   // your personal substitution first, then the machine you're on, then the
@@ -601,14 +597,19 @@ function Trainer({
   const weighNudge = !weights[today] && lastWeighDate && weighGap >= 3;
 
   // ---- progress for the selected day ----
-  const total = allExercises.length;
-  const complete = allExercises.filter((e) => isDone(e.block, e.n)).length;
+  // Count the exact rows that render (flatExercises = blocksFor + the same
+  // resolution the rows use), so the bar can never disagree with the checkmarks
+  // you see. Counting a separate exercisesFor list is what let a run — labelled
+  // "Run" there but "Your ride" in the rows — read as done in the row yet never
+  // tick the bar, sticking it at 9/10.
+  const total = flatExercises.length;
+  const complete = flatExercises.filter((f) => isDone(f.blockName, f.ex.n)).length;
   const pct = total ? (complete / total) * 100 : 0;
   const allDone = total > 0 && complete === total;
 
   const resetDay = () => {
     const next = { ...progress };
-    allExercises.forEach((e) => delete next[doneKey(e.block, e.n)]);
+    flatExercises.forEach((f) => delete next[doneKey(f.blockName, f.ex.n)]);
     persistProgress(next);
   };
 

@@ -456,6 +456,24 @@ export function formulaTDEE({ sex, heightIn, age, weightLb, activity = ACTIVITY 
   return { bmr: Math.round(bmr), tdee: Math.round((bmr * activity) / 10) * 10, activity };
 }
 
+// ---- BMI (reference only) --------------------------------------------
+//  The crude height-to-weight ratio. It can't tell muscle from fat, so it
+//  over-reads for anyone who lifts — the measured bodyweight trend and the
+//  weight-vs-strength chart are the honest signals. Shown with that caveat.
+export function bmi(weightLb, heightIn) {
+  const w = Number(weightLb), h = Number(heightIn);
+  if (!(w > 0) || !(h > 0)) return null;
+  return round((703 * w) / (h * h), 1);
+}
+
+export function bmiBand(v) {
+  if (v == null) return null;
+  if (v < 18.5) return "below the standard range";
+  if (v < 25) return "in the standard range";
+  if (v < 30) return "above the standard range";
+  return "well above the standard range";
+}
+
 // ---- metabolic adaptation --------------------------------------------
 //  Diet long enough and your metabolism quietly drops to meet the lower
 //  intake — adaptive thermogenesis. You can't see it in any single TDEE number,

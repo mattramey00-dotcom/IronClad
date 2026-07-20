@@ -21,7 +21,7 @@ import Hint from "./Hint.jsx";
 import CoachModal from "./CoachModal.jsx";
 import {
   buildInsights, weeklySeries, bodyweightSeries, projectGoal, tdeeAdaptation, formulaTDEE, shiftKey,
-  GOALS, MIN_DAYS, MIN_INTAKE_DAYS, MIN_WEIGH_INS,
+  bmi, bmiBand, GOALS, MIN_DAYS, MIN_INTAKE_DAYS, MIN_WEIGH_INS,
 } from "../lib/nutrition.js";
 
 const TONE = { good: S.insightGood, warn: S.insightWarn, info: {} };
@@ -286,6 +286,24 @@ export default function InsightsView({
             </div>
           </div>
         </div>
+
+        {/* BMI — reference only, with the muscle caveat spelled out */}
+        {(() => {
+          const bmiVal = bmi(bodyweight, targets?.heightIn);
+          if (bmiVal == null) return null;
+          return (
+            <div style={{ ...S.insightCard, marginTop: 12 }}>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+                <span style={{ fontFamily: "'Inter', sans-serif", fontWeight: 800, fontSize: 22, letterSpacing: -0.3 }}>{bmiVal}</span>
+                <span style={{ fontSize: 12.5, color: "var(--text-mute)" }}>BMI · {bmiBand(bmiVal)}</span>
+              </div>
+              <div style={{ ...S.insightBody, marginTop: 5 }}>
+                A rough height-to-weight ratio — it can't tell muscle from fat, so it reads high for
+                people who lift. Trust your bodyweight trend and the weight-vs-strength chart over this.
+              </div>
+            </div>
+          );
+        })()}
 
         {/* progress photos — the check the scale can't give you */}
         {onOpenPhotos && (
