@@ -219,9 +219,10 @@ function Trainer({
   showSettings, setShowSettings, now, theme, onToggleTheme, onSwitchPerson,
 }) {
   const [tab, setTab] = useState("train");
-  // The Fuel compose form lives here (not in FuelCard) so a draft — e.g. a meal
-  // you just pulled from the web — survives switching to another tab and back.
-  const [fuelCompose, setFuelCompose] = useState({ mode: null, draft: null, editingId: null, text: "" });
+  // The Fuel compose form — including its in-flight loading state — lives here
+  // (not in FuelCard) so a web/API lookup keeps running and stays visible when
+  // you switch to another tab and back, instead of restarting.
+  const [fuelCompose, setFuelCompose] = useState({ mode: null, draft: null, editingId: null, text: "", busy: false, busyLabel: "Reading the plate…", error: "" });
   const [rest, setRest] = useState(null); // { id, secs, label } — the sticky rest timer
   const [restPref, setRestPref] = useState(null); // last rest length you set — remembered across sets
   const [celebrate, setCelebrate] = useState(0); // bump to fire a confetti burst

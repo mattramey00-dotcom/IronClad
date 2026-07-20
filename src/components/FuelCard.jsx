@@ -58,20 +58,22 @@ export default function FuelCard({
   compose, setCompose,
   onAddMeal, onRemoveMeal, onEditMeal, onRelogMeal, onLogFavorite, onSaveFavorite, onRemoveFavorite, onWeigh, onOpenInsights,
 }) {
-  // The in-progress compose form (which panel is open, the editable draft a web
-  // lookup / photo / description produced, the text box) lives in the parent, so
-  // it survives leaving and returning to the Fuel tab — you don't lose a result
-  // you just paid an API/web-search call for by glancing at another tab. Wrapper
-  // setters keep the rest of this component unchanged.
-  const { mode, draft, editingId, text } = compose;
+  // The whole in-progress compose lifecycle — which panel is open, the editable
+  // draft a web lookup / photo / description produced, the text box, AND the
+  // loading state — lives in the parent, so it all survives leaving and
+  // returning to the Fuel tab. The request itself is a fired promise that keeps
+  // running regardless of this component; because busy/label live in the parent
+  // too, coming back mid-search still shows "Searching…" so you know it's
+  // working and don't re-fire the call. Wrapper setters keep the rest unchanged.
+  const { mode, draft, editingId, text, busy = false, busyLabel = "Reading the plate…", error = "" } = compose;
   const apply = (patch) => setCompose((c) => ({ ...c, ...patch }));
   const setMode = (v) => apply({ mode: typeof v === "function" ? v(mode) : v });
   const setDraft = (v) => apply({ draft: typeof v === "function" ? v(draft) : v });
   const setEditingId = (v) => apply({ editingId: typeof v === "function" ? v(editingId) : v });
   const setText = (v) => apply({ text: typeof v === "function" ? v(text) : v });
-  const [busy, setBusy] = useState(false);
-  const [busyLabel, setBusyLabel] = useState("Reading the plate…");
-  const [error, setError] = useState("");
+  const setBusy = (v) => apply({ busy: typeof v === "function" ? v(busy) : v });
+  const setBusyLabel = (v) => apply({ busyLabel: typeof v === "function" ? v(busyLabel) : v });
+  const setError = (v) => apply({ error: typeof v === "function" ? v(error) : v });
   const [weighing, setWeighing] = useState("");
   const [showHistory, setShowHistory] = useState(false);
   const [showSaved, setShowSaved] = useState(false);
@@ -83,8 +85,7 @@ export default function FuelCard({
   const pd = proteinDistribution(meals, targets.protein);
 
   const reset = () => {
-    apply({ mode: null, draft: null, editingId: null, text: "" });
-    setError("");
+    apply({ mode: null, draft: null, editingId: null, text: "", busy: false, error: "" });
   };
 
   // Load an already-logged meal back into the draft editor to fix its numbers.
