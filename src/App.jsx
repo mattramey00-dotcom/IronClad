@@ -21,7 +21,7 @@ import {
   loadLogs, saveLogs, migrateLegacy, encodePlan, resetEverything,
   loadMeals, saveMeals, loadWeights, saveWeights, loadTargets, saveTargets,
   loadFavMeals, saveFavMeals, loadPhotos, savePhotos, loadSubs, saveSubs, loadExtras, saveExtras,
-  loadWater, saveWater,
+  loadWater, saveWater, loadSupps, saveSupps, loadSuppLog, saveSuppLog,
   loadApiKey, saveApiKey, loadModel, saveModel, loadTravel, saveTravel,
   loadWxKey, saveWxKey,
   loadLastBackup, saveLastBackup, loadBackupNudge, saveBackupNudge,
@@ -65,6 +65,8 @@ export default function App() {
   const [subs, setSubs] = useState({});
   const [extras, setExtras] = useState({});
   const [water, setWater] = useState({});
+  const [supps, setSupps] = useState([]);
+  const [suppLog, setSuppLog] = useState({});
   const [photos, setPhotos] = useState([]);
   const [showPhotos, setShowPhotos] = useState(false);
   const [weights, setWeights] = useState({});
@@ -111,6 +113,8 @@ export default function App() {
     setSubs(loadSubs(me));
     setExtras(loadExtras(me));
     setWater(loadWater(me));
+    setSupps(loadSupps(me));
+    setSuppLog(loadSuppLog(me));
     setPhotos(loadPhotos(me));
     setWeights(loadWeights(me));
     setTargets(loadTargets(me) || DEFAULT_TARGETS);
@@ -163,6 +167,10 @@ export default function App() {
       setExtras={setExtras}
       water={water}
       setWater={setWater}
+      supps={supps}
+      setSupps={setSupps}
+      suppLog={suppLog}
+      setSuppLog={setSuppLog}
       photos={photos}
       setPhotos={setPhotos}
       showPhotos={showPhotos}
@@ -217,7 +225,8 @@ function Shell({ children }) {
 
 function Trainer({
   plan, me, selected, setSelected, progress, setProgress, logs, setLogs,
-  meals, setMeals, favMeals, setFavMeals, subs, setSubs, extras, setExtras, water, setWater, photos, setPhotos, showPhotos, setShowPhotos,
+  meals, setMeals, favMeals, setFavMeals, subs, setSubs, extras, setExtras, water, setWater,
+  supps, setSupps, suppLog, setSuppLog, photos, setPhotos, showPhotos, setShowPhotos,
   weights, setWeights, targets, setTargets,
   apiKey, model, onSetApiKey, onSetModel, wxKey, onSetWxKey, travel, onSetTravel,
   openLog, setOpenLog, timer, setTimer, video, setVideo,
@@ -552,6 +561,28 @@ function Trainer({
     if (oz > 0) next[selected] = oz; else delete next[selected];
     setWater(next);
     saveWater(me, next);
+  };
+
+  // ---- supplements (self-defined checklist, no advice) ----
+  const addSupp = (name, dose) => {
+    const n = (name || "").trim();
+    if (!n) return;
+    const next = [...supps, { id: `supp-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`, name: n, dose: (dose || "").trim() }];
+    setSupps(next);
+    saveSupps(me, next);
+  };
+  const removeSupp = (id) => {
+    const next = supps.filter((s) => s.id !== id);
+    setSupps(next);
+    saveSupps(me, next);
+  };
+  const toggleSupp = (id) => {
+    const day = suppLog[selected] || [];
+    const nextDay = day.includes(id) ? day.filter((x) => x !== id) : [...day, id];
+    const next = { ...suppLog };
+    if (nextDay.length) next[selected] = nextDay; else delete next[selected];
+    setSuppLog(next);
+    saveSuppLog(me, next);
   };
 
   // The calorie/protein targets shown on the day card are derived from the
@@ -1042,6 +1073,11 @@ function Trainer({
           water={water[selected] || 0}
           waterTarget={waterTarget}
           onAddWater={addWater}
+          supps={supps}
+          suppTaken={suppLog[selected] || []}
+          onAddSupp={addSupp}
+          onRemoveSupp={removeSupp}
+          onToggleSupp={toggleSupp}
           compose={fuelCompose}
           setCompose={setFuelCompose}
           onAddMeal={addMeal}

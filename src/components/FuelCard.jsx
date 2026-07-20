@@ -57,6 +57,7 @@ function Bar({ label, value, target, color, over }) {
 export default function FuelCard({
   meals, allMeals, today, weight, targets, apiKey, model, restMode, favorites = [],
   water = 0, waterTarget = 80, onAddWater,
+  supps = [], suppTaken = [], onAddSupp, onRemoveSupp, onToggleSupp,
   compose, setCompose,
   onAddMeal, onRemoveMeal, onEditMeal, onRelogMeal, onLogFavorite, onSaveFavorite, onRemoveFavorite, onWeigh, onOpenInsights,
 }) {
@@ -79,6 +80,9 @@ export default function FuelCard({
   const [weighing, setWeighing] = useState("");
   const [showHistory, setShowHistory] = useState(false);
   const [showSaved, setShowSaved] = useState(false);
+  const [addingSupp, setAddingSupp] = useState(false);
+  const [suppName, setSuppName] = useState("");
+  const [suppDose, setSuppDose] = useState("");
   const fileRef = useRef(null);
 
   const hasHistory = Object.values(allMeals || {}).some((l) => l?.length);
@@ -345,6 +349,60 @@ export default function FuelCard({
               </span>
             )}
           </div>
+        </div>
+      )}
+
+      {/* supplements — a self-defined daily checklist, no recommendations */}
+      {onToggleSupp && (
+        <div style={{ marginTop: 12 }}>
+          <div style={{ ...S.label, marginBottom: 7, display: "flex", alignItems: "center" }}>
+            Supplements
+            {supps.length > 0 && (
+              <span style={{ marginLeft: "auto", fontSize: 11, color: "var(--text-dim)", fontWeight: 400 }}>
+                {suppTaken.filter((id) => supps.some((s) => s.id === id)).length}/{supps.length} taken
+              </span>
+            )}
+          </div>
+          {supps.map((s) => {
+            const taken = suppTaken.includes(s.id);
+            return (
+              <div
+                key={s.id}
+                onClick={() => onToggleSupp(s.id)}
+                style={{
+                  display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", marginBottom: 6, borderRadius: 10, cursor: "pointer",
+                  background: taken ? "rgba(129,140,248,.1)" : "var(--surface-2)",
+                  border: `1px solid ${taken ? "rgba(129,140,248,.4)" : "var(--border-hi)"}`,
+                }}
+              >
+                <span style={{ width: 22, height: 22, borderRadius: "50%", flex: "0 0 auto", display: "grid", placeItems: "center", background: taken ? ACCENT : "transparent", border: `2px solid ${taken ? ACCENT : "var(--border-hi)"}`, color: "#0B1020" }}>
+                  {taken && <Icon name="check" size={14} strokeWidth={2.8} />}
+                </span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <span style={{ fontSize: 14, color: taken ? "var(--text)" : "var(--text-2)" }}>{s.name}</span>
+                  {s.dose && <span style={{ fontSize: 12, color: "var(--text-dim)" }}> · {s.dose}</span>}
+                </div>
+                <button onClick={(e) => { e.stopPropagation(); onRemoveSupp(s.id); }} style={{ ...S.mealX }} aria-label={`Remove ${s.name}`}>×</button>
+              </div>
+            );
+          })}
+          {addingSupp ? (
+            <div style={{ marginTop: 4 }}>
+              <input autoFocus style={{ ...S.textInput, marginBottom: 6 }} placeholder="Name — e.g. Creatine" value={suppName} onChange={(e) => setSuppName(e.target.value)} />
+              <input style={{ ...S.textInput, marginBottom: 8 }} placeholder="Dose (optional) — e.g. 5 g" value={suppDose} onChange={(e) => setSuppDose(e.target.value)} />
+              <div style={S.addRow}>
+                <button style={{ ...S.addBtn, ...S.addBtnPrimary, opacity: suppName.trim() ? 1 : 0.5 }} disabled={!suppName.trim()} onClick={() => { onAddSupp(suppName, suppDose); setSuppName(""); setSuppDose(""); setAddingSupp(false); }}>Add</button>
+                <button style={S.addBtn} onClick={() => { setSuppName(""); setSuppDose(""); setAddingSupp(false); }}>Cancel</button>
+              </div>
+            </div>
+          ) : (
+            <button
+              style={{ ...S.addBtn, width: "100%", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+              onClick={() => setAddingSupp(true)}
+            >
+              <Icon name="plus" size={14} /> {supps.length ? "Add another" : "Add a supplement to check off daily"}
+            </button>
+          )}
         </div>
       )}
 

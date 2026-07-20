@@ -139,6 +139,16 @@ export const saveTargets = (personId, targets) =>
 export const loadWater = (personId) => readJSON(`water:${personId}`, {});
 export const saveWater = (personId, water) => write(`water:${personId}`, JSON.stringify(water));
 
+// ---- supplements (per profile) --------------------------------------
+//  A purely self-defined checklist — NO recommendations. `supps` is the list
+//  the person built ([{ id, name, dose }]); `supplog` records which of them
+//  were ticked off on each day ({ "2026-07-20": [id, id] }). The value of a
+//  supplement is consistency, so a daily tick is all this is.
+export const loadSupps = (personId) => readJSON(`supps:${personId}`, []);
+export const saveSupps = (personId, supps) => write(`supps:${personId}`, JSON.stringify(supps));
+export const loadSuppLog = (personId) => readJSON(`supplog:${personId}`, {});
+export const saveSuppLog = (personId, log) => write(`supplog:${personId}`, JSON.stringify(log));
+
 // ---- favourite meals (per profile) ----------------------------------
 //  The meals you eat on repeat, saved so re-logging them is one tap. Logging
 //  friction is what quietly kills the whole TDEE estimate, so this is really a
@@ -280,6 +290,6 @@ export function migrateLegacy(personId) {
 export function resetEverything() {
   ["plan", "me", "apikey", "model", "travel", "wxkey", "lastbackup", "backupnudge", "restnotify", "theme"].forEach(remove);
   ["p1", "p2"].forEach((id) => {
-    ["progress", "logs", "meals", "weights", "targets", "favmeals", "subs", "extras", "weeklyseen", "water"].forEach((k) => remove(`${k}:${id}`));
+    ["progress", "logs", "meals", "weights", "targets", "favmeals", "subs", "extras", "weeklyseen", "water", "supps", "supplog"].forEach((k) => remove(`${k}:${id}`));
   });
 }
