@@ -343,6 +343,17 @@ function Trainer({
       source: "favorite",
     });
 
+  // Re-log any past meal from history onto the selected day, keeping its macros
+  // and how it was originally logged (photo/web/etc.), timestamped now.
+  const relogMeal = (m) =>
+    addMeal({
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      time: new Date().toTimeString().slice(0, 5),
+      name: m.name, kcal: m.kcal, protein: m.protein, carbs: m.carbs, fat: m.fat,
+      source: m.source && m.source !== "manual" ? m.source : "history",
+      items: m.items?.length ? m.items : undefined,
+    });
+
   const removeMeal = (id) => {
     const rest = (meals[selected] || []).filter((m) => m.id !== id);
     const next = { ...meals };
@@ -689,6 +700,8 @@ function Trainer({
         </div>
         <FuelCard
           meals={meals[selected]}
+          allMeals={meals}
+          today={today}
           weight={weights[selected]}
           targets={resolvedTargets}
           apiKey={apiKey}
@@ -697,6 +710,7 @@ function Trainer({
           favorites={favMeals}
           onAddMeal={addMeal}
           onRemoveMeal={removeMeal}
+          onRelogMeal={relogMeal}
           onLogFavorite={logFavorite}
           onSaveFavorite={saveFavorite}
           onRemoveFavorite={removeFavorite}

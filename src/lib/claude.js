@@ -234,6 +234,63 @@ If a portion isn't given, assume an ordinary serving for an adult who lifts, and
   return parseMeal(response);
 }
 
+// ---- 2b. a named chain / packaged item → meal, from the web -----------
+//  For "a Chipotle chicken bowl" or "a Big Mac", a guess from memory is worse
+//  than it needs to be — those numbers are *published*. So this path gives the
+//  model web search and asks it to find the real listing, then hand back the
+//  same MEAL_SCHEMA shape via log_meal. Web search is a server tool: Anthropic
+//  runs the searches inside the turn, so the loop below only has to (a) return
+//  once log_meal appears and (b) resume if the server-side search loop pauses.
+
+const CHAIN_SYSTEM = `You look up the PUBLISHED nutrition for a named food — usually a restaurant-chain item or a packaged product — using web search, and record it.
+
+- Search for the official or a reliable published nutrition listing for exactly the item named. Prefer the brand's own nutrition data, then a well-known nutrition database.
+- Record ONE serving, as the person would order it, unless they gave a size or quantity. For build-your-own items (a burrito bowl, a sub), list the components you assumed in items[] so they can adjust.
+- Put the real per-component foods in items[] — that's the "ingredients" view the person is after.
+- If you genuinely cannot find published data for this exact item, fall back to your best estimate and say so plainly. Never refuse and never leave it blank.
+- caveat must name the biggest source of error: which source you used, and anything you had to assume (size, sauces, extras, customisations).
+
+Once you have the numbers, call log_meal with the per-serving totals.`;
+
+export async function lookupChainMeal({ apiKey, model = DEFAULT_MODEL, query }) {
+  const anthropic = await client(apiKey);
+
+  // The dynamic-filtering web search needs Opus/Sonnet-tier; Haiku takes the
+  // basic variant. Either one runs server-side with no beta header.
+  const webTool = /haiku/i.test(model)
+    ? { type: "web_search_20250305", name: "web_search", max_uses: 6 }
+    : { type: "web_search_20260209", name: "web_search", max_uses: 6 };
+
+  const messages = [
+    { role: "user", content: `Find the published nutrition for: "${query}". Search for it, then call log_meal with the per-serving numbers.` },
+  ];
+
+  for (let hop = 0; hop < 5; hop++) {
+    const res = await anthropic.messages.create({
+      model,
+      max_tokens: 3000,
+      system: CHAIN_SYSTEM,
+      tools: [webTool, MEAL_TOOL],
+      messages,
+    });
+
+    const meal = res.content.find((b) => b.type === "tool_use" && b.name === "log_meal");
+    if (meal) return meal.input;
+
+    // No meal yet: the server-side search loop paused, or the model wrote text
+    // without finishing. Carry the turn forward and nudge it to commit.
+    messages.push({ role: "assistant", content: res.content });
+    if (res.stop_reason !== "pause_turn") {
+      messages.push({
+        role: "user",
+        content: "Now call log_meal with the per-serving nutrition you found — your best estimate if the published numbers were incomplete.",
+      });
+    }
+  }
+
+  throw new Error("Couldn't pull that item's published nutrition — try describing it instead.");
+}
+
 // ---- 3. the coach -----------------------------------------------------
 //  Handed numbers that are already computed. The prompt says so in as many
 //  words, because a model given a pile of figures will cheerfully "check" them

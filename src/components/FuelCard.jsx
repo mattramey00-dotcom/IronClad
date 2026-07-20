@@ -16,9 +16,10 @@ import { ACCENT } from "../data/program.js";
 import { S } from "../styles.js";
 import Icon from "./Icon.jsx";
 import Hint from "./Hint.jsx";
+import MealHistoryModal from "./MealHistoryModal.jsx";
 import { mealTotals, proteinDistribution } from "../lib/nutrition.js";
 import {
-  compressImage, estimateMealFromPhoto, estimateMealFromText, explainError, DEFAULT_MODEL,
+  compressImage, estimateMealFromPhoto, estimateMealFromText, lookupChainMeal, explainError, DEFAULT_MODEL,
 } from "../lib/claude.js";
 
 const PROTEIN_COLOR = "#e0b44a";
@@ -52,16 +53,20 @@ function Bar({ label, value, target, color, over }) {
 }
 
 export default function FuelCard({
-  meals, weight, targets, apiKey, model, restMode, favorites = [],
-  onAddMeal, onRemoveMeal, onLogFavorite, onSaveFavorite, onRemoveFavorite, onWeigh, onOpenInsights,
+  meals, allMeals, today, weight, targets, apiKey, model, restMode, favorites = [],
+  onAddMeal, onRemoveMeal, onRelogMeal, onLogFavorite, onSaveFavorite, onRemoveFavorite, onWeigh, onOpenInsights,
 }) {
   const [mode, setMode] = useState(null); // null | "text" | "draft"
   const [draft, setDraft] = useState(null);
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
+  const [busyLabel, setBusyLabel] = useState("Reading the plate…");
   const [error, setError] = useState("");
   const [weighing, setWeighing] = useState("");
+  const [showHistory, setShowHistory] = useState(false);
   const fileRef = useRef(null);
+
+  const hasHistory = Object.values(allMeals || {}).some((l) => l?.length);
 
   const totals = mealTotals(meals);
   const pd = proteinDistribution(meals, targets.protein);
@@ -103,6 +108,7 @@ export default function FuelCard({
     if (needKey()) return;
 
     setBusy(true);
+    setBusyLabel("Reading the plate…");
     setError("");
     try {
       const image = await compressImage(file);
@@ -120,10 +126,30 @@ export default function FuelCard({
     if (needKey()) return;
 
     setBusy(true);
+    setBusyLabel("Reading the plate…");
     setError("");
     try {
       const est = await estimateMealFromText({ apiKey, model: model || DEFAULT_MODEL, text });
       intoDraft(est, "text");
+    } catch (err) {
+      setError(explainError(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // The chain / packaged-food path: search the web for the *published* numbers
+  // rather than guessing. Same confirm-before-save draft as everything else.
+  const onLookup = async () => {
+    if (!text.trim()) return;
+    if (needKey()) return;
+
+    setBusy(true);
+    setBusyLabel("Searching published nutrition…");
+    setError("");
+    try {
+      const est = await lookupChainMeal({ apiKey, model: model || DEFAULT_MODEL, query: text });
+      intoDraft(est, "web");
     } catch (err) {
       setError(explainError(err));
     } finally {
@@ -243,8 +269,8 @@ export default function FuelCard({
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={S.mealName}>
                   {m.name}
-                  {(m.source === "photo" || m.source === "text") && (
-                    <span style={S.srcTag}>{m.source === "photo" ? "photo" : "ai"}</span>
+                  {(m.source === "photo" || m.source === "text" || m.source === "web") && (
+                    <span style={S.srcTag}>{m.source === "photo" ? "photo" : m.source === "web" ? "web" : "ai"}</span>
                   )}
                 </div>
                 <div style={S.mealMacros}>
@@ -297,17 +323,27 @@ export default function FuelCard({
 
       {/* add a meal */}
       {mode === null && !busy && (
-        <div style={{ ...S.addRow, marginTop: meals?.length ? 10 : 13 }}>
-          <button style={{ ...S.addBtn, ...S.addBtnPrimary, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }} onClick={() => fileRef.current?.click()}>
-            <Icon name="camera" size={15} /> Photo
-          </button>
-          <button style={{ ...S.addBtn, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }} onClick={() => { setMode("text"); setError(""); }}>
-            <Icon name="pencil" size={14} /> Describe
-          </button>
-          <button style={{ ...S.addBtn, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }} onClick={() => { setDraft({ ...EMPTY_DRAFT }); setMode("draft"); setError(""); }}>
-            <Icon name="plus" size={14} /> By hand
-          </button>
-        </div>
+        <>
+          <div style={{ ...S.addRow, marginTop: meals?.length ? 10 : 13 }}>
+            <button style={{ ...S.addBtn, ...S.addBtnPrimary, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }} onClick={() => fileRef.current?.click()}>
+              <Icon name="camera" size={15} /> Photo
+            </button>
+            <button style={{ ...S.addBtn, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }} onClick={() => { setMode("text"); setError(""); }}>
+              <Icon name="pencil" size={14} /> Describe
+            </button>
+            <button style={{ ...S.addBtn, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }} onClick={() => { setDraft({ ...EMPTY_DRAFT }); setMode("draft"); setError(""); }}>
+              <Icon name="plus" size={14} /> By hand
+            </button>
+          </div>
+          {hasHistory && (
+            <button
+              style={{ ...S.addBtn, width: "100%", marginTop: 8, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 7 }}
+              onClick={() => setShowHistory(true)}
+            >
+              <Icon name="clock" size={14} /> Browse past meals
+            </button>
+          )}
+        </>
       )}
 
       {/* No `capture` attribute on purpose: on a phone this lets the picker
@@ -324,7 +360,7 @@ export default function FuelCard({
       {busy && (
         <div style={{ ...S.addRow, marginTop: 13, alignItems: "center", gap: 10, color: "#8a9a8a", fontSize: 13 }}>
           <span style={S.spinner} />
-          Reading the plate…
+          {busyLabel}
         </div>
       )}
 
@@ -333,7 +369,7 @@ export default function FuelCard({
           <input
             autoFocus
             style={S.textInput}
-            placeholder="two eggs, toast with butter, black coffee"
+            placeholder="two eggs, toast with butter — or 'Chipotle chicken bowl'"
             value={text}
             onChange={(e) => setText(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && onDescribe()}
@@ -342,8 +378,15 @@ export default function FuelCard({
             <button style={{ ...S.addBtn, ...S.addBtnPrimary }} onClick={onDescribe}>Estimate</button>
             <button style={S.addBtn} onClick={reset}>Cancel</button>
           </div>
+          <button
+            style={{ ...S.addBtn, width: "100%", marginTop: 8, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 7 }}
+            onClick={onLookup}
+          >
+            <Icon name="search" size={14} /> Look it up online — for chains &amp; packaged foods
+          </button>
           <div style={S.note}>
-            Often better than a photo, and cheaper — you know what you ate and the camera doesn't.
+            Describe home cooking for a quick estimate. For a named restaurant or packaged item, <b>Look
+            it up online</b> pulls the brand's published nutrition instead of guessing.
           </div>
         </div>
       )}
@@ -438,6 +481,16 @@ export default function FuelCard({
           </>
         )}
       </div>
+
+      {showHistory && (
+        <MealHistoryModal
+          allMeals={allMeals}
+          today={today}
+          onRelog={(m) => onRelogMeal?.(m)}
+          onSaveFavorite={onSaveFavorite}
+          onClose={() => setShowHistory(false)}
+        />
+      )}
     </div>
   );
 }
