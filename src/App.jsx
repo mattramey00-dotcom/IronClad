@@ -26,7 +26,7 @@ import {
   loadLastBackup, saveLastBackup, loadBackupNudge, saveBackupNudge,
 } from "./lib/storage.js";
 import { downloadBackup, backupReminderDue, monthKeyOf } from "./lib/backup.js";
-import { estimateTDEE, resolveTargets, weightTrend, bestE1RM, shiftKey, DEFAULT_TARGETS } from "./lib/nutrition.js";
+import { estimateTDEE, resolveTargets, weightTrend, bestE1RM, shiftKey, daysBetween, mealTotals, DEFAULT_TARGETS } from "./lib/nutrition.js";
 import { MODELS, DEFAULT_MODEL } from "./lib/claude.js";
 import { S } from "./styles.js";
 import Demo from "./components/Demo.jsx";
@@ -470,6 +470,31 @@ function Trainer({
     URL.revokeObjectURL(url);
   };
 
+  // Meals → CSV, for anyone who wants their nutrition data in a spreadsheet.
+  // One row per logged meal; weigh-ins and workouts have their own exports.
+  const exportMealsCSV = () => {
+    const nz = (v) => Math.round(Number(v) || 0);
+    const rows = [["date", "time", "meal", "kcal", "protein_g", "carbs_g", "fat_g", "source"]];
+    Object.keys(meals).sort().forEach((date) => {
+      (meals[date] || []).forEach((m) => {
+        rows.push([date, m.time || "", m.name || "", nz(m.kcal), nz(m.protein), nz(m.carbs), nz(m.fat), m.source || ""]);
+      });
+    });
+    const csv = rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `ironclad-meals-${person.name.toLowerCase().replace(/\s+/g, "-")}-${today}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // How long since the last weigh-in — for a gentle nudge on Fuel, since missed
+  // weigh-ins are what quietly weaken the whole TDEE estimate.
+  const lastWeighDate = Object.keys(weights).sort().pop() || null;
+  const weighGap = lastWeighDate ? daysBetween(lastWeighDate, today) : null;
+  const weighNudge = !weights[today] && lastWeighDate && weighGap >= 3;
+
   // ---- progress for the selected day ----
   const total = allExercises.length;
   const complete = allExercises.filter((e) => isDone(e.block, e.n)).length;
@@ -808,6 +833,21 @@ function Trainer({
       {/* ============ FUEL ============ */}
       {tab === "fuel" && (
       <>
+        {weighNudge && (
+          <div style={{ ...S.backupBanner, background: "rgba(224,180,74,.07)", borderColor: "rgba(224,180,74,.28)" }}>
+            <span style={{ color: "#E0B44A", display: "grid", placeItems: "center", flex: "0 0 auto" }}>
+              <Icon name="scale" size={18} />
+            </span>
+            <div style={{ flex: 1, minWidth: 0, fontSize: 12.5, color: "#c8c8b0", lineHeight: 1.45 }}>
+              {weighGap} days since your last weigh-in. A quick one this morning keeps your TDEE and trend honest.
+            </div>
+            {selected !== today && (
+              <button style={{ ...S.btnGhost, padding: "6px 12px", fontSize: 12 }} onClick={() => { setSelected(today); }}>
+                Today
+              </button>
+            )}
+          </div>
+        )}
         <div style={S.fuelDayHead}>
           {selected === today ? "Today" : DOW[agenda.weekday - 1]}
           <span style={{ color: "#556" }}>· {selected.slice(5).replace("-", "/")}</span>
@@ -897,6 +937,7 @@ function Trainer({
           onSetModel={onSetModel}
           onSwitchPerson={onSwitchPerson}
           onExportBackup={exportBackup}
+          onExportMealsCSV={exportMealsCSV}
           backupBusy={backupBusy}
           lastBackup={lastBackup}
           onClose={() => setShowSettings(false)}
@@ -958,7 +999,7 @@ function PartnerCard({ agenda, other }) {
 }
 
 // ---- settings ---------------------------------------------------------
-function SettingsModal({ plan, me, apiKey, model, wxKey, onSetWxKey, onSetApiKey, onSetModel, onSwitchPerson, onExportBackup, backupBusy, lastBackup, onClose }) {
+function SettingsModal({ plan, me, apiKey, model, wxKey, onSetWxKey, onSetApiKey, onSetModel, onSwitchPerson, onExportBackup, onExportMealsCSV, backupBusy, lastBackup, onClose }) {
   const [copied, setCopied] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
   const [keyDraft, setKeyDraft] = useState(apiKey);
@@ -1157,6 +1198,17 @@ function SettingsModal({ plan, me, apiKey, model, wxKey, onSetWxKey, onSetApiKey
           Saves everything on this phone — plan, logs, meals, weigh-ins, saved meals and photos — to a
           file you keep. If this phone ever gets wiped, load that file on the setup screen to get it all
           back. {lastBackup ? `Last export ${new Date(lastBackup).toLocaleDateString()}.` : "Not backed up yet."}
+        </div>
+
+        <button
+          style={{ ...S.btnGhost, width: "100%", marginTop: 10, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 7 }}
+          onClick={onExportMealsCSV}
+        >
+          <Icon name="chart" size={15} /> Export meals to a spreadsheet (CSV)
+        </button>
+        <div style={S.note}>
+          Just your meals, one row each, for a spreadsheet. Workout sets have their own CSV on the
+          Progress screen; a full backup (above) is the one that can restore the app.
         </div>
 
         <button
