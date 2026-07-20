@@ -19,6 +19,7 @@ import Hint from "./Hint.jsx";
 import MealHistoryModal from "./MealHistoryModal.jsx";
 import SavedMealsModal from "./SavedMealsModal.jsx";
 import BarcodeScanner from "./BarcodeScanner.jsx";
+import FuelArt from "./FuelArt.jsx";
 import { mealTotals, proteinDistribution } from "../lib/nutrition.js";
 import { lookupBarcode } from "../lib/food.js";
 import {
@@ -280,7 +281,9 @@ export default function FuelCard({
           {!meals?.length && <span style={{ color: "var(--text-faint)" }}>nothing logged yet</span>}
         </div>
       ) : (
-        <>
+        <div style={{ position: "relative", overflow: "hidden", borderRadius: 12 }}>
+          <FuelArt kind="protein" />
+          <div style={{ position: "relative", zIndex: 1 }}>
           <Bar label="Protein" value={totals.protein} target={targets.protein} color={PROTEIN_COLOR} />
 
           {/* how protein is spread today + how much is left */}
@@ -326,7 +329,8 @@ export default function FuelCard({
               <span style={{ marginLeft: "auto", color: "var(--text-faint)" }}>target from your own TDEE</span>
             )}
           </div>
-        </>
+          </div>
+        </div>
       )}
 
       {/* ---- trackers: water + supplements, each an enclosed inset panel so
@@ -335,7 +339,9 @@ export default function FuelCard({
 
       {/* water — a daily hydration tally against a bodyweight-based rec */}
       {onAddWater && (
-        <div style={S.fuelSection}>
+        <div style={{ ...S.fuelSection, position: "relative", overflow: "hidden" }}>
+          <FuelArt kind="waves" />
+          <div style={{ position: "relative", zIndex: 1 }}>
           <div style={S.fuelSectionHead}>
             <Icon name="drop" size={13} style={{ color: WATER_COLOR }} /> Water
             <span style={S.fuelSectionCount}>
@@ -371,6 +377,7 @@ export default function FuelCard({
                 {Math.max(0, Math.round((waterTarget - water) / 8))} cup{Math.round((waterTarget - water) / 8) === 1 ? "" : "s"} to go
               </span>
             )}
+          </div>
           </div>
         </div>
       )}
@@ -431,7 +438,10 @@ export default function FuelCard({
 
       {/* ---- meal log ---- */}
       <div style={S.fuelDivider} />
-      <div style={S.fuelGroupLabel}>Meals</div>
+      <div style={{ position: "relative", overflow: "hidden" }}>
+        <FuelArt kind="food" />
+        <div style={{ position: "relative", zIndex: 1 }}>
+        <div style={S.fuelGroupLabel}>Meals</div>
 
       {meals?.length > 0 && (
         <div>
@@ -644,6 +654,8 @@ export default function FuelCard({
       )}
 
       {error && <div style={S.err}>{error}</div>}
+        </div>
+      </div>
 
       {/* ---- body weight — the other half of the TDEE math ---- */}
       <div style={S.fuelDivider} />

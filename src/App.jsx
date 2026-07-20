@@ -217,6 +217,11 @@ function Shell({ children }) {
         @keyframes fade{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
         @keyframes flip{0%,38%{opacity:0}50%,88%{opacity:1}100%{opacity:0}}
         @keyframes spin{to{transform:rotate(360deg)}}
+        @keyframes fuelwave{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+        @keyframes fuelbob{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+        .fa-wave{animation:fuelwave linear infinite;will-change:transform}
+        .fa-bob{animation:fuelbob 8s ease-in-out infinite;will-change:transform}
+        @media (prefers-reduced-motion: reduce){.fa-wave,.fa-bob{animation:none}}
       `}</style>
       {children}
     </div>
