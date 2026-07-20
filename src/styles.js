@@ -267,7 +267,31 @@ export const S = {
   macroFill: { height: "100%", borderRadius: 99, transition: "width .45s ease" },
   macroMini: { display: "flex", gap: 14, fontSize: 12, color: "var(--text-dim)", marginTop: 4 },
 
-  weighRow: { display: "flex", alignItems: "center", gap: 8, marginTop: 12 },
+  // ---- fuel sectioning ----
+  //  The Fuel card carries three kinds of thing — the day's targets (a summary),
+  //  the trackers (water, supplements), and the meal log — so it reads on three
+  //  levels: targets sit flat at the top, trackers are enclosed inset panels, and
+  //  the meal/weigh-in groups are set off by a hairline rule and an uppercase
+  //  label. Without that, every section is just another margin and they blur.
+  fuelDivider: { height: 1, background: "var(--border)", margin: "16px 0 0" },
+  fuelGroupLabel: {
+    fontSize: 11, letterSpacing: 1.5, textTransform: "uppercase", color: "var(--text-dim)",
+    fontWeight: 600, margin: "14px 2px 10px", display: "flex", alignItems: "center", gap: 6,
+  },
+  fuelSection: {
+    background: "var(--sunken)", border: "1px solid var(--border)",
+    borderRadius: 14, padding: "11px 13px", marginTop: 12,
+  },
+  fuelSectionHead: {
+    display: "flex", alignItems: "center", gap: 6, marginBottom: 10,
+    fontSize: 11, letterSpacing: 1.2, textTransform: "uppercase", color: "var(--text-mute)", fontWeight: 600,
+  },
+  fuelSectionCount: {
+    marginLeft: "auto", fontSize: 12.5, color: "var(--text-2)", fontWeight: 600,
+    letterSpacing: 0, textTransform: "none", fontVariantNumeric: "tabular-nums",
+  },
+
+  weighRow: { display: "flex", alignItems: "center", gap: 8, marginTop: 4 },
   weighInput: {
     width: 92, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 9,
     color: "var(--text)", fontSize: 16, padding: "8px 10px", fontFamily: "inherit", outline: "none",

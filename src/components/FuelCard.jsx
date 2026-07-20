@@ -329,22 +329,23 @@ export default function FuelCard({
         </>
       )}
 
+      {/* ---- trackers: water + supplements, each an enclosed inset panel so
+              they read as distinct widgets rather than blurring together ---- */}
+      {(onAddWater || onToggleSupp) && <div style={S.fuelDivider} />}
+
       {/* water — a daily hydration tally against a bodyweight-based rec */}
       {onAddWater && (
-        <div style={{ marginTop: restMode ? 6 : 12 }}>
-          <div style={S.macroTop}>
-            <span style={{ ...S.macroName, display: "inline-flex", alignItems: "center", gap: 5 }}>
-              <Icon name="drop" size={13} style={{ color: WATER_COLOR }} /> Water
-            </span>
-            <span style={S.macroVal}>
-              {water}
-              <span style={{ color: "var(--text-faint)", fontWeight: 400 }}> / {waterTarget} oz</span>
+        <div style={S.fuelSection}>
+          <div style={S.fuelSectionHead}>
+            <Icon name="drop" size={13} style={{ color: WATER_COLOR }} /> Water
+            <span style={S.fuelSectionCount}>
+              {water}<span style={{ color: "var(--text-faint)", fontWeight: 400 }}> / {waterTarget} oz</span>
             </span>
           </div>
           <div style={S.macroBar}>
             <div style={{ ...S.macroFill, width: `${waterTarget ? Math.min(100, (water / waterTarget) * 100) : 0}%`, background: WATER_COLOR }} />
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 7, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 9, flexWrap: "wrap" }}>
             {[8, 16, 24].map((oz) => (
               <button
                 key={oz}
@@ -376,11 +377,11 @@ export default function FuelCard({
 
       {/* supplements — a self-defined daily checklist, no recommendations */}
       {onToggleSupp && (
-        <div style={{ marginTop: 12 }}>
-          <div style={{ ...S.label, marginBottom: 7, display: "flex", alignItems: "center" }}>
+        <div style={S.fuelSection}>
+          <div style={S.fuelSectionHead}>
             Supplements
             {supps.length > 0 && (
-              <span style={{ marginLeft: "auto", fontSize: 11, color: "var(--text-dim)", fontWeight: 400 }}>
+              <span style={S.fuelSectionCount}>
                 {suppTaken.filter((id) => supps.some((s) => s.id === id)).length}/{supps.length} taken
               </span>
             )}
@@ -428,9 +429,12 @@ export default function FuelCard({
         </div>
       )}
 
-      {/* meals */}
+      {/* ---- meal log ---- */}
+      <div style={S.fuelDivider} />
+      <div style={S.fuelGroupLabel}>Meals</div>
+
       {meals?.length > 0 && (
-        <div style={{ marginTop: 13 }}>
+        <div>
           {meals.map((m) => (
             <div key={m.id} style={S.mealRow}>
               <div style={{ flex: 1, minWidth: 0 }}>
@@ -641,7 +645,9 @@ export default function FuelCard({
 
       {error && <div style={S.err}>{error}</div>}
 
-      {/* weigh-in — the other half of the TDEE math */}
+      {/* ---- body weight — the other half of the TDEE math ---- */}
+      <div style={S.fuelDivider} />
+      <div style={S.fuelGroupLabel}>Body weight</div>
       <div style={S.weighRow}>
         <span style={{ color: "var(--text-mute)", display: "grid", placeItems: "center" }}><Icon name="scale" size={15} /></span>
         {weight ? (
