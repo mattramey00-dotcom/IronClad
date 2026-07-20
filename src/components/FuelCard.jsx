@@ -17,6 +17,7 @@ import { S } from "../styles.js";
 import Icon from "./Icon.jsx";
 import Hint from "./Hint.jsx";
 import MealHistoryModal from "./MealHistoryModal.jsx";
+import SavedMealsModal from "./SavedMealsModal.jsx";
 import { mealTotals, proteinDistribution } from "../lib/nutrition.js";
 import {
   compressImage, estimateMealFromPhoto, estimateMealFromText, lookupChainMeal, explainError, DEFAULT_MODEL,
@@ -64,6 +65,7 @@ export default function FuelCard({
   const [error, setError] = useState("");
   const [weighing, setWeighing] = useState("");
   const [showHistory, setShowHistory] = useState(false);
+  const [showSaved, setShowSaved] = useState(false);
   const fileRef = useRef(null);
 
   const hasHistory = Object.values(allMeals || {}).some((l) => l?.length);
@@ -335,13 +337,25 @@ export default function FuelCard({
               <Icon name="plus" size={14} /> By hand
             </button>
           </div>
-          {hasHistory && (
-            <button
-              style={{ ...S.addBtn, width: "100%", marginTop: 8, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 7 }}
-              onClick={() => setShowHistory(true)}
-            >
-              <Icon name="clock" size={14} /> Browse past meals
-            </button>
+          {(favorites.length > 0 || hasHistory) && (
+            <div style={{ ...S.addRow, marginTop: 8 }}>
+              {favorites.length > 0 && (
+                <button
+                  style={{ ...S.addBtn, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 7 }}
+                  onClick={() => setShowSaved(true)}
+                >
+                  <Icon name="star" size={14} /> Saved meals
+                </button>
+              )}
+              {hasHistory && (
+                <button
+                  style={{ ...S.addBtn, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 7 }}
+                  onClick={() => setShowHistory(true)}
+                >
+                  <Icon name="clock" size={14} /> Past meals
+                </button>
+              )}
+            </div>
           )}
         </>
       )}
@@ -489,6 +503,15 @@ export default function FuelCard({
           onRelog={(m) => onRelogMeal?.(m)}
           onSaveFavorite={onSaveFavorite}
           onClose={() => setShowHistory(false)}
+        />
+      )}
+
+      {showSaved && (
+        <SavedMealsModal
+          favorites={favorites}
+          onLog={onLogFavorite}
+          onRemove={onRemoveFavorite}
+          onClose={() => setShowSaved(false)}
         />
       )}
     </div>
