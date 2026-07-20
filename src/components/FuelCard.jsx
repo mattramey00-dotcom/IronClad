@@ -18,7 +18,9 @@ import Icon from "./Icon.jsx";
 import Hint from "./Hint.jsx";
 import MealHistoryModal from "./MealHistoryModal.jsx";
 import SavedMealsModal from "./SavedMealsModal.jsx";
+import BarcodeScanner from "./BarcodeScanner.jsx";
 import { mealTotals, proteinDistribution } from "../lib/nutrition.js";
+import { lookupBarcode } from "../lib/food.js";
 import {
   compressImage, estimateMealFromPhoto, estimateMealFromText, lookupChainMeal, explainError, DEFAULT_MODEL,
 } from "../lib/claude.js";
@@ -80,6 +82,7 @@ export default function FuelCard({
   const [weighing, setWeighing] = useState("");
   const [showHistory, setShowHistory] = useState(false);
   const [showSaved, setShowSaved] = useState(false);
+  const [showScanner, setShowScanner] = useState(false);
   const [addingSupp, setAddingSupp] = useState(false);
   const [suppName, setSuppName] = useState("");
   const [suppDose, setSuppDose] = useState("");
@@ -186,6 +189,25 @@ export default function FuelCard({
       intoDraft(est, "web");
     } catch (err) {
       setError(explainError(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // A scanned barcode goes straight to the free Open Food Facts database — no
+  // Anthropic key needed, so this path works even with no key set. Same
+  // confirm-before-save draft as every other method.
+  const onScanResult = async (code) => {
+    setShowScanner(false);
+    if (!code) return;
+    setBusy(true);
+    setBusyLabel("Looking up the barcode…");
+    setError("");
+    try {
+      const est = await lookupBarcode(code);
+      intoDraft(est, "barcode");
+    } catch (err) {
+      setError(err?.message || "Couldn't look up that barcode.");
     } finally {
       setBusy(false);
     }
@@ -414,8 +436,8 @@ export default function FuelCard({
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={S.mealName}>
                   {m.name}
-                  {(m.source === "photo" || m.source === "text" || m.source === "web") && (
-                    <span style={S.srcTag}>{m.source === "photo" ? "photo" : m.source === "web" ? "web" : "ai"}</span>
+                  {(m.source === "photo" || m.source === "text" || m.source === "web" || m.source === "barcode") && (
+                    <span style={S.srcTag}>{m.source === "photo" ? "photo" : m.source === "web" ? "web" : m.source === "barcode" ? "scan" : "ai"}</span>
                   )}
                 </div>
                 <div style={S.mealMacros}>
@@ -488,6 +510,12 @@ export default function FuelCard({
               <Icon name="plus" size={14} /> By hand
             </button>
           </div>
+          <button
+            style={{ ...S.addBtn, width: "100%", marginTop: 8, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 7 }}
+            onClick={() => { setError(""); setShowScanner(true); }}
+          >
+            <Icon name="barcode" size={16} /> Scan a barcode — for packaged foods
+          </button>
           {(favorites.length > 0 || hasHistory) && (
             <div style={{ ...S.addRow, marginTop: 8 }}>
               {favorites.length > 0 && (
@@ -663,6 +691,13 @@ export default function FuelCard({
           onLog={onLogFavorite}
           onRemove={onRemoveFavorite}
           onClose={() => setShowSaved(false)}
+        />
+      )}
+
+      {showScanner && (
+        <BarcodeScanner
+          onResult={onScanResult}
+          onClose={() => setShowScanner(false)}
         />
       )}
     </div>

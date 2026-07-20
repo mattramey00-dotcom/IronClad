@@ -107,8 +107,8 @@ export default function MealHistoryModal({ allMeals = {}, today, onRelog, onSave
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={S.mealName}>
                           {m.name}
-                          {(m.source === "photo" || m.source === "text" || m.source === "web") && (
-                            <span style={S.srcTag}>{m.source === "photo" ? "photo" : m.source === "web" ? "web" : "ai"}</span>
+                          {(m.source === "photo" || m.source === "text" || m.source === "web" || m.source === "barcode") && (
+                            <span style={S.srcTag}>{m.source === "photo" ? "photo" : m.source === "web" ? "web" : m.source === "barcode" ? "scan" : "ai"}</span>
                           )}
                         </div>
                         <div style={S.mealMacros}>
