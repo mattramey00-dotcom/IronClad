@@ -925,7 +925,7 @@ function Trainer({
             <span style={{ color: "#E0B44A", display: "grid", placeItems: "center", flex: "0 0 auto" }}>
               <Icon name="scale" size={18} />
             </span>
-            <div style={{ flex: 1, minWidth: 0, fontSize: 12.5, color: "#c8c8b0", lineHeight: 1.45 }}>
+            <div style={{ flex: 1, minWidth: 0, fontSize: 12.5, color: "var(--text-2)", lineHeight: 1.45 }}>
               {weighGap} days since your last weigh-in. A quick one this morning keeps your TDEE and trend honest.
             </div>
             {selected !== today && (
