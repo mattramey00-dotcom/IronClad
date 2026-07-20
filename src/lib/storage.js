@@ -152,6 +152,16 @@ export const saveFavMeals = (personId, favs) => write(`favmeals:${personId}`, JS
 export const loadSubs = (personId) => readJSON(`subs:${personId}`, {});
 export const saveSubs = (personId, subs) => write(`subs:${personId}`, JSON.stringify(subs));
 
+// ---- added / accessory exercises (per profile) ----------------------
+//  Extra movements a person tacks onto a day from the "Target a muscle" picker,
+//  keyed by date → [{ n, s, d }]. They show up in that day's exercise list on
+//  top of the prescribed plan, so the whole session is visible — but they don't
+//  change the shared program, and they don't count toward the day's plan-done
+//  gold tick (that stays about finishing the prescribed workout).
+
+export const loadExtras = (personId) => readJSON(`extras:${personId}`, {});
+export const saveExtras = (personId, extras) => write(`extras:${personId}`, JSON.stringify(extras));
+
 // ---- progress photo index (per profile) -----------------------------
 //  Just the index — [{ id, date, angle }] — pointing at blobs held in
 //  IndexedDB (lib/photos.js). The scale wobbles week to week; a photo doesn't.
@@ -257,6 +267,6 @@ export function migrateLegacy(personId) {
 export function resetEverything() {
   ["plan", "me", "apikey", "model", "travel", "wxkey", "lastbackup", "backupnudge", "restnotify", "theme"].forEach(remove);
   ["p1", "p2"].forEach((id) => {
-    ["progress", "logs", "meals", "weights", "targets", "favmeals", "subs"].forEach((k) => remove(`${k}:${id}`));
+    ["progress", "logs", "meals", "weights", "targets", "favmeals", "subs", "extras"].forEach((k) => remove(`${k}:${id}`));
   });
 }

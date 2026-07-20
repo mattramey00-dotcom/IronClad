@@ -20,7 +20,7 @@ import {
   loadPlan, savePlan, loadMe, saveMe, loadProgress, saveProgress,
   loadLogs, saveLogs, migrateLegacy, encodePlan, resetEverything,
   loadMeals, saveMeals, loadWeights, saveWeights, loadTargets, saveTargets,
-  loadFavMeals, saveFavMeals, loadPhotos, savePhotos, loadSubs, saveSubs,
+  loadFavMeals, saveFavMeals, loadPhotos, savePhotos, loadSubs, saveSubs, loadExtras, saveExtras,
   loadApiKey, saveApiKey, loadModel, saveModel, loadTravel, saveTravel,
   loadWxKey, saveWxKey,
   loadLastBackup, saveLastBackup, loadBackupNudge, saveBackupNudge,
@@ -61,6 +61,7 @@ export default function App() {
   const [meals, setMeals] = useState({});
   const [favMeals, setFavMeals] = useState([]);
   const [subs, setSubs] = useState({});
+  const [extras, setExtras] = useState({});
   const [photos, setPhotos] = useState([]);
   const [showPhotos, setShowPhotos] = useState(false);
   const [weights, setWeights] = useState({});
@@ -105,6 +106,7 @@ export default function App() {
     setMeals(loadMeals(me));
     setFavMeals(loadFavMeals(me));
     setSubs(loadSubs(me));
+    setExtras(loadExtras(me));
     setPhotos(loadPhotos(me));
     setWeights(loadWeights(me));
     setTargets(loadTargets(me) || DEFAULT_TARGETS);
@@ -153,6 +155,8 @@ export default function App() {
       setFavMeals={setFavMeals}
       subs={subs}
       setSubs={setSubs}
+      extras={extras}
+      setExtras={setExtras}
       photos={photos}
       setPhotos={setPhotos}
       showPhotos={showPhotos}
@@ -207,7 +211,7 @@ function Shell({ children }) {
 
 function Trainer({
   plan, me, selected, setSelected, progress, setProgress, logs, setLogs,
-  meals, setMeals, favMeals, setFavMeals, subs, setSubs, photos, setPhotos, showPhotos, setShowPhotos,
+  meals, setMeals, favMeals, setFavMeals, subs, setSubs, extras, setExtras, photos, setPhotos, showPhotos, setShowPhotos,
   weights, setWeights, targets, setTargets,
   apiKey, model, onSetApiKey, onSetModel, wxKey, onSetWxKey, travel, onSetTravel,
   openLog, setOpenLog, timer, setTimer, video, setVideo,
@@ -276,7 +280,8 @@ function Trainer({
     let have = 0;
     for (const k in progress) {
       if (!progress[k] || !k.startsWith(prefix)) continue;
-      if (k.slice(prefix.length).split("::")[0] === "Extra") continue;
+      const blk = k.slice(prefix.length).split("::")[0];
+      if (blk === "Added" || blk === "Extra") continue; // accessory work, not the plan
       have++;
     }
     return have >= need;
@@ -302,6 +307,17 @@ function Trainer({
     [blocks, resolveEx],
   );
 
+  // The day's full list as rendered = the prescribed blocks plus anything you
+  // tacked on from "Target a muscle", so the whole session is visible. Kept out
+  // of flatExercises (above) so finishing an added move just closes rather than
+  // jumping into the plan, and out of the progress bar / plan-done tick.
+  const dayBlocks = useMemo(() => {
+    const added = extras[selected] || [];
+    return added.length
+      ? [...blocks, { name: "Added", exercises: added, isExtra: true, note: "Accessory work you added on top of today's plan." }]
+      : blocks;
+  }, [blocks, extras, selected]);
+
   // ---- persistence ----
   const persistProgress = useCallback((next) => {
     setProgress(next);
@@ -320,6 +336,24 @@ function Trainer({
     else delete next[origName];
     setSubs(next);
     saveSubs(me, next);
+  };
+
+  // Tack an accessory exercise onto the selected day (deduped by name), so it
+  // shows in the day's list. Persisted the moment it's picked, before any sets.
+  const persistExtras = (next) => { setExtras(next); saveExtras(me, next); };
+  const addExtra = (ex) => {
+    const day = extras[selected] || [];
+    if (day.some((e) => e.n === ex.n)) return;
+    persistExtras({ ...extras, [selected]: [...day, { n: ex.n, s: ex.s, d: ex.d }] });
+  };
+  const removeExtra = (name) => {
+    const day = (extras[selected] || []).filter((e) => e.n !== name);
+    const next = { ...extras };
+    if (day.length) next[selected] = day; else delete next[selected];
+    persistExtras(next);
+    // Drop its completion mark too, so a removed move doesn't linger as "done".
+    const k = `${selected}::Added::${name}`;
+    if (progress[k]) { const p = { ...progress }; delete p[k]; persistProgress(p); }
   };
 
   // Completion is keyed by date (and block, so a Plank in the Together block
@@ -824,14 +858,15 @@ function Trainer({
         </Hint>
       )}
 
-      {/* Blocks */}
-      {blocks.map((block, bi) => (
+      {/* Blocks — the prescribed plan, plus any accessory work you added */}
+      {dayBlocks.map((block, bi) => (
         <div key={bi} style={S.block}>
-          <div style={{ ...S.blockName, ...(block.isTogether ? S.blockNameTogether : {}), display: "flex", alignItems: "center", gap: 6 }}>
+          <div style={{ ...S.blockName, ...(block.isTogether || block.isExtra ? S.blockNameTogether : {}), display: "flex", alignItems: "center", gap: 6 }}>
             {block.isTogether && <Icon name="sparkle" size={12} />}
+            {block.isExtra && <Icon name="plus" size={12} />}
             {block.isTogether ? `${block.name} · with ${other.name}` : block.name}
           </div>
-          {(block.isTogether || block.isRecovery) && (
+          {(block.isTogether || block.isRecovery || block.isExtra) && (
             <div style={S.blockNote}>{block.note}</div>
           )}
 
@@ -902,6 +937,16 @@ function Trainer({
                 >
                   {done ? <span style={{ animation: "pop .35s ease" }}>✓</span> : ""}
                 </button>
+                {block.isExtra && (
+                  <button
+                    onClick={() => removeExtra(ex.n)}
+                    style={{ background: "transparent", border: "none", color: "var(--text-dim)", cursor: "pointer", padding: "4px 6px 4px 2px", fontSize: 17, fontFamily: "inherit", lineHeight: 1 }}
+                    aria-label={`Remove ${ex.n} from today`}
+                    title="Remove from today"
+                  >
+                    ×
+                  </button>
+                )}
               </div>
             );
           })}
@@ -1011,7 +1056,7 @@ function Trainer({
       )}
       {showMuscleTarget && (
         <MuscleTargetModal
-          onPickExercise={(ex) => { setShowMuscleTarget(false); setOpenEx({ blockName: "Extra", ex }); }}
+          onPickExercise={(ex) => { addExtra(ex); setShowMuscleTarget(false); setOpenEx({ blockName: "Added", ex }); }}
           onClose={() => setShowMuscleTarget(false)}
         />
       )}

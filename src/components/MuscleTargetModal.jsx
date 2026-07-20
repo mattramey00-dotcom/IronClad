@@ -76,7 +76,7 @@ export default function MuscleTargetModal({ onPickExercise, onClose }) {
           <Icon name="stretch" size={18} style={{ color: ACCENT }} />
           <div>
             <div style={{ fontFamily: "'Inter', sans-serif", fontWeight: 800, fontSize: 18, letterSpacing: -0.3 }}>Target a muscle</div>
-            <div style={{ fontSize: 11, color: "var(--text-dim)" }}>Tap a muscle to train it</div>
+            <div style={{ fontSize: 11, color: "var(--text-dim)" }}>Adds to today, on top of your plan</div>
           </div>
           <button style={{ ...S.btnGhost, marginLeft: "auto", padding: "6px 12px" }} onClick={onClose}>✕</button>
         </div>
@@ -89,13 +89,14 @@ export default function MuscleTargetModal({ onPickExercise, onClose }) {
 
           {!muscle ? (
             <div style={{ color: "var(--text-mute)", fontSize: 13.5, lineHeight: 1.6, padding: "16px 6px 4px", textAlign: "center" }}>
-              Tap any muscle above and the moves that train it appear here. Pick one and it opens like
-              any exercise — with its demo, set logging and rest timer — as extra work on today.
+              Tap any muscle above and the moves that train it appear here. Whatever you pick is
+              <b> added to today's workout</b>, on top of your prescribed plan — so your Train screen
+              shows everything you did — and it opens right away with its demo, set logging and rest timer.
             </div>
           ) : (
             <>
               <label style={{ ...S.label, marginTop: 18 }}>
-                {MUSCLE_LABELS[muscle]} · {exs.length} move{exs.length === 1 ? "" : "s"}
+                {MUSCLE_LABELS[muscle]} · {exs.length} move{exs.length === 1 ? "" : "s"} · adds to today
               </label>
               {exs.length === 0 ? (
                 <div style={{ color: "var(--text-mute)", fontSize: 13, padding: "8px 4px" }}>
