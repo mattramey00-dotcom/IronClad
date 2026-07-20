@@ -23,7 +23,9 @@ import {
   loadFavMeals, saveFavMeals, loadPhotos, savePhotos,
   loadApiKey, saveApiKey, loadModel, saveModel, loadTravel, saveTravel,
   loadWxKey, saveWxKey,
+  loadLastBackup, saveLastBackup, loadBackupNudge, saveBackupNudge,
 } from "./lib/storage.js";
+import { downloadBackup, backupReminderDue, monthKeyOf } from "./lib/backup.js";
 import { estimateTDEE, resolveTargets, weightTrend, DEFAULT_TARGETS } from "./lib/nutrition.js";
 import { MODELS, DEFAULT_MODEL } from "./lib/claude.js";
 import { S } from "./styles.js";
@@ -198,9 +200,36 @@ function Trainer({
   const [tab, setTab] = useState("train");
   const [rest, setRest] = useState(null); // { id, secs, label } — the sticky rest timer
   const [openEx, setOpenEx] = useState(null); // { blockName, ex } — the focused exercise modal
+  const [lastBackup, setLastBackup] = useState(() => loadLastBackup());
+  const [backupNudge, setBackupNudge] = useState(() => loadBackupNudge());
+  const [backupBusy, setBackupBusy] = useState(false);
   const today = dateKey(now);
   const person = personById(plan, me);
   const other = partnerOf(plan, me);
+
+  // ---- backup ----
+  const exportBackup = async () => {
+    setBackupBusy(true);
+    try {
+      const b = await downloadBackup();
+      saveLastBackup(b.exportedAt);
+      setLastBackup(b.exportedAt);
+    } catch {
+      /* the download didn't start; the button just re-enables to try again */
+    } finally {
+      setBackupBusy(false);
+    }
+  };
+  const dismissBackupReminder = () => {
+    const mk = monthKeyOf(now);
+    saveBackupNudge(mk);
+    setBackupNudge(mk);
+  };
+  const hasData =
+    Object.keys(meals || {}).length > 0 ||
+    Object.keys(weights || {}).length > 0 ||
+    Object.keys(logs || {}).length > 0;
+  const backupDue = backupReminderDue({ now, lastBackupISO: lastBackup, nudgedMonth: backupNudge, hasData });
 
   const agenda = useMemo(() => agendaFor(plan, me, selected), [plan, me, selected]);
   const week = useMemo(() => weekAgenda(plan, me, selected), [plan, me, selected]);
@@ -461,6 +490,30 @@ function Trainer({
           </div>
         </div>
       </div>
+
+      {/* End-of-month nudge: get a copy of your data off this phone. There's no
+          server, so this file is the only way back from a cleared browser. */}
+      {backupDue && (
+        <div style={S.backupBanner}>
+          <span style={{ color: ACCENT, display: "grid", placeItems: "center", flex: "0 0 auto" }}>
+            <Icon name="download" size={18} />
+          </span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 13.5, fontWeight: 700, color: "#e7e7f2" }}>Back up your data</div>
+            <div style={{ fontSize: 12, color: "#9a9ab0", lineHeight: 1.45, marginTop: 1 }}>
+              End of the month — save a copy to this phone in case it ever gets wiped.
+            </div>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6, flex: "0 0 auto" }}>
+            <button style={{ ...S.btnAccent, padding: "7px 12px", fontSize: 12.5 }} onClick={exportBackup} disabled={backupBusy}>
+              {backupBusy ? "Saving…" : "Export"}
+            </button>
+            <button style={{ ...S.btnGhost, padding: "5px 12px", fontSize: 11.5 }} onClick={dismissBackupReminder}>
+              Later
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Who's who + the week — shared by Train and Fuel (Insights is standalone) */}
       {tab !== "insights" && (
@@ -781,6 +834,9 @@ function Trainer({
           onSetApiKey={onSetApiKey}
           onSetModel={onSetModel}
           onSwitchPerson={onSwitchPerson}
+          onExportBackup={exportBackup}
+          backupBusy={backupBusy}
+          lastBackup={lastBackup}
           onClose={() => setShowSettings(false)}
         />
       )}
@@ -840,7 +896,7 @@ function PartnerCard({ agenda, other }) {
 }
 
 // ---- settings ---------------------------------------------------------
-function SettingsModal({ plan, me, apiKey, model, travel, onSetTravel, wxKey, onSetWxKey, onSetApiKey, onSetModel, onSwitchPerson, onClose }) {
+function SettingsModal({ plan, me, apiKey, model, travel, onSetTravel, wxKey, onSetWxKey, onSetApiKey, onSetModel, onSwitchPerson, onExportBackup, backupBusy, lastBackup, onClose }) {
   const [copied, setCopied] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
   const [keyDraft, setKeyDraft] = useState(apiKey);
@@ -1046,6 +1102,22 @@ function SettingsModal({ plan, me, apiKey, model, travel, onSetTravel, wxKey, on
         <div style={S.note}>
           Portion size is the hardest part of reading a plate, and it's where the cheaper model
           gives up the most. Given the estimate is already ±20–30%, Opus is the one worth paying for.
+        </div>
+
+        {/* Backup — the only way back from a cleared phone, since nothing is
+            stored off-device. Restore lives on the first-run setup screen. */}
+        <label style={{ ...S.label, marginTop: 20 }}>Back up your data</label>
+        <button
+          style={{ ...S.btnGhost, width: "100%", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 7 }}
+          onClick={onExportBackup}
+          disabled={backupBusy}
+        >
+          <Icon name="download" size={15} /> {backupBusy ? "Saving…" : "Export a backup to this phone"}
+        </button>
+        <div style={S.note}>
+          Saves everything on this phone — plan, logs, meals, weigh-ins, saved meals and photos — to a
+          file you keep. If this phone ever gets wiped, load that file on the setup screen to get it all
+          back. {lastBackup ? `Last export ${new Date(lastBackup).toLocaleDateString()}.` : "Not backed up yet."}
         </div>
 
         <button

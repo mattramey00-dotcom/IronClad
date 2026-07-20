@@ -57,6 +57,24 @@ export async function deletePhoto(id) {
   });
 }
 
+// Every stored photo, blob and all — for the full-device backup. Walks the
+// store directly rather than trusting the localStorage index, so a shot whose
+// metadata got out of sync still makes it into the export.
+export async function allPhotos() {
+  const db = await openDB();
+  return new Promise((res, rej) => {
+    const out = [];
+    const tx = db.transaction(STORE, "readonly");
+    const req = tx.objectStore(STORE).openCursor();
+    req.onsuccess = () => {
+      const cur = req.result;
+      if (cur) { out.push({ id: cur.key, blob: cur.value }); cur.continue(); }
+      else res(out);
+    };
+    req.onerror = () => rej(req.error);
+  });
+}
+
 // Shrink a captured photo to a sensible size before it's stored — a progress
 // photo doesn't need to be 12 megapixels, and this keeps the phone's storage
 // (and the IndexedDB budget) sane over years of monthly shots.

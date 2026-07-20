@@ -166,6 +166,40 @@ export const saveModel = (model) => write("model", model);
 export const loadWxKey = () => read("wxkey") || "";
 export const saveWxKey = (key) => (key ? write("wxkey", key) : remove("wxkey"));
 
+// ---- full-device backup (export / import) ---------------------------
+//  There is no server, so a wiped phone is a wiped account. These two lift the
+//  entire `ironclad:*` namespace out to a plain object (for a JSON file the user
+//  saves to their own device) and write it back on restore. Everything under the
+//  namespace goes — plan, profile logs, meals, weights, keys — so a restore is a
+//  faithful clone of the phone at export time. Photo blobs live in IndexedDB and
+//  are handled alongside this in lib/backup.js.
+
+export function dumpLocal() {
+  const out = {};
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith(`${NS}:`)) out[key.slice(NS.length + 1)] = localStorage.getItem(key);
+    }
+  } catch {
+    /* storage unavailable — caller gets an empty dump */
+  }
+  return out;
+}
+
+export function restoreLocal(map) {
+  Object.entries(map || {}).forEach(([k, v]) => {
+    if (typeof v === "string") write(k, v);
+  });
+}
+
+// When the last backup was taken, and which month we've already nudged about —
+// so the end-of-month reminder fires once a month, not on every open.
+export const loadLastBackup = () => read("lastbackup") || "";
+export const saveLastBackup = (iso) => write("lastbackup", iso);
+export const loadBackupNudge = () => read("backupnudge") || "";
+export const saveBackupNudge = (monthKey) => write("backupnudge", monthKey);
+
 // ---- travel (weight-free) mode (this device only) --------------------
 //  A temporary "I'm on the road, no gym" switch, not a change to the shared
 //  program — so it lives on the phone, never in the plan code. Off by default;
@@ -199,7 +233,7 @@ export function migrateLegacy(personId) {
 }
 
 export function resetEverything() {
-  ["plan", "me", "apikey", "model", "travel", "wxkey"].forEach(remove);
+  ["plan", "me", "apikey", "model", "travel", "wxkey", "lastbackup", "backupnudge"].forEach(remove);
   ["p1", "p2"].forEach((id) => {
     ["progress", "logs", "meals", "weights", "targets", "favmeals"].forEach((k) => remove(`${k}:${id}`));
   });

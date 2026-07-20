@@ -1,8 +1,9 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { ACCENT } from "../data/program.js";
 import { S } from "../styles.js";
 import { makePlan, mondayOf, dateKey, WORKOUT_SHORTS } from "../lib/schedule.js";
 import { encodePlan, decodePlan } from "../lib/storage.js";
+import { parseBackup, restoreBackup } from "../lib/backup.js";
 import { GOALS } from "../lib/nutrition.js";
 
 // ============================================================
@@ -114,9 +115,31 @@ function Baseline({ name, onDone, onBack }) {
 
 export default function Setup({ onReady }) {
   const [mode, setMode] = useState("choose");
+  const [restoring, setRestoring] = useState(false);
+  const [restoreErr, setRestoreErr] = useState("");
+  const fileRef = useRef(null);
 
   if (mode === "create") return <Create onReady={onReady} onBack={() => setMode("choose")} />;
   if (mode === "join") return <Join onReady={onReady} onBack={() => setMode("choose")} />;
+
+  // Restore from a backup file: write everything back, then reload so the app
+  // boots from storage exactly as it was on the phone the backup came from.
+  const onRestoreFile = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setRestoring(true);
+    setRestoreErr("");
+    try {
+      const text = await file.text();
+      const backup = parseBackup(text);
+      await restoreBackup(backup);
+      window.location.reload();
+    } catch (err) {
+      setRestoreErr(err?.message || "Couldn't restore from that file.");
+      setRestoring(false);
+    }
+  };
 
   return (
     <div style={S.setupWrap}>
@@ -140,6 +163,23 @@ export default function Setup({ onReady }) {
       <div style={S.note}>
         Whoever sets it up first creates the plan and sends the other a code. Nothing
         is uploaded anywhere — the code is how the two phones agree on the schedule.
+      </div>
+
+      {/* Coming back after a wipe or onto a new phone: restore a backup file. */}
+      <div style={{ borderTop: "1px solid #1c1d28", marginTop: 20, paddingTop: 16 }}>
+        <button
+          style={{ ...S.btnGhost, width: "100%" }}
+          onClick={() => fileRef.current?.click()}
+          disabled={restoring}
+        >
+          {restoring ? "Restoring…" : "Restore from a backup file"}
+        </button>
+        <input ref={fileRef} type="file" accept="application/json,.json" onChange={onRestoreFile} style={{ display: "none" }} />
+        {restoreErr && <div style={S.err}>{restoreErr}</div>}
+        <div style={S.note}>
+          Have an <b>ironclad-backup</b> file you exported before? Load it here to bring back your
+          plan, logs, meals, weigh-ins and photos — no need to set up again.
+        </div>
       </div>
     </div>
   );

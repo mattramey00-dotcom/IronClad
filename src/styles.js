@@ -323,4 +323,9 @@ export const S = {
     background: "rgba(129,140,248,.05)", border: "1px solid rgba(129,140,248,.22)",
     borderRadius: 14, padding: 14, marginTop: 14, fontSize: 13, color: "#c8c8d8", lineHeight: 1.65,
   },
+  backupBanner: {
+    display: "flex", alignItems: "center", gap: 11,
+    background: "rgba(129,140,248,.07)", border: "1px solid rgba(129,140,248,.28)",
+    borderRadius: 14, padding: "11px 13px", margin: "0 0 14px",
+  },
 };
