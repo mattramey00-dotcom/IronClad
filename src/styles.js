@@ -81,6 +81,11 @@ export const S = {
   },
   weekCellActive: { border: `1px solid ${ACCENT}`, background: "rgba(129,140,248,.1)" },
   weekCellYours: { background: "#191b28", border: "1px solid #2f3244" },
+  weekCellDone: { background: "rgba(224,180,74,.16)", border: "1px solid rgba(224,180,74,.6)" },
+  weekCheck: {
+    position: "absolute", top: 2, right: 3, width: 14, height: 14, borderRadius: "50%",
+    background: "#54b37e", color: "#06130b", display: "grid", placeItems: "center",
+  },
   weekDow: { fontSize: 10, color: "#7a7a90", letterSpacing: 0.3, textTransform: "uppercase" },
   weekWorkout: { fontSize: 10.5, fontWeight: 700, marginTop: 3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" },
   weekMeta: { fontSize: 9, color: "#64647a", marginTop: 2, height: 12, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" },

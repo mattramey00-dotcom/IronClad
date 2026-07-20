@@ -9,10 +9,12 @@
 // ============================================================
 
 import React, { useState } from "react";
-import { ACCENT, MUSCLE_LABELS, exercisesForMuscle } from "../data/program.js";
+import { ACCENT, MUSCLE_LABELS, DEMOS, exercisesForMuscle } from "../data/program.js";
 import { bodyFront, bodyBack, OUTLINE_FRONT, OUTLINE_BACK } from "../data/bodyParts.js";
 import { S } from "../styles.js";
 import Icon from "./Icon.jsx";
+import ExerciseGif from "./ExerciseGif.jsx";
+import Demo from "./Demo.jsx";
 
 // Anatomical polygon slug → the app's muscle token (the reverse of the small
 // map's token→slug tables). Cosmetic parts are skipped so only real muscles
@@ -104,8 +106,19 @@ export default function MuscleTargetModal({ onPickExercise, onClose }) {
                   <button
                     key={ex.n}
                     onClick={() => onPickExercise(ex)}
-                    style={{ ...S.exRow, width: "100%", textAlign: "left", cursor: "pointer" }}
+                    style={{ ...S.exRow, width: "100%", textAlign: "left", cursor: "pointer", gap: 12 }}
                   >
+                    <div style={S.demoWrap}>
+                      {/* cacheOnly: shows the real animation if it's already been
+                          fetched (many share ids with the program), otherwise the
+                          photo/line demo — the modal fetches it on open. */}
+                      <ExerciseGif
+                        name={ex.n}
+                        size={46}
+                        cacheOnly
+                        fallback={<Demo kind={DEMOS[ex.d]?.kind || "core"} name={ex.n} size={46} />}
+                      />
+                    </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={S.exName}>{ex.n}</div>
                       <div style={S.exSets}>{ex.s}</div>

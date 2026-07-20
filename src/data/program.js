@@ -698,6 +698,63 @@ export function musclesFor(ex) {
   return MUSCLES_BY_NAME[ex.n] || MUSCLES_BY_KIND[DEMOS[ex.d]?.kind] || ["fullbody"];
 }
 
+// ---- accessory library ------------------------------------------------
+//  Movements beyond the daily program, so the tap-a-muscle picker has real
+//  depth — cables, machines, isolation work. Each is { n, s, d, m: muscles,
+//  gif } where the gif reuses the established WorkoutX id for the same movement
+//  pattern (the app's "nearest honest motion" rule — a real animation of the
+//  matching lift beats an icon). A few isolation machines with no honest analog
+//  carry no gif and fall back to the photo/line demo, exactly as elsewhere.
+
+export const LIBRARY = [
+  // chest
+  { n: "Incline Barbell Press", s: "4 × 8", d: "press", m: ["chest", "shoulders", "triceps"], gif: "0314" },
+  { n: "Cable Chest Fly", s: "3 × 12–15", d: "press", m: ["chest", "shoulders"], gif: "0308" },
+  { n: "Machine Chest Press", s: "3 × 10–12", d: "press", m: ["chest", "triceps", "shoulders"], gif: "0025" },
+  { n: "Decline Push-Ups", s: "3 × 12–15", d: "press", m: ["chest", "shoulders", "triceps"], gif: "0279" },
+  // shoulders
+  { n: "Arnold Press", s: "3 × 10", d: "press", m: ["shoulders", "triceps"], gif: "0405" },
+  { n: "Barbell Overhead Press", s: "4 × 6–8", d: "press", m: ["shoulders", "triceps"], gif: "0405" },
+  { n: "Cable Lateral Raise", s: "3 × 15", d: "raise", m: ["shoulders"], gif: "0334" },
+  { n: "Face Pull", s: "3 × 15", d: "row", m: ["shoulders", "traps"], gif: "0383" },
+  { n: "Dumbbell Shrug", s: "3 × 12–15", d: "raise", m: ["traps"] },
+  // back
+  { n: "Lat Pulldown", s: "3 × 10–12", d: "row", m: ["lats", "biceps"], gif: "0293" },
+  { n: "Seated Cable Row", s: "3 × 10–12", d: "row", m: ["lats", "traps", "biceps"], gif: "0293" },
+  { n: "Pull-Ups", s: "3 × AMRAP", d: "row", m: ["lats", "biceps"], gif: "0293" },
+  { n: "Chin-Ups", s: "3 × AMRAP", d: "row", m: ["lats", "biceps"], gif: "0293" },
+  // biceps
+  { n: "Preacher Curl", s: "3 × 10", d: "curl", m: ["biceps"], gif: "0031" },
+  { n: "Cable Curl", s: "3 × 12", d: "curl", m: ["biceps", "forearms"], gif: "0031" },
+  { n: "Concentration Curl", s: "3 × 12", d: "curl", m: ["biceps"], gif: "0313" },
+  // triceps
+  { n: "Tricep Pushdown", s: "3 × 12–15", d: "press", m: ["triceps"], gif: "2188" },
+  { n: "Overhead Cable Extension", s: "3 × 12", d: "press", m: ["triceps"], gif: "2188" },
+  { n: "Bench Dips", s: "3 × 12", d: "press", m: ["triceps", "chest"], gif: "0129" },
+  { n: "Close-Grip Bench Press", s: "4 × 8", d: "press", m: ["triceps", "chest"], gif: "0025" },
+  // legs
+  { n: "Leg Press", s: "4 × 10–12", d: "squat", m: ["quads", "glutes"], gif: "0043" },
+  { n: "Front Squat", s: "4 × 6–8", d: "squat", m: ["quads", "glutes"], gif: "0043" },
+  { n: "Hip Thrust", s: "3 × 10–12", d: "hinge", m: ["glutes", "hamstrings"], gif: "0085" },
+  { n: "Lying Leg Curl", s: "3 × 12–15", d: "hinge", m: ["hamstrings"] },
+  { n: "Leg Extension", s: "3 × 12–15", d: "squat", m: ["quads"] },
+  { n: "Seated Calf Raise", s: "4 × 15–20", d: "raise", m: ["calves"], gif: "0417" },
+  // core
+  { n: "Hanging Leg Raise", s: "3 × 12–15", d: "core", m: ["abs"], gif: "0620" },
+  { n: "Bicycle Crunch", s: "3 × 20", d: "core", m: ["abs", "obliques"], gif: "0687" },
+  { n: "Cable Crunch", s: "3 × 15", d: "core", m: ["abs"] },
+  { n: "Side Plank", s: "3 × 30 sec", d: "core", m: ["obliques", "abs"], gif: "0464" },
+  // forearms
+  { n: "Wrist Curls", s: "3 × 15", d: "curl", m: ["forearms"], gif: "0968" },
+];
+
+// Fold the library into the shared lookups so its movements animate and light
+// the right muscles everywhere, exactly like the program's own.
+LIBRARY.forEach((e) => {
+  if (!MUSCLES_BY_NAME[e.n]) MUSCLES_BY_NAME[e.n] = e.m;
+  if (e.gif && !EX_GIF[e.n]) EX_GIF[e.n] = e.gif;
+});
+
 // ---- swap suggestions -------------------------------------------------
 //  When a movement doesn't work for you, some replacements keep the day's plan
 //  intact — they hit the same primary muscle, so the week's balance is unchanged
@@ -731,7 +788,15 @@ export function programScheme(name) {
 // the exercises that hit it as a primary mover listed first. Powers the
 // tap-a-muscle targeted-work picker.
 export function exercisesForMuscle(token) {
-  const list = Object.values(ALL_EX).filter((c) => (MUSCLES_BY_NAME[c.n] || []).includes(token));
+  // Program movements first, then the accessory library — deduped by name.
+  const pool = [];
+  const seen = new Set();
+  [...Object.values(ALL_EX), ...LIBRARY].forEach((c) => {
+    if (seen.has(c.n)) return;
+    seen.add(c.n);
+    pool.push({ n: c.n, s: c.s, d: c.d });
+  });
+  const list = pool.filter((c) => (MUSCLES_BY_NAME[c.n] || []).includes(token));
   list.sort(
     (a, b) =>
       Number((MUSCLES_BY_NAME[b.n] || [])[0] === token) - Number((MUSCLES_BY_NAME[a.n] || [])[0] === token),

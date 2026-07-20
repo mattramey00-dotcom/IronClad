@@ -251,6 +251,25 @@ function Trainer({
   const fmtDay = (k) => new Date(`${k}T00:00:00`).toLocaleDateString(undefined, { month: "short", day: "numeric" });
   const weekLabel = week.length ? `${fmtDay(week[0].date)} – ${fmtDay(week[week.length - 1].date)}` : "";
   const onThisWeek = week.some((a) => a.date === today);
+
+  // Is every prescribed movement for a given day checked off? Powers the gold
+  // "done" fill + green tick on the week strip. Counts progress entries for that
+  // date (ignoring bonus "Extra" accessory work) against the day's exercise
+  // count, so it's robust to weight-free/substitution renaming.
+  const dayDone = (date) => {
+    const ag = agendaFor(plan, me, date);
+    if (ag.isRest) return false;
+    const need = exercisesFor(ag).length;
+    if (!need) return false;
+    const prefix = `${date}::`;
+    let have = 0;
+    for (const k in progress) {
+      if (!progress[k] || !k.startsWith(prefix)) continue;
+      if (k.slice(prefix.length).split("::")[0] === "Extra") continue;
+      have++;
+    }
+    return have >= need;
+  };
   // Count the exercises under the same weight-free lens the rows are drawn with,
   // so the progress bar tallies the moves you're actually doing today.
   const allExercises = useMemo(
@@ -633,6 +652,7 @@ function Trainer({
         {week.map((a) => {
           const active = a.date === selected;
           const yours = !a.isRest;
+          const done = dayDone(a.date);
           const label = a.isRest
             ? "Rest"
             : a.trains
@@ -647,10 +667,12 @@ function Trainer({
               style={{
                 ...S.weekCell,
                 ...(yours ? S.weekCellYours : {}),
+                ...(done ? S.weekCellDone : {}),
                 ...(active ? S.weekCellActive : {}),
               }}
             >
-              {a.date === today && <span style={S.todayDot} />}
+              {done && <span style={S.weekCheck}><Icon name="check" size={10} strokeWidth={3} /></span>}
+              {a.date === today && !done && <span style={S.todayDot} />}
               <div style={S.weekDow}>{DOW[a.weekday - 1]}</div>
               <div style={{ ...S.weekWorkout, color: a.trains ? ACCENT : "#9aa" }}>{label}</div>
               {/* the partner's day, at a glance — the name is dropped because
