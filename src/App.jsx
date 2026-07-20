@@ -219,6 +219,9 @@ function Trainer({
   showSettings, setShowSettings, now, theme, onToggleTheme, onSwitchPerson,
 }) {
   const [tab, setTab] = useState("train");
+  // The Fuel compose form lives here (not in FuelCard) so a draft — e.g. a meal
+  // you just pulled from the web — survives switching to another tab and back.
+  const [fuelCompose, setFuelCompose] = useState({ mode: null, draft: null, editingId: null, text: "" });
   const [rest, setRest] = useState(null); // { id, secs, label } — the sticky rest timer
   const [restPref, setRestPref] = useState(null); // last rest length you set — remembered across sets
   const [celebrate, setCelebrate] = useState(0); // bump to fire a confetti burst
@@ -996,6 +999,8 @@ function Trainer({
           model={model}
           restMode={agenda.isRest}
           favorites={favMeals}
+          compose={fuelCompose}
+          setCompose={setFuelCompose}
           onAddMeal={addMeal}
           onRemoveMeal={removeMeal}
           onEditMeal={editMeal}

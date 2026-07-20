@@ -55,12 +55,20 @@ function Bar({ label, value, target, color, over }) {
 
 export default function FuelCard({
   meals, allMeals, today, weight, targets, apiKey, model, restMode, favorites = [],
+  compose, setCompose,
   onAddMeal, onRemoveMeal, onEditMeal, onRelogMeal, onLogFavorite, onSaveFavorite, onRemoveFavorite, onWeigh, onOpenInsights,
 }) {
-  const [mode, setMode] = useState(null); // null | "text" | "draft"
-  const [draft, setDraft] = useState(null);
-  const [editingId, setEditingId] = useState(null); // set when the draft is fixing an existing meal
-  const [text, setText] = useState("");
+  // The in-progress compose form (which panel is open, the editable draft a web
+  // lookup / photo / description produced, the text box) lives in the parent, so
+  // it survives leaving and returning to the Fuel tab — you don't lose a result
+  // you just paid an API/web-search call for by glancing at another tab. Wrapper
+  // setters keep the rest of this component unchanged.
+  const { mode, draft, editingId, text } = compose;
+  const apply = (patch) => setCompose((c) => ({ ...c, ...patch }));
+  const setMode = (v) => apply({ mode: typeof v === "function" ? v(mode) : v });
+  const setDraft = (v) => apply({ draft: typeof v === "function" ? v(draft) : v });
+  const setEditingId = (v) => apply({ editingId: typeof v === "function" ? v(editingId) : v });
+  const setText = (v) => apply({ text: typeof v === "function" ? v(text) : v });
   const [busy, setBusy] = useState(false);
   const [busyLabel, setBusyLabel] = useState("Reading the plate…");
   const [error, setError] = useState("");
@@ -75,10 +83,7 @@ export default function FuelCard({
   const pd = proteinDistribution(meals, targets.protein);
 
   const reset = () => {
-    setMode(null);
-    setDraft(null);
-    setEditingId(null);
-    setText("");
+    apply({ mode: null, draft: null, editingId: null, text: "" });
     setError("");
   };
 
