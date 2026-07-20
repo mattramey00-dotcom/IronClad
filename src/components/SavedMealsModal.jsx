@@ -35,20 +35,20 @@ export default function SavedMealsModal({ favorites = [], onLog, onRemove, onClo
         onClick={(e) => e.stopPropagation()}
       >
         {/* header */}
-        <div style={{ display: "flex", alignItems: "center", gap: 9, padding: "18px 20px 12px", borderBottom: "1px solid #1c1d28" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 9, padding: "18px 20px 12px", borderBottom: "1px solid var(--border)" }}>
           <Icon name="star" size={18} style={{ color: ACCENT }} />
           <div>
             <div style={{ fontFamily: "'Inter', sans-serif", fontWeight: 800, fontSize: 18, letterSpacing: -0.3 }}>Saved meals</div>
-            <div style={{ fontSize: 11, color: "#6a6a80" }}>{favorites.length} saved · tap + to log onto today</div>
+            <div style={{ fontSize: 11, color: "var(--text-dim)" }}>{favorites.length} saved · tap + to log onto today</div>
           </div>
           <button style={{ ...S.btnGhost, marginLeft: "auto", padding: "6px 12px" }} onClick={onClose}>✕</button>
         </div>
 
         {/* search — only worth showing once there are a few */}
         {favorites.length > 6 && (
-          <div style={{ padding: "12px 16px 8px", borderBottom: "1px solid #14151d" }}>
+          <div style={{ padding: "12px 16px 8px", borderBottom: "1px solid var(--surface)" }}>
             <div style={{ position: "relative" }}>
-              <span style={{ position: "absolute", left: 11, top: "50%", transform: "translateY(-50%)", color: "#6a6a80", display: "grid", placeItems: "center" }}>
+              <span style={{ position: "absolute", left: 11, top: "50%", transform: "translateY(-50%)", color: "var(--text-dim)", display: "grid", placeItems: "center" }}>
                 <Icon name="search" size={15} />
               </span>
               <input
@@ -64,12 +64,12 @@ export default function SavedMealsModal({ favorites = [], onLog, onRemove, onClo
         {/* list */}
         <div style={{ flex: 1, overflowY: "auto", padding: "8px 12px 16px" }}>
           {favorites.length === 0 ? (
-            <div style={{ color: "#8a8a9e", fontSize: 13.5, lineHeight: 1.6, padding: "26px 8px", textAlign: "center" }}>
-              No saved meals yet. Tap the <Icon name="star" size={13} style={{ display: "inline", verticalAlign: "-2px", color: "#8a8a9e" }} /> on
+            <div style={{ color: "var(--text-mute)", fontSize: 13.5, lineHeight: 1.6, padding: "26px 8px", textAlign: "center" }}>
+              No saved meals yet. Tap the <Icon name="star" size={13} style={{ display: "inline", verticalAlign: "-2px", color: "var(--text-mute)" }} /> on
               any logged meal to save it here for one-tap re-logging.
             </div>
           ) : list.length === 0 ? (
-            <div style={{ color: "#8a8a9e", fontSize: 13.5, padding: "26px 8px", textAlign: "center" }}>
+            <div style={{ color: "var(--text-mute)", fontSize: 13.5, padding: "26px 8px", textAlign: "center" }}>
               No saved meals match “{q}”.
             </div>
           ) : (
@@ -88,7 +88,7 @@ export default function SavedMealsModal({ favorites = [], onLog, onRemove, onClo
                     onClick={() => relog(f)}
                     title="Log onto today"
                     aria-label={`Log ${f.name}`}
-                    style={{ background: added ? "rgba(129,140,248,.16)" : "transparent", border: "none", color: added ? ACCENT : "#8a8a9e", cursor: "pointer", padding: "5px 7px", display: "grid", placeItems: "center", fontFamily: "inherit", borderRadius: 8 }}
+                    style={{ background: added ? "rgba(129,140,248,.16)" : "transparent", border: "none", color: added ? ACCENT : "var(--text-mute)", cursor: "pointer", padding: "5px 7px", display: "grid", placeItems: "center", fontFamily: "inherit", borderRadius: 8 }}
                   >
                     <Icon name={added ? "check" : "plus"} size={16} />
                   </button>
@@ -106,7 +106,7 @@ export default function SavedMealsModal({ favorites = [], onLog, onRemove, onClo
           )}
         </div>
 
-        <div style={{ padding: 12, borderTop: "1px solid #1c1d28" }}>
+        <div style={{ padding: 12, borderTop: "1px solid var(--border)" }}>
           <button style={{ ...S.btnGhost, width: "100%" }} onClick={onClose}>Done</button>
         </div>
       </div>

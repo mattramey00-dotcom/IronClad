@@ -1,6 +1,10 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App.jsx";
+import { loadTheme } from "./lib/storage.js";
+
+// Apply the saved theme before first paint so there's no dark→light flash.
+document.documentElement.dataset.theme = loadTheme();
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>

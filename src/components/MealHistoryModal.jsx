@@ -57,19 +57,19 @@ export default function MealHistoryModal({ allMeals = {}, today, onRelog, onSave
         onClick={(e) => e.stopPropagation()}
       >
         {/* header */}
-        <div style={{ display: "flex", alignItems: "center", gap: 9, padding: "18px 20px 12px", borderBottom: "1px solid #1c1d28" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 9, padding: "18px 20px 12px", borderBottom: "1px solid var(--border)" }}>
           <Icon name="clock" size={18} style={{ color: ACCENT }} />
           <div>
             <div style={{ fontFamily: "'Inter', sans-serif", fontWeight: 800, fontSize: 18, letterSpacing: -0.3 }}>Meal history</div>
-            <div style={{ fontSize: 11, color: "#6a6a80" }}>{total} logged · tap + to re-log onto today</div>
+            <div style={{ fontSize: 11, color: "var(--text-dim)" }}>{total} logged · tap + to re-log onto today</div>
           </div>
           <button style={{ ...S.btnGhost, marginLeft: "auto", padding: "6px 12px" }} onClick={onClose}>✕</button>
         </div>
 
         {/* search */}
-        <div style={{ padding: "12px 16px 8px", borderBottom: "1px solid #14151d" }}>
+        <div style={{ padding: "12px 16px 8px", borderBottom: "1px solid var(--surface)" }}>
           <div style={{ position: "relative" }}>
-            <span style={{ position: "absolute", left: 11, top: "50%", transform: "translateY(-50%)", color: "#6a6a80", display: "grid", placeItems: "center" }}>
+            <span style={{ position: "absolute", left: 11, top: "50%", transform: "translateY(-50%)", color: "var(--text-dim)", display: "grid", placeItems: "center" }}>
               <Icon name="search" size={15} />
             </span>
             <input
@@ -85,18 +85,18 @@ export default function MealHistoryModal({ allMeals = {}, today, onRelog, onSave
         {/* list */}
         <div style={{ flex: 1, overflowY: "auto", padding: "8px 12px 16px" }}>
           {total === 0 ? (
-            <div style={{ color: "#8a8a9e", fontSize: 13.5, lineHeight: 1.6, padding: "26px 8px", textAlign: "center" }}>
+            <div style={{ color: "var(--text-mute)", fontSize: 13.5, lineHeight: 1.6, padding: "26px 8px", textAlign: "center" }}>
               Nothing logged yet. Once you start adding meals on the Fuel tab, they'll all be here to
               scroll back through and re-log.
             </div>
           ) : groups.length === 0 ? (
-            <div style={{ color: "#8a8a9e", fontSize: 13.5, padding: "26px 8px", textAlign: "center" }}>
+            <div style={{ color: "var(--text-mute)", fontSize: 13.5, padding: "26px 8px", textAlign: "center" }}>
               No meals match “{q}”.
             </div>
           ) : (
             groups.map(([date, list]) => (
               <div key={date} style={{ marginTop: 10 }}>
-                <div style={{ fontSize: 11, letterSpacing: 0.6, textTransform: "uppercase", color: "#6a6a80", padding: "0 4px 4px" }}>
+                <div style={{ fontSize: 11, letterSpacing: 0.6, textTransform: "uppercase", color: "var(--text-dim)", padding: "0 4px 4px" }}>
                   {fmtDate(date)}{date === today ? " · today" : ""}
                 </div>
                 {list.map((m) => {
@@ -117,7 +117,7 @@ export default function MealHistoryModal({ allMeals = {}, today, onRelog, onSave
                       </div>
                       <div style={S.mealKcal}>{Math.round(num(m.kcal)).toLocaleString()}</div>
                       <button
-                        style={{ background: "transparent", border: "none", color: "#6a6a80", cursor: "pointer", padding: "4px 2px", display: "grid", placeItems: "center", fontFamily: "inherit" }}
+                        style={{ background: "transparent", border: "none", color: "var(--text-dim)", cursor: "pointer", padding: "4px 2px", display: "grid", placeItems: "center", fontFamily: "inherit" }}
                         onClick={() => onSaveFavorite?.(m)}
                         title="Save to Quick add"
                         aria-label={`Save ${m.name} to quick add`}
@@ -128,7 +128,7 @@ export default function MealHistoryModal({ allMeals = {}, today, onRelog, onSave
                         onClick={() => relog(m, key)}
                         title="Re-log onto today"
                         aria-label={`Re-log ${m.name}`}
-                        style={{ background: added ? "rgba(129,140,248,.16)" : "transparent", border: "none", color: added ? ACCENT : "#8a8a9e", cursor: "pointer", padding: "5px 7px", display: "grid", placeItems: "center", fontFamily: "inherit", borderRadius: 8 }}
+                        style={{ background: added ? "rgba(129,140,248,.16)" : "transparent", border: "none", color: added ? ACCENT : "var(--text-mute)", cursor: "pointer", padding: "5px 7px", display: "grid", placeItems: "center", fontFamily: "inherit", borderRadius: 8 }}
                       >
                         <Icon name={added ? "check" : "plus"} size={16} />
                       </button>
@@ -140,7 +140,7 @@ export default function MealHistoryModal({ allMeals = {}, today, onRelog, onSave
           )}
         </div>
 
-        <div style={{ padding: 12, borderTop: "1px solid #1c1d28" }}>
+        <div style={{ padding: 12, borderTop: "1px solid var(--border)" }}>
           <button style={{ ...S.btnGhost, width: "100%" }} onClick={onClose}>Done</button>
         </div>
       </div>

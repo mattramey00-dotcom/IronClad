@@ -140,7 +140,7 @@ export default function ExerciseGif({ name, size = 108, apiKey, cacheOnly = fals
     <div
       style={{
         position: "relative", width: size, height: size, borderRadius: 10,
-        overflow: "hidden", background: "#0a0d0a",
+        overflow: "hidden", background: "var(--sunken)",
       }}
     >
       <img

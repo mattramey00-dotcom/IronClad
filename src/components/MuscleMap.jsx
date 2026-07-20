@@ -76,7 +76,7 @@ function Figure({ viewBox, outline, parts, active, height, label }) {
         />
         <View parts={parts} active={active} />
       </svg>
-      <span style={{ fontSize: 9, letterSpacing: 1, textTransform: "uppercase", color: "#5a5a70" }}>{label}</span>
+      <span style={{ fontSize: 9, letterSpacing: 1, textTransform: "uppercase", color: "var(--text-faint)" }}>{label}</span>
     </div>
   );
 }

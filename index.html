@@ -14,7 +14,44 @@
 
     <title>IRONCLAD — Workout Tracker</title>
     <style>
-      html, body, #root { margin: 0; height: 100%; background: #060807; }
+      /* Theme tokens. Dark is the default (:root); light overrides them under
+         [data-theme="light"], set by the app from the saved preference. Only
+         surfaces / text / borders flip — the accent and semantic colours stay
+         constant, and chart/canvas colours are handled in JS (CSS var() can't
+         resolve in SVG attributes). */
+      :root {
+        color-scheme: dark;
+        --bg: #060807;
+        --app-bg: radial-gradient(1200px 600px at 80% -10%, #1a1c2e 0%, #0c0d13 55%, #08090d 100%);
+        --tabbar-bg: rgba(10, 11, 16, 0.82);
+        --surface: #111219;
+        --surface-2: #16171f;
+        --sunken: #0e0f16;
+        --border: #22232f;
+        --border-hi: #2a2c3b;
+        --text: #eaeaf0;
+        --text-2: #c6c6d2;
+        --text-mute: #8a8a9e;
+        --text-dim: #6a6a80;
+        --text-faint: #565669;
+      }
+      :root[data-theme="light"] {
+        color-scheme: light;
+        --bg: #eceef3;
+        --app-bg: radial-gradient(1200px 600px at 80% -10%, #f2f4fa 0%, #eaecf3 55%, #eceef4 100%);
+        --tabbar-bg: rgba(249, 250, 253, 0.82);
+        --surface: #ffffff;
+        --surface-2: #f2f3f8;
+        --sunken: #e9ebf1;
+        --border: #e3e5ed;
+        --border-hi: #d2d5e0;
+        --text: #171922;
+        --text-2: #3b3e4c;
+        --text-mute: #676a7a;
+        --text-dim: #888b99;
+        --text-faint: #a6a9b7;
+      }
+      html, body, #root { margin: 0; height: 100%; background: var(--bg); }
     </style>
   </head>
   <body>

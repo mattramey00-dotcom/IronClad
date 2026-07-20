@@ -14,7 +14,12 @@ const E1RM_COLOR = "#E0B44A";
 //  Reads only the signed-in profile's logs, so your chart is yours — before
 //  profiles existed, both people's sets landed in one bucket and dragged each
 //  other's curves around.
-export default function HistoryModal({ logs, exercises, who, onClose, onExport }) {
+export default function HistoryModal({ logs, exercises, who, theme, onClose, onExport }) {
+  // Chart colours must be concrete (Recharts renders them as SVG attributes,
+  // where CSS var() doesn't resolve).
+  const CH = theme === "light"
+    ? { grid: "#e4e6ee", axis: "#8b8e9c" }
+    : { grid: "#1c1d28", axis: "#6a6a80" };
   const [sel, setSel] = useState(exercises[0] || null);
 
   // Build chart data: for each session date, plot top set weight & est. 1RM
@@ -51,7 +56,7 @@ export default function HistoryModal({ logs, exercises, who, onClose, onExport }
         <div style={{ display: "flex", alignItems: "center", marginBottom: 14 }}>
           <div>
             <div style={{ fontFamily: "'Inter', sans-serif", fontWeight: 800, letterSpacing: -0.4, fontSize: 20 }}>Progression</div>
-            {who && <div style={{ fontSize: 11, color: "#6a6a80", marginTop: 2 }}>{who}</div>}
+            {who && <div style={{ fontSize: 11, color: "var(--text-dim)", marginTop: 2 }}>{who}</div>}
           </div>
           <button style={{ ...S.btnGhost, marginLeft: "auto", padding: "6px 12px", display: "inline-flex", alignItems: "center", gap: 6 }} onClick={onExport}>
             <Icon name="download" size={14} /> CSV
@@ -59,7 +64,7 @@ export default function HistoryModal({ logs, exercises, who, onClose, onExport }
         </div>
 
         {exercises.length === 0 ? (
-          <div style={{ color: "#889", fontSize: 14, padding: "20px 0", textAlign: "center" }}>
+          <div style={{ color: "var(--text-dim)", fontSize: 14, padding: "20px 0", textAlign: "center" }}>
             No logged sets yet. Start logging weights and your progression will chart here.
           </div>
         ) : (
@@ -74,12 +79,12 @@ export default function HistoryModal({ logs, exercises, who, onClose, onExport }
               <div style={{ height: 230, marginTop: 16 }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={data} margin={{ top: 8, right: 12, left: -2, bottom: 0 }}>
-                    <CartesianGrid stroke="#1c1d28" vertical={false} />
-                    <XAxis dataKey="date" stroke="#6a6a80" fontSize={11} tickLine={false} axisLine={{ stroke: "#262838" }} />
-                    <YAxis stroke="#6a6a80" fontSize={11} tickLine={false} axisLine={false} width={40} domain={["dataMin - 15", "dataMax + 15"]} allowDecimals={false} />
+                    <CartesianGrid stroke={CH.grid} vertical={false} />
+                    <XAxis dataKey="date" stroke={CH.axis} fontSize={11} tickLine={false} axisLine={{ stroke: CH.grid }} />
+                    <YAxis stroke={CH.axis} fontSize={11} tickLine={false} axisLine={false} width={40} domain={["dataMin - 15", "dataMax + 15"]} allowDecimals={false} />
                     <Tooltip
-                      contentStyle={{ background: "#111219", border: "1px solid #262838", borderRadius: 10, fontSize: 12 }}
-                      labelStyle={{ color: "#8a8a9e" }}
+                      contentStyle={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, fontSize: 12 }}
+                      labelStyle={{ color: "var(--text-mute)" }}
                       itemStyle={{ padding: 0 }}
                       formatter={(v, n) => [`${v} lb`, n]}
                     />
@@ -89,7 +94,7 @@ export default function HistoryModal({ logs, exercises, who, onClose, onExport }
                 </ResponsiveContainer>
               </div>
             ) : (
-              <div style={{ color: "#889", fontSize: 13, padding: "24px 0", textAlign: "center" }}>
+              <div style={{ color: "var(--text-dim)", fontSize: 13, padding: "24px 0", textAlign: "center" }}>
                 This movement only has timed/bodyweight entries — log some weights to see a curve.
               </div>
             )}
@@ -102,7 +107,7 @@ export default function HistoryModal({ logs, exercises, who, onClose, onExport }
             <div style={{ maxHeight: 140, overflowY: "auto", marginTop: 12 }}>
               {[...(logs[sel] || [])].sort((a, b) => b.date.localeCompare(a.date)).map((entry, i) => (
                 <div key={i} style={S.histRow}>
-                  <span style={{ color: "#8a8a9e", fontSize: 12, minWidth: 48 }}>{entry.date.slice(5)}</span>
+                  <span style={{ color: "var(--text-mute)", fontSize: 12, minWidth: 48 }}>{entry.date.slice(5)}</span>
                   <span style={{ fontSize: 13 }}>
                     {entry.sets.map((s, j) => (
                       <span key={j} style={S.histTag}>{s.w}×{s.r}</span>

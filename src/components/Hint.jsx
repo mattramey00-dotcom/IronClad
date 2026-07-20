@@ -43,7 +43,7 @@ const ST = {
   icon: { color: ACCENT, flex: "0 0 auto", marginTop: 1, display: "grid", placeItems: "center" },
   text: { flex: 1, minWidth: 0, fontSize: 12.5, lineHeight: 1.5, color: "#c2c2d4" },
   x: {
-    flex: "0 0 auto", background: "transparent", border: "none", color: "#7a7a90",
+    flex: "0 0 auto", background: "transparent", border: "none", color: "var(--text-dim)",
     cursor: "pointer", padding: 2, display: "grid", placeItems: "center", fontFamily: "inherit",
   },
 };

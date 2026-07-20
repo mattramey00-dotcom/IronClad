@@ -39,9 +39,9 @@ function Bar({ label, value, target, color, over }) {
     <div style={S.macroRow}>
       <div style={S.macroTop}>
         <span style={S.macroName}>{label}</span>
-        <span style={{ ...S.macroVal, color: past && over ? "#e08a6a" : "#e8e8d8" }}>
+        <span style={{ ...S.macroVal, color: past && over ? "#e08a6a" : "var(--text)" }}>
           {Math.round(value).toLocaleString()}
-          {target ? <span style={{ color: "#667", fontWeight: 400 }}> / {Math.round(target).toLocaleString()}</span> : null}
+          {target ? <span style={{ color: "var(--text-dim)", fontWeight: 400 }}> / {Math.round(target).toLocaleString()}</span> : null}
         </span>
       </div>
       {target ? (
@@ -241,9 +241,9 @@ export default function FuelCard({
           it doesn't need to be nagged about. */}
       {restMode ? (
         <div style={{ ...S.macroMini, marginTop: 0, marginBottom: 8, fontSize: 13 }}>
-          <span><b style={{ color: "#e8e8d8" }}>{Math.round(totals.kcal).toLocaleString()}</b> kcal</span>
+          <span><b style={{ color: "var(--text)" }}>{Math.round(totals.kcal).toLocaleString()}</b> kcal</span>
           <span><b style={{ color: PROTEIN_COLOR }}>{Math.round(totals.protein)}</b> g protein</span>
-          {!meals?.length && <span style={{ color: "#556" }}>nothing logged yet</span>}
+          {!meals?.length && <span style={{ color: "var(--text-faint)" }}>nothing logged yet</span>}
         </div>
       ) : (
         <>
@@ -263,7 +263,7 @@ export default function FuelCard({
                   ))}
                 </div>
               )}
-              <div style={{ display: "flex", alignItems: "center", fontSize: 11.5, color: "#8a8a9e", marginTop: pd.doses >= 2 ? 0 : -5, marginBottom: 3 }}>
+              <div style={{ display: "flex", alignItems: "center", fontSize: 11.5, color: "var(--text-mute)", marginTop: pd.doses >= 2 ? 0 : -5, marginBottom: 3 }}>
                 {pd.remaining > 0 ? (
                   <span>
                     <b style={{ color: PROTEIN_COLOR }}>{pd.remaining} g</b> to go
@@ -273,7 +273,7 @@ export default function FuelCard({
                   <span style={{ color: "#7a9a7a" }}>✓ protein target hit</span>
                 )}
                 {pd.doses > 0 && (
-                  <span style={{ marginLeft: "auto", color: "#556" }}>{pd.doses} meal{pd.doses === 1 ? "" : "s"}</span>
+                  <span style={{ marginLeft: "auto", color: "var(--text-faint)" }}>{pd.doses} meal{pd.doses === 1 ? "" : "s"}</span>
                 )}
               </div>
               {pd.backLoaded && (
@@ -289,7 +289,7 @@ export default function FuelCard({
             <span>Carbs {Math.round(totals.carbs)} g</span>
             <span>Fat {Math.round(totals.fat)} g</span>
             {targets.derived && targets.kcal && (
-              <span style={{ marginLeft: "auto", color: "#556" }}>target from your own TDEE</span>
+              <span style={{ marginLeft: "auto", color: "var(--text-faint)" }}>target from your own TDEE</span>
             )}
           </div>
         </>
@@ -314,7 +314,7 @@ export default function FuelCard({
               </div>
               <div style={S.mealKcal}>{Math.round(m.kcal).toLocaleString()}</div>
               <button
-                style={{ background: "transparent", border: "none", color: "#6a6a80", cursor: "pointer", padding: "4px 2px", display: "grid", placeItems: "center", fontFamily: "inherit" }}
+                style={{ background: "transparent", border: "none", color: "var(--text-dim)", cursor: "pointer", padding: "4px 2px", display: "grid", placeItems: "center", fontFamily: "inherit" }}
                 onClick={() => startEdit(m)}
                 title="Edit meal"
                 aria-label={`Edit ${m.name}`}
@@ -322,7 +322,7 @@ export default function FuelCard({
                 <Icon name="pencil" size={14} />
               </button>
               <button
-                style={{ background: "transparent", border: "none", color: "#6a6a80", cursor: "pointer", padding: "4px 2px", display: "grid", placeItems: "center", fontFamily: "inherit" }}
+                style={{ background: "transparent", border: "none", color: "var(--text-dim)", cursor: "pointer", padding: "4px 2px", display: "grid", placeItems: "center", fontFamily: "inherit" }}
                 onClick={() => onSaveFavorite?.(m)}
                 title="Save to Quick add"
                 aria-label={`Save ${m.name} to quick add`}
@@ -341,18 +341,18 @@ export default function FuelCard({
           <div style={{ ...S.label, marginBottom: 7 }}>Quick add</div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
             {favorites.map((f) => (
-              <div key={f.id} style={{ display: "inline-flex", alignItems: "center", background: "#16171f", border: "1px solid #2a2c3b", borderRadius: 99, overflow: "hidden" }}>
+              <div key={f.id} style={{ display: "inline-flex", alignItems: "center", background: "var(--surface-2)", border: "1px solid var(--border-hi)", borderRadius: 99, overflow: "hidden" }}>
                 <button
                   onClick={() => onLogFavorite(f)}
-                  style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "transparent", border: "none", color: "#c9c9d6", fontFamily: "inherit", fontSize: 12, padding: "7px 4px 7px 11px", cursor: "pointer", maxWidth: 200, minWidth: 0 }}
+                  style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "transparent", border: "none", color: "var(--text-2)", fontFamily: "inherit", fontSize: 12, padding: "7px 4px 7px 11px", cursor: "pointer", maxWidth: 200, minWidth: 0 }}
                 >
                   <Icon name="plus" size={11} style={{ color: ACCENT }} />
                   <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.name}</span>
-                  <span style={{ color: "#6a6a80", fontVariantNumeric: "tabular-nums" }}>{Math.round(f.kcal)}</span>
+                  <span style={{ color: "var(--text-dim)", fontVariantNumeric: "tabular-nums" }}>{Math.round(f.kcal)}</span>
                 </button>
                 <button
                   onClick={() => onRemoveFavorite(f.id)}
-                  style={{ background: "transparent", border: "none", color: "#5a5a70", cursor: "pointer", padding: "6px 9px 6px 4px", fontSize: 13, fontFamily: "inherit" }}
+                  style={{ background: "transparent", border: "none", color: "var(--text-faint)", cursor: "pointer", padding: "6px 9px 6px 4px", fontSize: 13, fontFamily: "inherit" }}
                   aria-label={`Remove ${f.name} from quick add`}
                 >
                   ×
@@ -459,7 +459,7 @@ export default function FuelCard({
             <div style={{ marginTop: 10 }}>
               {draft.items.map((it, i) => (
                 <div key={i} style={S.draftItem}>
-                  {it.food} · <span style={{ color: "#667" }}>{it.portion}</span> ·{" "}
+                  {it.food} · <span style={{ color: "var(--text-dim)" }}>{it.portion}</span> ·{" "}
                   {Math.round(num(it.kcal))} kcal, {Math.round(num(it.protein_g))}g protein
                 </div>
               ))}
@@ -504,7 +504,7 @@ export default function FuelCard({
 
       {/* weigh-in — the other half of the TDEE math */}
       <div style={S.weighRow}>
-        <span style={{ color: "#8a8a9e", display: "grid", placeItems: "center" }}><Icon name="scale" size={15} /></span>
+        <span style={{ color: "var(--text-mute)", display: "grid", placeItems: "center" }}><Icon name="scale" size={15} /></span>
         {weight ? (
           <>
             <span style={{ ...S.mealKcal, fontSize: 15 }}>{weight} lb</span>

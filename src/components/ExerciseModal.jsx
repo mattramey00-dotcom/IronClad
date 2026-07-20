@@ -126,7 +126,7 @@ export default function ExerciseModal({
             </div>
             <div style={ST.sub}>
               {ex.s}
-              {blockName ? <span style={{ color: "#5a5a70" }}> · {blockName}</span> : null}
+              {blockName ? <span style={{ color: "var(--text-faint)" }}> · {blockName}</span> : null}
             </div>
           </div>
           <button style={ST.close} onClick={onClose} aria-label="Close">
@@ -173,7 +173,7 @@ export default function ExerciseModal({
           <>
             <div style={ST.setsHead}>
               <span style={S.label}>Sets</span>
-              <span style={{ ...ST.count, color: allSetsDone ? ACCENT : "#8a8a9e" }}>
+              <span style={{ ...ST.count, color: allSetsDone ? ACCENT : "var(--text-mute)" }}>
                 {doneCount}/{nSets}
               </span>
             </div>
@@ -189,7 +189,7 @@ export default function ExerciseModal({
                   />
                   <span style={ST.unit}>lb</span>
                 </div>
-                <span style={{ color: "#5a5a70" }}>×</span>
+                <span style={{ color: "var(--text-faint)" }}>×</span>
                 <div style={ST.inputWrap}>
                   <input
                     type="number" inputMode="numeric" placeholder="—" value={r}
@@ -245,7 +245,7 @@ export default function ExerciseModal({
         {/* Swap this movement for one you can actually do — a personal override
             on this phone, never a change to the shared plan. */}
         {onSwap && (
-          <div style={{ marginTop: 12, borderTop: "1px solid #1a1b24", paddingTop: 10 }}>
+          <div style={{ marginTop: 12, borderTop: "1px solid var(--surface-2)", paddingTop: 10 }}>
             {!swapping ? (
               <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                 <button
@@ -262,7 +262,7 @@ export default function ExerciseModal({
               </div>
             ) : (
               <div>
-                <div style={{ fontSize: 12, color: "#8a8a9e", marginBottom: 9, lineHeight: 1.5 }}>
+                <div style={{ fontSize: 12, color: "var(--text-mute)", marginBottom: 9, lineHeight: 1.5 }}>
                   Replace “{subbed ? origName : ex.n}”. This phone only — it won't touch the plan or
                   your partner's week, and it logs under its own name.
                 </div>
@@ -339,52 +339,52 @@ export default function ExerciseModal({
 // dialogs, so it carries its own layout rather than bending the shared tokens.
 const ST = {
   card: {
-    background: "#111219", border: "1px solid #22232f", borderRadius: 22,
+    background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 22,
     padding: 16, textAlign: "left", width: "100%", maxWidth: 440,
     maxHeight: "92vh", overflowY: "auto", animation: "fade .2s ease",
   },
   head: { display: "flex", alignItems: "flex-start", gap: 10, marginBottom: 10 },
   title: { fontFamily: "'Inter', sans-serif", fontWeight: 800, fontSize: 19, letterSpacing: -0.4, lineHeight: 1.15 },
-  sub: { fontSize: 13, color: "#8a8a9e", marginTop: 2 },
+  sub: { fontSize: 13, color: "var(--text-mute)", marginTop: 2 },
   close: {
     marginLeft: "auto", flex: "0 0 auto", width: 32, height: 32, borderRadius: "50%",
-    background: "#16171f", border: "1px solid #2a2c3b", color: "#b0b0c0",
+    background: "var(--surface-2)", border: "1px solid var(--border-hi)", color: "var(--text-2)",
     cursor: "pointer", display: "grid", placeItems: "center", fontFamily: "inherit",
   },
   demoWrap: {
-    display: "grid", placeItems: "center", background: "#0b0c11",
-    border: "1px solid #1a1b24", borderRadius: 16, padding: 10, marginBottom: 8,
+    display: "grid", placeItems: "center", background: "var(--sunken)",
+    border: "1px solid var(--surface-2)", borderRadius: 16, padding: 10, marginBottom: 8,
   },
   videoBtn: {
     ...S.demoBtn, width: "100%", justifyContent: "center", padding: "8px", fontSize: 13, marginBottom: 10,
   },
   muscleBox: {
     display: "flex", alignItems: "center", gap: 14, padding: "8px 12px",
-    background: "#0b0c11", border: "1px solid #1a1b24", borderRadius: 12, marginBottom: 12,
+    background: "var(--sunken)", border: "1px solid var(--surface-2)", borderRadius: 12, marginBottom: 12,
   },
   setsHead: { display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 6 },
   count: { fontSize: 14, fontWeight: 700, fontVariantNumeric: "tabular-nums" },
   logRow: { display: "flex", alignItems: "center", gap: 8, marginBottom: 10, flexWrap: "wrap" },
   inputWrap: { position: "relative", display: "flex", alignItems: "center", width: 92 },
   numInput: {
-    width: "100%", background: "#0e0f15", border: "1px solid #262838", borderRadius: 9,
-    color: "#eaeaf0", fontSize: 16, padding: "9px 30px 9px 10px", fontFamily: "inherit", outline: "none",
+    width: "100%", background: "#0e0f15", border: "1px solid var(--border)", borderRadius: 9,
+    color: "var(--text)", fontSize: 16, padding: "9px 30px 9px 10px", fontFamily: "inherit", outline: "none",
   },
-  unit: { position: "absolute", right: 9, fontSize: 11, color: "#6a6a80" },
-  optional: { fontSize: 11, color: "#5a5a70", marginLeft: "auto" },
+  unit: { position: "absolute", right: 9, fontSize: 11, color: "var(--text-dim)" },
+  optional: { fontSize: 11, color: "var(--text-faint)", marginLeft: "auto" },
   setRow: { display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 8 },
   setCircle: {
-    width: 46, height: 46, borderRadius: "50%", border: "2px solid #2a2c3b",
-    background: "transparent", color: "#8a8a9e", fontSize: 16, fontWeight: 800,
+    width: 46, height: 46, borderRadius: "50%", border: "2px solid var(--border-hi)",
+    background: "transparent", color: "var(--text-mute)", fontSize: 16, fontWeight: 800,
     cursor: "pointer", fontFamily: "inherit", display: "grid", placeItems: "center",
     fontVariantNumeric: "tabular-nums", transition: "all .18s ease",
   },
   setCircleDone: { background: ACCENT, border: `2px solid ${ACCENT}`, color: "#0B1020" },
-  hint: { fontSize: 12, color: "#6a6a80", lineHeight: 1.5 },
-  swapLabel: { display: "flex", alignItems: "center", gap: 6, fontSize: 11, letterSpacing: 0.4, textTransform: "uppercase", color: "#8a8a9e", marginBottom: 6 },
+  hint: { fontSize: 12, color: "var(--text-dim)", lineHeight: 1.5 },
+  swapLabel: { display: "flex", alignItems: "center", gap: 6, fontSize: 11, letterSpacing: 0.4, textTransform: "uppercase", color: "var(--text-mute)", marginBottom: 6 },
   chipWrap: { display: "flex", flexWrap: "wrap", gap: 6 },
   swapChip: {
-    background: "#16171f", border: "1px solid #2a2c3b", color: "#d2d2de",
+    background: "var(--surface-2)", border: "1px solid var(--border-hi)", color: "var(--text-2)",
     borderRadius: 999, padding: "7px 12px", fontSize: 12.5, cursor: "pointer", fontFamily: "inherit",
   },
   swapChipShift: { border: "1px solid rgba(224,180,74,.4)", color: "#e6cf9a", background: "rgba(224,180,74,.06)" },

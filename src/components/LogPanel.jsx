@@ -53,7 +53,7 @@ export default function LogPanel({ exName, prescription: presc, today, last, onA
 
       {last && (
         <div style={S.lastRow}>
-          <span style={{ color: "#6a6a80" }}>Last ({last.date.slice(5)}): </span>
+          <span style={{ color: "var(--text-dim)" }}>Last ({last.date.slice(5)}): </span>
           {last.sets.map((s, i) => (
             <span key={i} style={S.lastTag}>{s.w}×{s.r}</span>
           ))}
@@ -64,9 +64,9 @@ export default function LogPanel({ exName, prescription: presc, today, last, onA
         <div style={S.todaySets}>
           {today.sets.map((s, i) => (
             <div key={i} style={S.setChip}>
-              <span style={{ color: "#888", fontSize: 11 }}>{i + 1}</span>
+              <span style={{ color: "var(--text-mute)", fontSize: 11 }}>{i + 1}</span>
               <span style={{ fontWeight: 700 }}>{s.w}</span>
-              <span style={{ color: "#6a6a80", fontSize: 12 }}>lb ×</span>
+              <span style={{ color: "var(--text-dim)", fontSize: 12 }}>lb ×</span>
               <span style={{ fontWeight: 700 }}>{s.r}</span>
               <button style={S.setX} onClick={() => onRemove(exName, i)}>×</button>
             </div>
@@ -82,7 +82,7 @@ export default function LogPanel({ exName, prescription: presc, today, last, onA
           />
           <span style={S.inputUnit}>lb</span>
         </div>
-        <span style={{ color: "#556", fontSize: 18 }}>×</span>
+        <span style={{ color: "var(--text-faint)", fontSize: 18 }}>×</span>
         <div style={S.inputWrap}>
           <input
             type="number" inputMode="numeric" placeholder="0" value={r}

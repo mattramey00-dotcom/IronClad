@@ -89,11 +89,11 @@ export default function CoachModal({ apiKey, model, snapshot, planCtx, who, onCl
         onClick={(e) => e.stopPropagation()}
       >
         {/* header */}
-        <div style={{ display: "flex", alignItems: "center", gap: 9, padding: "18px 20px 12px", borderBottom: "1px solid #1c1d28" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 9, padding: "18px 20px 12px", borderBottom: "1px solid var(--border)" }}>
           <Icon name="sparkle" size={18} style={{ color: ACCENT }} />
           <div>
             <div style={{ fontFamily: "'Inter', sans-serif", fontWeight: 800, fontSize: 18, letterSpacing: -0.3 }}>Coach</div>
-            <div style={{ fontSize: 11, color: "#6a6a80" }}>{who} · reads your measured data</div>
+            <div style={{ fontSize: 11, color: "var(--text-dim)" }}>{who} · reads your measured data</div>
           </div>
           <button style={{ ...S.btnGhost, marginLeft: "auto", padding: "6px 12px" }} onClick={onClose}>✕</button>
         </div>
@@ -111,25 +111,25 @@ export default function CoachModal({ apiKey, model, snapshot, planCtx, who, onCl
           )}
 
           {apiKey && shown.length === 0 && !busy && (
-            <div style={{ fontSize: 13, color: "#8a8a9e", lineHeight: 1.6, padding: "8px 2px" }}>
+            <div style={{ fontSize: 13, color: "var(--text-mute)", lineHeight: 1.6, padding: "8px 2px" }}>
               Reading your numbers…
             </div>
           )}
 
           {shown.map((m, i) =>
             m.role === "user" ? (
-              <div key={i} style={{ alignSelf: "flex-end", maxWidth: "82%", background: "rgba(129,140,248,.14)", border: "1px solid rgba(129,140,248,.28)", color: "#e7e7f2", borderRadius: 14, borderBottomRightRadius: 5, padding: "9px 12px", fontSize: 13.5, lineHeight: 1.55 }}>
+              <div key={i} style={{ alignSelf: "flex-end", maxWidth: "82%", background: "rgba(129,140,248,.14)", border: "1px solid rgba(129,140,248,.28)", color: "var(--text)", borderRadius: 14, borderBottomRightRadius: 5, padding: "9px 12px", fontSize: 13.5, lineHeight: 1.55 }}>
                 {m.content}
               </div>
             ) : (
-              <div key={i} style={{ alignSelf: "flex-start", maxWidth: "88%", background: "#0e0f16", border: "1px solid #22232f", color: "#c8c8d8", borderRadius: 14, borderBottomLeftRadius: 5, padding: "10px 13px", fontSize: 13.5, lineHeight: 1.65, whiteSpace: "pre-wrap" }}>
+              <div key={i} style={{ alignSelf: "flex-start", maxWidth: "88%", background: "var(--sunken)", border: "1px solid var(--border)", color: "var(--text-2)", borderRadius: 14, borderBottomLeftRadius: 5, padding: "10px 13px", fontSize: 13.5, lineHeight: 1.65, whiteSpace: "pre-wrap" }}>
                 {m.content}
               </div>
             ),
           )}
 
           {busy && (
-            <div style={{ alignSelf: "flex-start", display: "inline-flex", alignItems: "center", gap: 8, color: "#8a8a9e", fontSize: 12.5, padding: "4px 2px" }}>
+            <div style={{ alignSelf: "flex-start", display: "inline-flex", alignItems: "center", gap: 8, color: "var(--text-mute)", fontSize: 12.5, padding: "4px 2px" }}>
               <span style={S.spinner} /> thinking…
             </div>
           )}
@@ -154,7 +154,7 @@ export default function CoachModal({ apiKey, model, snapshot, planCtx, who, onCl
 
         {/* composer */}
         {apiKey && (
-          <div style={{ display: "flex", gap: 8, alignItems: "flex-end", padding: "10px 14px 14px", borderTop: "1px solid #1c1d28" }}>
+          <div style={{ display: "flex", gap: 8, alignItems: "flex-end", padding: "10px 14px 14px", borderTop: "1px solid var(--border)" }}>
             <textarea
               rows={1}
               value={input}

@@ -24,6 +24,7 @@ import {
   loadApiKey, saveApiKey, loadModel, saveModel, loadTravel, saveTravel,
   loadWxKey, saveWxKey,
   loadLastBackup, saveLastBackup, loadBackupNudge, saveBackupNudge,
+  loadTheme, saveTheme,
 } from "./lib/storage.js";
 import { downloadBackup, backupReminderDue, monthKeyOf } from "./lib/backup.js";
 import { estimateTDEE, resolveTargets, weightTrend, bestE1RM, shiftKey, daysBetween, mealTotals, DEFAULT_TARGETS } from "./lib/nutrition.js";
@@ -68,6 +69,14 @@ export default function App() {
   const [model, setModel] = useState(() => loadModel() || DEFAULT_MODEL);
   const [wxKey, setWxKey] = useState(() => loadWxKey());
   const [travel, setTravel] = useState(() => loadTravel());
+  const [theme, setTheme] = useState(() => loadTheme());
+
+  const toggleTheme = () => {
+    const next = theme === "dark" ? "light" : "dark";
+    document.documentElement.dataset.theme = next;
+    saveTheme(next);
+    setTheme(next);
+  };
 
   // Ask the browser to keep our storage — the cached exercise gifs are paid for
   // out of a lifetime quota, so an eviction literally costs requests.
@@ -171,6 +180,8 @@ export default function App() {
       showSettings={showSettings}
       setShowSettings={setShowSettings}
       now={now}
+      theme={theme}
+      onToggleTheme={toggleTheme}
       onSwitchPerson={(id) => { saveMe(id); setMe(id); }}
     />
   );
@@ -201,7 +212,7 @@ function Trainer({
   apiKey, model, onSetApiKey, onSetModel, wxKey, onSetWxKey, travel, onSetTravel,
   openLog, setOpenLog, timer, setTimer, video, setVideo,
   showHistory, setShowHistory,
-  showSettings, setShowSettings, now, onSwitchPerson,
+  showSettings, setShowSettings, now, theme, onToggleTheme, onSwitchPerson,
 }) {
   const [tab, setTab] = useState("train");
   const [rest, setRest] = useState(null); // { id, secs, label } — the sticky rest timer
@@ -593,6 +604,13 @@ function Trainer({
             <button style={S.statsBtn} onClick={() => setShowHistory(true)}>
               <Icon name="chart" size={15} /> Progress
             </button>
+            <button
+              style={{ ...S.statsBtn, padding: "7px 10px" }}
+              onClick={onToggleTheme}
+              aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+            >
+              <Icon name={theme === "dark" ? "sun" : "moon"} size={16} />
+            </button>
             <button style={{ ...S.statsBtn, padding: "7px 10px" }} onClick={() => setShowSettings(true)} aria-label="Settings">
               <Icon name="settings" size={16} />
             </button>
@@ -608,8 +626,8 @@ function Trainer({
             <Icon name="download" size={18} />
           </span>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 13.5, fontWeight: 700, color: "#e7e7f2" }}>Back up your data</div>
-            <div style={{ fontSize: 12, color: "#9a9ab0", lineHeight: 1.45, marginTop: 1 }}>
+            <div style={{ fontSize: 13.5, fontWeight: 700, color: "var(--text)" }}>Back up your data</div>
+            <div style={{ fontSize: 12, color: "var(--text-mute)", lineHeight: 1.45, marginTop: 1 }}>
               End of the month — save a copy to this phone in case it ever gets wiped.
             </div>
           </div>
@@ -639,7 +657,7 @@ function Trainer({
           meal or set; jump straight back to today when you've wandered off. */}
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 7 }}>
         <button style={S.weekNav} onClick={() => setSelected(shiftKey(selected, -7))} aria-label="Previous week">‹</button>
-        <div style={{ flex: 1, textAlign: "center", fontSize: 12, color: "#8a8a9e", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+        <div style={{ flex: 1, textAlign: "center", fontSize: 12, color: "var(--text-mute)", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
           {onThisWeek ? "This week" : weekLabel}
           {!onThisWeek && (
             <button style={S.resetBtn} onClick={() => setSelected(today)}>today</button>
@@ -674,7 +692,7 @@ function Trainer({
               {done && <span style={S.weekCheck}><Icon name="check" size={10} strokeWidth={3} /></span>}
               {a.date === today && !done && <span style={S.todayDot} />}
               <div style={S.weekDow}>{DOW[a.weekday - 1]}</div>
-              <div style={{ ...S.weekWorkout, color: a.trains ? ACCENT : "#9aa" }}>{label}</div>
+              <div style={{ ...S.weekWorkout, color: a.trains ? ACCENT : "var(--text-mute)" }}>{label}</div>
               {/* the partner's day, at a glance — the name is dropped because
                   it's always the same partner, so their workout + the together
                   ✦ is all that needs to fit in a narrow cell. */}
@@ -919,8 +937,8 @@ function Trainer({
         )}
         <div style={S.fuelDayHead}>
           {selected === today ? "Today" : DOW[agenda.weekday - 1]}
-          <span style={{ color: "#556" }}>· {selected.slice(5).replace("-", "/")}</span>
-          {agenda.isRest && <span style={{ color: "#556" }}>· rest day</span>}
+          <span style={{ color: "var(--text-faint)" }}>· {selected.slice(5).replace("-", "/")}</span>
+          {agenda.isRest && <span style={{ color: "var(--text-faint)" }}>· rest day</span>}
         </div>
         <FuelCard
           meals={meals[selected]}
@@ -956,6 +974,7 @@ function Trainer({
           who={person.name}
           apiKey={apiKey}
           model={model}
+          theme={theme}
           onSetTargets={persistTargets}
           onOpenPhotos={() => setShowPhotos(true)}
         />
@@ -1003,6 +1022,7 @@ function Trainer({
           logs={logs}
           exercises={loggedExercises}
           who={person.name}
+          theme={theme}
           onClose={() => setShowHistory(false)}
           onExport={exportCSV}
         />
@@ -1066,7 +1086,7 @@ function PartnerCard({ agenda, other }) {
 
   return (
     <div style={S.partnerCard}>
-      <div style={{ ...S.demoWrap, width: 34, height: 34, color: "#8a8a9e" }}>
+      <div style={{ ...S.demoWrap, width: 34, height: 34, color: "var(--text-mute)" }}>
         <Icon name={partnerIcon} size={17} />
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
@@ -1129,7 +1149,7 @@ function SettingsModal({ plan, me, apiKey, model, wxKey, onSetWxKey, onSetApiKey
         </div>
 
         <label style={S.label}>Rotation</label>
-        <div style={{ fontSize: 13, color: "#9aa", marginBottom: 4 }}>
+        <div style={{ fontSize: 13, color: "var(--text-mute)", marginBottom: 4 }}>
           {plan.rotation.map((id) => WORKOUT_SHORTS[id]).join(" → ")}
         </div>
         <div style={{ ...S.note, marginTop: 0, marginBottom: 18 }}>
@@ -1259,7 +1279,7 @@ function SettingsModal({ plan, me, apiKey, model, wxKey, onSetWxKey, onSetApiKey
               onClick={() => onSetModel(id)}
             >
               {m.label.split(" — ")[0]}
-              <div style={{ fontSize: 10, color: "#667", fontWeight: 400, marginTop: 2 }}>{m.cost}</div>
+              <div style={{ fontSize: 10, color: "var(--text-dim)", fontWeight: 400, marginTop: 2 }}>{m.cost}</div>
             </button>
           ))}
         </div>
@@ -1299,7 +1319,7 @@ function SettingsModal({ plan, me, apiKey, model, wxKey, onSetWxKey, onSetApiKey
           style={{
             ...S.btnGhost, width: "100%", marginTop: 18,
             border: `1px solid ${confirmReset ? "#5a2a2a" : "#2a322a"}`,
-            color: confirmReset ? "#ff7a7a" : "#888",
+            color: confirmReset ? "#ff7a7a" : "var(--text-mute)",
           }}
           onClick={() => {
             if (!confirmReset) { setConfirmReset(true); return; }

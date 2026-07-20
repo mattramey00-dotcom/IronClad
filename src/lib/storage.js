@@ -177,6 +177,11 @@ export const saveModel = (model) => write("model", model);
 export const loadWxKey = () => read("wxkey") || "";
 export const saveWxKey = (key) => (key ? write("wxkey", key) : remove("wxkey"));
 
+// ---- theme (this device only) ----------------------------------------
+//  "dark" (default) or "light". A per-device preference, never part of the plan.
+export const loadTheme = () => (read("theme") === "light" ? "light" : "dark");
+export const saveTheme = (t) => (t === "light" ? write("theme", "light") : remove("theme"));
+
 // ---- rest-timer notifications (this device only) ---------------------
 //  Opt-in: whether to fire a system notification when a rest ends, so you get a
 //  buzz without watching the clock. A device preference, not part of the plan.
@@ -250,7 +255,7 @@ export function migrateLegacy(personId) {
 }
 
 export function resetEverything() {
-  ["plan", "me", "apikey", "model", "travel", "wxkey", "lastbackup", "backupnudge", "restnotify"].forEach(remove);
+  ["plan", "me", "apikey", "model", "travel", "wxkey", "lastbackup", "backupnudge", "restnotify", "theme"].forEach(remove);
   ["p1", "p2"].forEach((id) => {
     ["progress", "logs", "meals", "weights", "targets", "favmeals", "subs"].forEach((k) => remove(`${k}:${id}`));
   });

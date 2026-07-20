@@ -21,7 +21,7 @@ import Icon from "./Icon.jsx";
 function Flipbook({ slug, size = 64, onError }) {
   const imgStyle = { position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" };
   return (
-    <div style={{ position: "relative", width: size, height: size, borderRadius: 10, overflow: "hidden", background: "#0a0d0a" }}>
+    <div style={{ position: "relative", width: size, height: size, borderRadius: 10, overflow: "hidden", background: "var(--sunken)" }}>
       <img src={exImg(slug, 0)} alt="" loading="lazy" decoding="async" onError={onError} style={imgStyle} />
       <img src={exImg(slug, 1)} alt="" loading="lazy" decoding="async" onError={onError} style={{ ...imgStyle, animation: "flip 1.8s ease-in-out infinite" }} />
       <div style={{ position: "absolute", inset: 0, boxShadow: `inset 0 0 0 1px ${ACCENT}33`, borderRadius: 10, pointerEvents: "none" }} />

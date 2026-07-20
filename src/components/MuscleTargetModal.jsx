@@ -56,7 +56,7 @@ function Figure({ viewBox, outline, parts, selected, onPick, label }) {
             );
           })}
       </svg>
-      <span style={{ fontSize: 10, letterSpacing: 1, textTransform: "uppercase", color: "#5a5a70" }}>{label}</span>
+      <span style={{ fontSize: 10, letterSpacing: 1, textTransform: "uppercase", color: "var(--text-faint)" }}>{label}</span>
     </div>
   );
 }
@@ -72,11 +72,11 @@ export default function MuscleTargetModal({ onPickExercise, onClose }) {
         onClick={(e) => e.stopPropagation()}
       >
         {/* header */}
-        <div style={{ display: "flex", alignItems: "center", gap: 9, padding: "18px 20px 12px", borderBottom: "1px solid #1c1d28" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 9, padding: "18px 20px 12px", borderBottom: "1px solid var(--border)" }}>
           <Icon name="stretch" size={18} style={{ color: ACCENT }} />
           <div>
             <div style={{ fontFamily: "'Inter', sans-serif", fontWeight: 800, fontSize: 18, letterSpacing: -0.3 }}>Target a muscle</div>
-            <div style={{ fontSize: 11, color: "#6a6a80" }}>Tap a muscle to train it</div>
+            <div style={{ fontSize: 11, color: "var(--text-dim)" }}>Tap a muscle to train it</div>
           </div>
           <button style={{ ...S.btnGhost, marginLeft: "auto", padding: "6px 12px" }} onClick={onClose}>✕</button>
         </div>
@@ -88,7 +88,7 @@ export default function MuscleTargetModal({ onPickExercise, onClose }) {
           </div>
 
           {!muscle ? (
-            <div style={{ color: "#8a8a9e", fontSize: 13.5, lineHeight: 1.6, padding: "16px 6px 4px", textAlign: "center" }}>
+            <div style={{ color: "var(--text-mute)", fontSize: 13.5, lineHeight: 1.6, padding: "16px 6px 4px", textAlign: "center" }}>
               Tap any muscle above and the moves that train it appear here. Pick one and it opens like
               any exercise — with its demo, set logging and rest timer — as extra work on today.
             </div>
@@ -98,7 +98,7 @@ export default function MuscleTargetModal({ onPickExercise, onClose }) {
                 {MUSCLE_LABELS[muscle]} · {exs.length} move{exs.length === 1 ? "" : "s"}
               </label>
               {exs.length === 0 ? (
-                <div style={{ color: "#8a8a9e", fontSize: 13, padding: "8px 4px" }}>
+                <div style={{ color: "var(--text-mute)", fontSize: 13, padding: "8px 4px" }}>
                   Nothing in the program targets that one directly.
                 </div>
               ) : (
@@ -133,7 +133,7 @@ export default function MuscleTargetModal({ onPickExercise, onClose }) {
           )}
         </div>
 
-        <div style={{ padding: 12, borderTop: "1px solid #1c1d28" }}>
+        <div style={{ padding: 12, borderTop: "1px solid var(--border)" }}>
           <button style={{ ...S.btnGhost, width: "100%" }} onClick={onClose}>Done</button>
         </div>
       </div>

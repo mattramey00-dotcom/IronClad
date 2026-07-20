@@ -27,8 +27,13 @@ import {
 const TONE = { good: S.insightGood, warn: S.insightWarn, info: {} };
 
 export default function InsightsView({
-  meals, weights, logs, targets, today, who, apiKey, model, onSetTargets, onOpenPhotos,
+  meals, weights, logs, targets, today, who, apiKey, model, theme, onSetTargets, onOpenPhotos,
 }) {
+  // Chart colours can't use CSS variables (Recharts writes them as SVG
+  // attributes, where var() doesn't resolve), so derive concrete values here.
+  const CH = theme === "light"
+    ? { grid: "#e4e6ee", axis: "#8b8e9c", dot: "#9aa0b4", ref: "#d2d5e0" }
+    : { grid: "#1c1d28", axis: "#6a6a80", dot: "#9a9ab0", ref: "#2c2e3d" };
   const [showCoach, setShowCoach] = useState(false);
   const [pendingGoal, setPendingGoal] = useState(null); // goal awaiting confirmation
 
@@ -148,7 +153,7 @@ export default function InsightsView({
         <div style={{ fontFamily: "'Inter', sans-serif", fontWeight: 800, letterSpacing: -0.6, fontSize: 26, marginBottom: 3 }}>
           Insights
         </div>
-        <div style={{ fontSize: 12, color: "#6a6a80", marginBottom: 18 }}>{who} · measured from your own logs</div>
+        <div style={{ fontSize: 12, color: "var(--text-dim)", marginBottom: 18 }}>{who} · measured from your own logs</div>
 
         <Hint id="insights">
           Every number here is measured from what you log — no calculators. Log your weight on the
@@ -213,11 +218,11 @@ export default function InsightsView({
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
               <input type="number" inputMode="numeric" style={{ ...S.textInput, width: 60 }} placeholder="ft" value={curFt} onChange={(e) => setHeight(e.target.value, curIn)} />
-              <span style={{ fontSize: 12, color: "#8a8a9e" }}>ft</span>
+              <span style={{ fontSize: 12, color: "var(--text-mute)" }}>ft</span>
               <input type="number" inputMode="numeric" style={{ ...S.textInput, width: 60 }} placeholder="in" value={curIn} onChange={(e) => setHeight(curFt, e.target.value)} />
-              <span style={{ fontSize: 12, color: "#8a8a9e" }}>in</span>
+              <span style={{ fontSize: 12, color: "var(--text-mute)" }}>in</span>
               <input type="number" inputMode="numeric" style={{ ...S.textInput, width: 64, marginLeft: "auto" }} placeholder="age" value={targets?.age || ""} onChange={(e) => setT({ age: Number(e.target.value) || null })} />
-              <span style={{ fontSize: 12, color: "#8a8a9e" }}>yrs</span>
+              <span style={{ fontSize: 12, color: "var(--text-mute)" }}>yrs</span>
             </div>
           </>
         )}
@@ -242,7 +247,7 @@ export default function InsightsView({
           <div style={S.statBox}>
             <div style={S.statLabel}>Bodyweight</div>
             <div style={S.statValue}>{bodyweight ? `${bodyweight.toFixed(1)} lb` : "—"}</div>
-            <div style={{ fontSize: 11, color: "#8a8a9e", marginTop: 2 }}>
+            <div style={{ fontSize: 11, color: "var(--text-mute)", marginTop: 2 }}>
               {tdee.trend.slopePerWeek !== null
                 ? `${tdee.trend.slopePerWeek >= 0 ? "+" : ""}${tdee.trend.slopePerWeek.toFixed(2)} lb/wk`
                 : "log a few weigh-ins"}
@@ -258,7 +263,7 @@ export default function InsightsView({
             >
               {strength.pct !== null ? `${strength.pct >= 0 ? "+" : ""}${strength.pct.toFixed(1)}%` : "—"}
             </div>
-            <div style={{ fontSize: 11, color: "#8a8a9e", marginTop: 2 }}>
+            <div style={{ fontSize: 11, color: "var(--text-mute)", marginTop: 2 }}>
               {strength.n ? `est. 1RM across ${strength.n} lift${strength.n === 1 ? "" : "s"}` : "log some sets"}
             </div>
           </div>
@@ -267,7 +272,7 @@ export default function InsightsView({
             <div style={S.statValue}>
               {tdee.intake.avgProtein ? `${Math.round(tdee.intake.avgProtein)} g` : "—"}
             </div>
-            <div style={{ fontSize: 11, color: "#8a8a9e", marginTop: 2 }}>
+            <div style={{ fontSize: 11, color: "var(--text-mute)", marginTop: 2 }}>
               {ins.proteinPerLb ? `${ins.proteinPerLb.toFixed(2)} g/lb · aim 0.7–1.0` : "daily average"}
             </div>
           </div>
@@ -276,7 +281,7 @@ export default function InsightsView({
             <div style={S.statValue}>
               {tdee.intake.avgKcal ? Math.round(tdee.intake.avgKcal).toLocaleString() : "—"}
             </div>
-            <div style={{ fontSize: 11, color: "#8a8a9e", marginTop: 2 }}>
+            <div style={{ fontSize: 11, color: "var(--text-mute)", marginTop: 2 }}>
               {tdee.intake.daysLogged}/{tdee.intake.days} days logged
             </div>
           </div>
@@ -300,19 +305,19 @@ export default function InsightsView({
               <span style={{ fontFamily: "'Inter', sans-serif", fontWeight: 800, fontSize: 22, letterSpacing: -0.4 }}>
                 {bw.smoothed?.toFixed(1)} lb
               </span>
-              <span style={{ fontSize: 12, color: "#8a8a9e" }}>
+              <span style={{ fontSize: 12, color: "var(--text-mute)" }}>
                 trend · {bw.slopePerWeek >= 0 ? "+" : ""}{bw.slopePerWeek?.toFixed(2)} lb/wk
               </span>
             </div>
             <div style={{ height: 170, marginTop: 4 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <ComposedChart data={bw.series} margin={{ top: 6, right: 6, bottom: 0, left: -2 }}>
-                  <CartesianGrid stroke="#1c1d28" vertical={false} />
-                  <XAxis dataKey="date" tick={{ fill: "#6a6a80", fontSize: 10 }} axisLine={false} tickLine={false} interval="preserveStartEnd" minTickGap={26} />
-                  <YAxis domain={wDomain} allowDecimals={false} tickFormatter={(v) => Math.round(v)} tick={{ fill: "#6a6a80", fontSize: 10 }} axisLine={false} tickLine={false} width={34} />
+                  <CartesianGrid stroke={CH.grid} vertical={false} />
+                  <XAxis dataKey="date" tick={{ fill: CH.axis, fontSize: 10 }} axisLine={false} tickLine={false} interval="preserveStartEnd" minTickGap={26} />
+                  <YAxis domain={wDomain} allowDecimals={false} tickFormatter={(v) => Math.round(v)} tick={{ fill: CH.axis, fontSize: 10 }} axisLine={false} tickLine={false} width={34} />
                   <Tooltip
-                    contentStyle={{ background: "#111219", border: "1px solid #262838", borderRadius: 10, fontSize: 12 }}
-                    labelStyle={{ color: "#8a8a9e" }}
+                    contentStyle={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, fontSize: 12 }}
+                    labelStyle={{ color: "var(--text-mute)" }}
                     itemStyle={{ padding: 0 }}
                     formatter={(v, n) => [`${v} lb`, n]}
                   />
@@ -320,19 +325,19 @@ export default function InsightsView({
                     <ReferenceLine y={Number(targets.goalWeight)} stroke={ACCENT} strokeDasharray="4 4" strokeOpacity={0.55} />
                   )}
                   <Line name="Trend" type="monotone" dataKey="trend" stroke={WEIGHT_COLOR} strokeWidth={2} dot={false} connectNulls isAnimationActive={false} />
-                  <Line name="Weigh-in" dataKey="raw" stroke="transparent" connectNulls={false} isAnimationActive={false} dot={{ r: 2.6, fill: "#9a9ab0", strokeWidth: 0 }} activeDot={{ r: 4, strokeWidth: 0 }} />
+                  <Line name="Weigh-in" dataKey="raw" stroke="transparent" connectNulls={false} isAnimationActive={false} dot={{ r: 2.6, fill: CH.dot, strokeWidth: 0 }} activeDot={{ r: 4, strokeWidth: 0 }} />
                 </ComposedChart>
               </ResponsiveContainer>
             </div>
             <div style={S.legendRow}>
-              <span><i style={{ ...S.dot, background: "#9a9ab0" }} />Daily weigh-in</span>
+              <span><i style={{ ...S.dot, background: "var(--text-mute)" }} />Daily weigh-in</span>
               <span><i style={{ ...S.dot, background: WEIGHT_COLOR }} />Trend line</span>
               {Number(targets?.goalWeight) > 0 && <span><i style={{ ...S.dot, background: ACCENT }} />Goal</span>}
             </div>
 
             {/* goal weight + projected arrival */}
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10 }}>
-              <span style={{ fontSize: 12, color: "#8a8a9e" }}>Goal weight</span>
+              <span style={{ fontSize: 12, color: "var(--text-mute)" }}>Goal weight</span>
               <input
                 type="number" inputMode="decimal" step="0.1"
                 style={{ ...S.weighInput, width: 84 }}
@@ -340,7 +345,7 @@ export default function InsightsView({
                 value={targets?.goalWeight || ""}
                 onChange={(e) => setT({ goalWeight: Number(e.target.value) || null })}
               />
-              <span style={{ fontSize: 12, color: "#8a8a9e" }}>lb</span>
+              <span style={{ fontSize: 12, color: "var(--text-mute)" }}>lb</span>
             </div>
             <div style={S.note}>
               {!goalProj
@@ -361,20 +366,20 @@ export default function InsightsView({
             <div style={{ height: 190, marginTop: 4 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <ComposedChart data={chartData} margin={{ top: 6, right: 6, bottom: 0, left: -2 }}>
-                  <CartesianGrid stroke="#1c1d28" vertical={false} />
-                  <XAxis dataKey="week" tick={{ fill: "#6a6a80", fontSize: 10 }} axisLine={false} tickLine={false} />
+                  <CartesianGrid stroke={CH.grid} vertical={false} />
+                  <XAxis dataKey="week" tick={{ fill: CH.axis, fontSize: 10 }} axisLine={false} tickLine={false} />
                   <YAxis
                     domain={["dataMin - 2", "dataMax + 2"]}
                     allowDecimals={false}
                     tickFormatter={(v) => Math.round(v)}
-                    tick={{ fill: "#6a6a80", fontSize: 10 }}
+                    tick={{ fill: CH.axis, fontSize: 10 }}
                     axisLine={false}
                     tickLine={false}
                     width={34}
                   />
                   <Tooltip
-                    contentStyle={{ background: "#111219", border: "1px solid #262838", borderRadius: 10, fontSize: 12 }}
-                    labelStyle={{ color: "#8a8a9e" }}
+                    contentStyle={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, fontSize: 12 }}
+                    labelStyle={{ color: "var(--text-mute)" }}
                     itemStyle={{ padding: 0 }}
                     formatter={(v, n, item) =>
                       n === "Bodyweight"
@@ -383,7 +388,7 @@ export default function InsightsView({
                     }
                   />
                   {/* 100 = where both lines started. Above it is progress. */}
-                  <ReferenceLine y={100} stroke="#2c2e3d" strokeDasharray="2 3" />
+                  <ReferenceLine y={100} stroke={CH.ref} strokeDasharray="2 3" />
                   <Line
                     name="Strength" type="monotone" dataKey="strength"
                     stroke={STRENGTH_COLOR} strokeWidth={2} connectNulls

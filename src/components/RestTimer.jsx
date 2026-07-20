@@ -181,7 +181,7 @@ export default function RestTimer({ seconds, label, onClose, onSetDuration, embe
         ...S.restBar,
         position: "static", left: "auto", right: "auto", bottom: "auto",
         zIndex: "auto", maxWidth: "none", margin: "0 0 12px", borderRadius: 14,
-        border: "1px solid #2c2e3d", boxShadow: "none", overflow: "hidden",
+        border: "1px solid var(--border-hi)", boxShadow: "none", overflow: "hidden",
         ...(done ? S.restBarDone : {}),
       }
     : { ...S.restBar, ...(done ? S.restBarDone : {}) };

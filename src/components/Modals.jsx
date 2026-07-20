@@ -15,7 +15,7 @@ export function VideoModal({ video, name, onClose }) {
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontWeight: 700, fontSize: 15 }}>{name}</div>
-            <div style={{ fontSize: 11, color: "#8a8a9e" }}>Demo · {video.by} · via YouTube</div>
+            <div style={{ fontSize: 11, color: "var(--text-mute)" }}>Demo · {video.by} · via YouTube</div>
           </div>
           <button style={{ ...S.btnGhost, padding: "6px 12px" }} onClick={onClose}>✕</button>
         </div>
@@ -28,7 +28,7 @@ export function VideoModal({ video, name, onClose }) {
             style={{ position: "absolute", inset: 0, width: "100%", height: "100%", border: 0 }}
           />
         </div>
-        <div style={{ fontSize: 11, color: "#667", marginTop: 8 }}>
+        <div style={{ fontSize: 11, color: "var(--text-dim)", marginTop: 8 }}>
           Requires internet · animation stays available offline
         </div>
       </div>
@@ -79,7 +79,7 @@ export function TimerModal({ seconds, label, onClose }) {
   return (
     <div style={S.modalWrap} onClick={onClose}>
       <div style={S.modalCard} onClick={(e) => e.stopPropagation()}>
-        <div style={{ fontSize: 13, letterSpacing: 2, textTransform: "uppercase", color: "#888" }}>{label}</div>
+        <div style={{ fontSize: 13, letterSpacing: 2, textTransform: "uppercase", color: "var(--text-mute)" }}>{label}</div>
         <div style={{ position: "relative", width: 200, height: 200, margin: "18px auto" }}>
           <svg viewBox="0 0 120 120" style={{ width: 200, height: 200, transform: "rotate(-90deg)" }}>
             <circle cx="60" cy="60" r="54" fill="none" stroke="#222" strokeWidth="8" />

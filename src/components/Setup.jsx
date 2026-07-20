@@ -37,7 +37,7 @@ function Baseline({ name, onDone, onBack }) {
     });
   };
 
-  const unit = { fontSize: 12, color: "#8a8a9e" };
+  const unit = { fontSize: 12, color: "var(--text-mute)" };
 
   return (
     <div style={S.setupWrap}>
@@ -166,7 +166,7 @@ export default function Setup({ onReady }) {
       </div>
 
       {/* Coming back after a wipe or onto a new phone: restore a backup file. */}
-      <div style={{ borderTop: "1px solid #1c1d28", marginTop: 20, paddingTop: 16 }}>
+      <div style={{ borderTop: "1px solid var(--border)", marginTop: 20, paddingTop: 16 }}>
         <button
           style={{ ...S.btnGhost, width: "100%" }}
           onClick={() => fileRef.current?.click()}
@@ -364,7 +364,7 @@ function Join({ onReady, onBack }) {
             onClick={() => setWho({ id: p.id, name: p.name })}
           >
             I'm {p.name}
-            <span style={{ color: "#6a6a80", fontSize: 12, display: "block", marginTop: 2 }}>
+            <span style={{ color: "var(--text-dim)", fontSize: 12, display: "block", marginTop: 2 }}>
               starts on {p.start === "A" ? "Mon · Wed · Fri" : "Tue · Thu · Sat"}
             </span>
           </button>

@@ -61,7 +61,7 @@ export default function HoldTimer({ targetLo, targetHi, onStop }) {
 
   return (
     <div style={ST.wrap}>
-      <div style={{ ...ST.time, color: hit ? "#7ec98f" : "#eaeaf0" }}>
+      <div style={{ ...ST.time, color: hit ? "#7ec98f" : "var(--text)" }}>
         {mm}:{ss}
       </div>
       <div style={ST.label}>
@@ -88,7 +88,7 @@ const ST = {
     letterSpacing: -1.5, fontVariantNumeric: "tabular-nums", lineHeight: 1,
     transition: "color .2s ease",
   },
-  label: { fontSize: 12, color: "#8a8a9e" },
+  label: { fontSize: 12, color: "var(--text-mute)" },
   btn: {
     display: "inline-flex", alignItems: "center", gap: 7, border: "none",
     borderRadius: 12, padding: "11px 22px", fontFamily: "inherit",

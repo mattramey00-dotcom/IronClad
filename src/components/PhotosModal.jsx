@@ -40,7 +40,7 @@ function PhotoImg({ id, style, fit = "cover", onClick }) {
   return (
     <div
       onClick={onClick}
-      style={{ ...style, background: "#0f1015", overflow: "hidden", cursor: onClick ? "pointer" : "default" }}
+      style={{ ...style, background: "var(--sunken)", overflow: "hidden", cursor: onClick ? "pointer" : "default" }}
     >
       {src && <img src={src} alt="" style={{ width: "100%", height: "100%", objectFit: fit, display: "block" }} />}
     </div>
@@ -114,7 +114,7 @@ export default function PhotosModal({ photos = [], onAdd, onRemove, onClose }) {
               {[asc[0], asc[asc.length - 1]].map((d, i) => (
                 <div key={i}>
                   <PhotoImg id={rep(d).id} style={{ aspectRatio: "3 / 4", borderRadius: 12 }} onClick={() => setEnlarge(rep(d).id)} />
-                  <div style={{ fontSize: 11, color: "#8a8a9e", marginTop: 5, textAlign: "center" }}>{fmt(d)}</div>
+                  <div style={{ fontSize: 11, color: "var(--text-mute)", marginTop: 5, textAlign: "center" }}>{fmt(d)}</div>
                 </div>
               ))}
             </div>
@@ -123,7 +123,7 @@ export default function PhotosModal({ photos = [], onAdd, onRemove, onClose }) {
 
         {/* gallery */}
         {dates.length === 0 ? (
-          <div style={{ color: "#8a8a9e", fontSize: 13.5, lineHeight: 1.6, padding: "22px 0", textAlign: "center" }}>
+          <div style={{ color: "var(--text-mute)", fontSize: 13.5, lineHeight: 1.6, padding: "22px 0", textAlign: "center" }}>
             No photos yet. Take a front, side and back shot today — same spot, same light — and that's
             your baseline to measure everything against.
           </div>
@@ -132,14 +132,14 @@ export default function PhotosModal({ photos = [], onAdd, onRemove, onClose }) {
             <label style={{ ...S.label, marginTop: 18 }}>All sets</label>
             {dates.map((d) => (
               <div key={d} style={{ marginTop: 10 }}>
-                <div style={{ fontSize: 12, color: "#8a8a9e", marginBottom: 6 }}>{fmt(d)}</div>
+                <div style={{ fontSize: 12, color: "var(--text-mute)", marginBottom: 6 }}>{fmt(d)}</div>
                 <div style={{ display: "flex", gap: 8 }}>
                   {ANGLES.map((a) => {
                     const p = byDate[d].find((x) => x.angle === a.key);
                     return p ? (
                       <PhotoImg key={a.key} id={p.id} style={{ flex: 1, aspectRatio: "3 / 4", borderRadius: 10 }} onClick={() => setEnlarge(p.id)} />
                     ) : (
-                      <div key={a.key} style={{ flex: 1, aspectRatio: "3 / 4", borderRadius: 10, background: "#0f1015", border: "1px dashed #26283a", display: "grid", placeItems: "center", color: "#4a4a5e", fontSize: 11 }}>
+                      <div key={a.key} style={{ flex: 1, aspectRatio: "3 / 4", borderRadius: 10, background: "var(--sunken)", border: "1px dashed #26283a", display: "grid", placeItems: "center", color: "var(--text-faint)", fontSize: 11 }}>
                         {a.label}
                       </div>
                     );
