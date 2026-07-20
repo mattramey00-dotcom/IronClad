@@ -177,6 +177,12 @@ export const saveModel = (model) => write("model", model);
 export const loadWxKey = () => read("wxkey") || "";
 export const saveWxKey = (key) => (key ? write("wxkey", key) : remove("wxkey"));
 
+// ---- rest-timer notifications (this device only) ---------------------
+//  Opt-in: whether to fire a system notification when a rest ends, so you get a
+//  buzz without watching the clock. A device preference, not part of the plan.
+export const loadNotify = () => read("restnotify") === "1";
+export const saveNotify = (on) => (on ? write("restnotify", "1") : remove("restnotify"));
+
 // ---- full-device backup (export / import) ---------------------------
 //  There is no server, so a wiped phone is a wiped account. These two lift the
 //  entire `ironclad:*` namespace out to a plain object (for a JSON file the user
@@ -244,7 +250,7 @@ export function migrateLegacy(personId) {
 }
 
 export function resetEverything() {
-  ["plan", "me", "apikey", "model", "travel", "wxkey", "lastbackup", "backupnudge"].forEach(remove);
+  ["plan", "me", "apikey", "model", "travel", "wxkey", "lastbackup", "backupnudge", "restnotify"].forEach(remove);
   ["p1", "p2"].forEach((id) => {
     ["progress", "logs", "meals", "weights", "targets", "favmeals", "subs"].forEach((k) => remove(`${k}:${id}`));
   });

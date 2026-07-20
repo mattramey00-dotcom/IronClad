@@ -3,17 +3,24 @@
 // ============================================================
 //  A sticky bar that lives just above the tab bar. It starts the moment you log
 //  a set, and it stays put while you scroll, collapse the panel, or glance at
-//  another tab — because rest is when you're least likely to be looking at the
-//  exact row you just logged. At zero it beeps and buzzes so you can start the
-//  next set without watching the clock.
+//  another tab. At zero it beeps and buzzes so you can start the next set
+//  without watching the clock.
 //
-//  Mounted with a fresh key on every logged set, so each new set restarts it
-//  cleanly rather than trying to reconcile a running countdown.
+//  It runs on wall-clock time (a real end-timestamp), not a tick counter, so
+//  leaving the app and coming back shows the correct remaining time — and if
+//  rest already finished while you were away, it flips straight to GO the moment
+//  you return. A phone browser suspends JS timers in the background, so a live
+//  countdown *over other apps* isn't possible on the web (that's a native-only
+//  feature); what this does instead is stay accurate across a switch-away, hold
+//  the screen awake while you're resting, and — if you allow it — buzz you with
+//  a notification when the rest is up.
 // ============================================================
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { ACCENT } from "../data/program.js";
 import { S } from "../styles.js";
+import Icon from "./Icon.jsx";
+import { loadNotify, saveNotify } from "../lib/storage.js";
 
 function chime() {
   try {
@@ -37,37 +44,99 @@ function chime() {
   }
 }
 
+function notifyRestUp(label) {
+  if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
+  const body = label ? `Next set — ${label}` : "Time for your next set.";
+  try {
+    navigator.serviceWorker?.ready
+      ?.then((reg) => reg.showNotification("Rest's up", {
+        body, tag: "ironclad-rest", renotify: true,
+        icon: "./icon-192.png", badge: "./icon-192.png",
+      }))
+      .catch(() => { try { new Notification("Rest's up", { body }); } catch (e) { /* ignore */ } });
+  } catch (e) {
+    /* notifications unavailable */
+  }
+}
+
 export default function RestTimer({ seconds, label, onClose, onSetDuration, embedded = false }) {
   const [total, setTotal] = useState(seconds);
   const [remaining, setRemaining] = useState(seconds);
   const [running, setRunning] = useState(true);
+  const [notifyOn, setNotifyOn] = useState(() => loadNotify());
+  const endRef = useRef(Date.now() + seconds * 1000); // wall-clock target
   const doneRef = useRef(false);
+  const wakeRef = useRef(null);
 
-  // countdown
+  // Remaining is always derived from the end-timestamp, so a suspended tab (you
+  // switched apps) doesn't drift — on return it recomputes to the truth.
+  const recompute = useCallback(() => {
+    const rem = Math.max(0, Math.round((endRef.current - Date.now()) / 1000));
+    setRemaining(rem);
+    return rem;
+  }, []);
+
   useEffect(() => {
     if (!running) return undefined;
-    const id = setInterval(() => setRemaining((r) => Math.max(0, r - 1)), 1000);
+    const id = setInterval(recompute, 250);
     return () => clearInterval(id);
+  }, [running, recompute]);
+
+  // Coming back from another app / a locked screen: reconcile immediately rather
+  // than waiting for the next tick, and re-grab the wake lock (it's dropped when
+  // the page is hidden).
+  useEffect(() => {
+    const onVis = () => {
+      if (document.visibilityState !== "visible") return;
+      recompute();
+      requestWake();
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, [recompute]);
+
+  // Keep the screen on while resting, so if you set the phone down (without
+  // switching apps) the countdown stays lit until GO. Best-effort — released on
+  // unmount and auto-dropped by the OS when the tab hides.
+  const requestWake = useCallback(async () => {
+    try {
+      if (running && !doneRef.current && navigator.wakeLock && document.visibilityState === "visible") {
+        wakeRef.current = await navigator.wakeLock.request("screen");
+      }
+    } catch (e) {
+      /* denied or unsupported — the timer still works */
+    }
   }, [running]);
 
-  // fire once when it lands on zero
+  useEffect(() => {
+    requestWake();
+    return () => { try { wakeRef.current?.release?.(); } catch (e) { /* ignore */ } wakeRef.current = null; };
+  }, [requestWake]);
+
+  // Fire once when it lands on zero — whether that's on a live tick or the
+  // instant you return to a rest that finished while you were away.
   useEffect(() => {
     if (remaining === 0 && !doneRef.current) {
       doneRef.current = true;
       setRunning(false);
+      try { wakeRef.current?.release?.(); } catch (e) { /* ignore */ }
+      wakeRef.current = null;
       chime();
       try { navigator.vibrate?.([120, 60, 120]); } catch (e) { /* unsupported */ }
-      const t = setTimeout(onClose, 4000); // clear itself shortly after
+      if (notifyOn) notifyRestUp(label);
+      const t = setTimeout(onClose, 6000); // clear itself shortly after
       return () => clearTimeout(t);
     }
     return undefined;
-  }, [remaining, onClose]);
+  }, [remaining, onClose, notifyOn, label]);
 
   const bump = (delta) => {
     doneRef.current = false;
     setRunning(true);
-    setRemaining((r) => Math.max(5, r + delta));
-    setTotal((t) => Math.max(5, Math.max(remaining, 0) + delta, t));
+    endRef.current = Math.max(Date.now() + 5000, endRef.current + delta * 1000);
+    setTotal((t) => Math.max(5, t + delta));
+    requestWake();
+    recompute();
   };
 
   // Jump straight to a common rest length when the set didn't want the
@@ -75,26 +144,38 @@ export default function RestTimer({ seconds, label, onClose, onSetDuration, embe
   const setTo = (secs) => {
     doneRef.current = false;
     setRunning(true);
+    endRef.current = Date.now() + secs * 1000;
     setTotal(secs);
-    setRemaining(secs);
+    requestWake();
+    recompute();
     // Remember this choice so the next set's rest starts here, not back at 45s.
     onSetDuration?.(secs);
+  };
+
+  // Tap to allow notifications (the permission prompt must be in a user gesture,
+  // so it can only happen here, not automatically).
+  const toggleNotify = async () => {
+    if (notifyOn) { setNotifyOn(false); saveNotify(false); return; }
+    if (typeof Notification !== "undefined" && Notification.permission !== "granted") {
+      try {
+        const perm = await Notification.requestPermission();
+        if (perm !== "granted") return;
+      } catch (e) {
+        return;
+      }
+    }
+    setNotifyOn(true);
+    saveNotify(true);
   };
 
   const done = remaining === 0;
   const mm = Math.floor(remaining / 60);
   const ss = String(remaining % 60).padStart(2, "0");
-  const pct = total ? (remaining / total) * 100 : 0;
+  const pct = total ? Math.max(0, Math.min(100, (remaining / total) * 100)) : 0;
 
-  // Common between-set lengths — tap to override the 45s default mid-rest. The
-  // modal keeps it to the two you actually reach for (1:00 / 1:30); the sticky
-  // bar has room for the fuller set.
   const QUICK = embedded ? [60, 90] : [45, 60, 90, 120];
   const clock = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 
-  // Inside the exercise modal the timer is an inline card, not the fixed bar
-  // that floats above the tab bar — so the countdown sits right under the sets
-  // you're resting between instead of hiding behind the modal.
   const wrapStyle = embedded
     ? {
         ...S.restBar,
@@ -105,10 +186,21 @@ export default function RestTimer({ seconds, label, onClose, onSetDuration, embe
       }
     : { ...S.restBar, ...(done ? S.restBarDone : {}) };
 
+  const bellBtn = (
+    <button
+      style={{ ...S.restBtn, color: notifyOn ? ACCENT : undefined, display: "inline-grid", placeItems: "center" }}
+      onClick={toggleNotify}
+      aria-label={notifyOn ? "Rest notifications on" : "Notify me when rest ends"}
+      title={notifyOn ? "Notifications on" : "Notify me when rest ends"}
+    >
+      <Icon name={notifyOn ? "bell" : "bellOff"} size={15} />
+    </button>
+  );
+
   return (
     <div style={wrapStyle}>
       <div style={S.restProgTrack}>
-        <div style={{ ...S.restProgFill, width: `${pct}%`, background: done ? ACCENT : ACCENT }} />
+        <div style={{ ...S.restProgFill, width: `${pct}%`, background: ACCENT }} />
       </div>
       <div style={S.restRow}>
         {done ? (
@@ -121,10 +213,9 @@ export default function RestTimer({ seconds, label, onClose, onSetDuration, embe
           <>
             <span style={S.restKicker}>Rest</span>
             <span style={S.restTime}>{mm}:{ss}</span>
-            {/* The exercise name is redundant inside its own modal, so the
-                embedded timer drops it and keeps just the clock + controls. */}
             {!embedded && <span style={S.restLabel}>{label}</span>}
             <div style={{ ...S.restControls, ...(embedded ? { marginLeft: "auto" } : {}) }}>
+              {bellBtn}
               <button style={S.restBtn} onClick={() => bump(-15)} aria-label="15 seconds less">−15</button>
               <button style={S.restBtn} onClick={() => bump(15)} aria-label="15 seconds more">+15</button>
               <button style={S.restSkip} onClick={onClose}>Skip</button>
@@ -132,8 +223,6 @@ export default function RestTimer({ seconds, label, onClose, onSetDuration, embe
           </>
         )}
       </div>
-      {/* Quick-pick durations: the modal shows a slim 1:00 / 1:30 pair to bump
-          past the 45s default; the sticky bar carries the fuller set. */}
       {!done && (
         <div style={{ ...S.restChips, ...(embedded ? { padding: "0 12px 9px" } : {}) }}>
           <span style={S.restChipsLabel}>Set to</span>

@@ -17,6 +17,20 @@ self.addEventListener("activate", (event) => {
   self.clients.claim();
 });
 
+// Tapping a "Rest's up" notification focuses the app (or opens it).
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
+      for (const c of clients) {
+        if ("focus" in c) return c.focus();
+      }
+      if (self.clients.openWindow) return self.clients.openWindow("./");
+      return undefined;
+    })
+  );
+});
+
 // Network-first, falling back to cache when offline.
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;

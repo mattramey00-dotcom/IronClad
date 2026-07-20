@@ -150,6 +150,20 @@ const PATHS = {
       <path d="M12 7.5V12l3 2" />
     </>
   ),
+  bell: (
+    <>
+      <path d="M6 9a6 6 0 0 1 12 0c0 4.5 1.8 5.8 1.8 5.8H4.2S6 13.5 6 9Z" />
+      <path d="M10 19.5a2 2 0 0 0 4 0" />
+    </>
+  ),
+  bellOff: (
+    <>
+      <path d="M8.5 5.2A6 6 0 0 1 18 9c0 4.5 1.8 5.8 1.8 5.8h-8" />
+      <path d="M6.3 7.9A6 6 0 0 0 6 9c0 4.5-1.8 5.8-1.8 5.8h9" />
+      <path d="M10 19.5a2 2 0 0 0 4 0" />
+      <path d="M4 4l16 16" />
+    </>
+  ),
 };
 
 // Glyphs that are line drawings (stroked) vs. solid shapes (filled). Filled
