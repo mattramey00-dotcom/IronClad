@@ -698,4 +698,49 @@ export function musclesFor(ex) {
   return MUSCLES_BY_NAME[ex.n] || MUSCLES_BY_KIND[DEMOS[ex.d]?.kind] || ["fullbody"];
 }
 
+// ---- swap suggestions -------------------------------------------------
+//  When a movement doesn't work for you, some replacements keep the day's plan
+//  intact — they hit the same primary muscle, so the week's balance is unchanged
+//  — and some deliberately change what the slot trains. Both are drawn from the
+//  program's own movements, so each carries a real animation and muscle map. The
+//  index is built once from WORKOUTS.
+
+const ALL_EX = (() => {
+  const out = {};
+  const walk = (node) => {
+    if (Array.isArray(node)) { node.forEach(walk); return; }
+    if (node && typeof node === "object") {
+      // Real lifts only — cardio (d: "cardio") isn't a strength-exercise swap.
+      if (typeof node.n === "string" && typeof node.d === "string" && node.d !== "cardio" && !out[node.n]) {
+        out[node.n] = { n: node.n, s: node.s, d: node.d };
+      }
+      Object.values(node).forEach(walk);
+    }
+  };
+  walk(WORKOUTS);
+  return out;
+})();
+
+// The program's own set/rep scheme for a movement — reused for a swap so a
+// same-muscle replacement keeps the day's volume identical.
+export function programScheme(name) {
+  return ALL_EX[name]?.s || null;
+}
+
+export function swapSuggestions(exName) {
+  const base = ALL_EX[exName];
+  const primary = (MUSCLES_BY_NAME[exName] || [])[0];
+  const keep = []; // same primary muscle → the day still trains what it planned
+  const shift = []; // same movement pattern, different target → changes the plan
+  Object.values(ALL_EX).forEach((c) => {
+    if (c.n === exName) return;
+    const cPrimary = (MUSCLES_BY_NAME[c.n] || [])[0];
+    if (primary && cPrimary === primary) keep.push(c);
+    else if (base && c.d === base.d) shift.push(c);
+  });
+  // Among the schedule-safe picks, surface the same movement pattern first.
+  keep.sort((a, b) => Number(base && b.d === base.d) - Number(base && a.d === base.d));
+  return { keep: keep.slice(0, 6), shift: shift.slice(0, 4) };
+}
+
 export const DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];

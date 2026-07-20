@@ -43,6 +43,7 @@ import InsightsView from "./components/InsightsView.jsx";
 import TabBar from "./components/TabBar.jsx";
 import RestTimer from "./components/RestTimer.jsx";
 import MuscleMap from "./components/MuscleMap.jsx";
+import Confetti from "./components/Confetti.jsx";
 import Icon from "./components/Icon.jsx";
 
 const DOW = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -204,7 +205,9 @@ function Trainer({
   const [tab, setTab] = useState("train");
   const [rest, setRest] = useState(null); // { id, secs, label } — the sticky rest timer
   const [restPref, setRestPref] = useState(null); // last rest length you set — remembered across sets
+  const [celebrate, setCelebrate] = useState(0); // bump to fire a confetti burst
   const [openEx, setOpenEx] = useState(null); // { blockName, ex } — the focused exercise modal
+  const fireConfetti = () => setCelebrate((c) => c + 1);
   const [lastBackup, setLastBackup] = useState(() => loadLastBackup());
   const [backupNudge, setBackupNudge] = useState(() => loadBackupNudge());
   const [backupBusy, setBackupBusy] = useState(false);
@@ -298,6 +301,14 @@ function Trainer({
 
   // Finish an exercise from its modal: apply its master check, then open the
   // next not-yet-done exercise's modal — or close, if this was the last.
+  // Mark an exercise done without moving on — so the row turns green (and the
+  // confetti fires) the instant the last set is checked, while the modal stays
+  // open on its Complete button.
+  const markDone = (blockName, exName) => {
+    const k = doneKey(blockName, exName);
+    if (!progress[k]) persistProgress({ ...progress, [k]: true });
+  };
+
   const completeAndAdvance = (blockName, exName) => {
     const k = doneKey(blockName, exName);
     if (!progress[k]) persistProgress({ ...progress, [k]: true });
@@ -936,6 +947,8 @@ function Trainer({
           onStartRest={startRest}
           onStartTimer={(seconds, label) => setTimer({ seconds, label })}
           onOpenVideo={(e) => setVideo({ video: EX_VIDEO[e.n], name: e.n })}
+          onMarkDone={markDone}
+          onCelebrate={fireConfetti}
           onComplete={completeAndAdvance}
           onClose={() => setOpenEx(null)}
         />
@@ -992,6 +1005,7 @@ function Trainer({
       )}
 
       <TabBar tab={tab} setTab={setTab} />
+      <Confetti trigger={celebrate} />
     </Shell>
   );
 }

@@ -12,8 +12,8 @@
 //  and the tick is a pure "done".
 // ============================================================
 
-import React, { useState, useEffect } from "react";
-import { ACCENT, DEMOS, MUSCLE_LABELS, prescription } from "../data/program.js";
+import React, { useState, useEffect, useMemo } from "react";
+import { ACCENT, DEMOS, MUSCLE_LABELS, prescription, swapSuggestions, programScheme } from "../data/program.js";
 import { S } from "../styles.js";
 import Demo from "./Demo.jsx";
 import ExerciseGif from "./ExerciseGif.jsx";
@@ -27,11 +27,15 @@ const clock = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 export default function ExerciseModal({
   ex, blockName, isDone, todaySession, lastSession, pr, origName, subbed, onSwap, muscles = [], video,
   rest, restPref, onSetRestPref, onCloseRest, wxKey,
-  onLogSet, onStartRest, onStartTimer, onOpenVideo, onComplete, onClose,
+  onLogSet, onStartRest, onStartTimer, onOpenVideo, onMarkDone, onCelebrate, onComplete, onClose,
 }) {
   const [swapping, setSwapping] = useState(false);
   const [swapName, setSwapName] = useState("");
   const [swapScheme, setSwapScheme] = useState(ex.s || "");
+  // Schedule-aware swap options, and the program's original scheme so a
+  // same-muscle swap keeps the day's volume identical.
+  const suggest = useMemo(() => swapSuggestions(origName), [origName]);
+  const baseScheme = programScheme(origName) || ex.s;
   // A rest belongs to this modal only when the running clock is for this
   // exercise — a stale rest from a set you logged elsewhere shouldn't surface.
   const restHere = rest && rest.label === ex.n ? rest : null;
@@ -67,13 +71,14 @@ export default function ExerciseModal({
   const doneCount = checked.filter(Boolean).length;
   const allSetsDone = nSets > 0 && doneCount === nSets;
 
-  // The last tick finishes the exercise: a beat to show the master check, then
-  // hand back to the parent to mark it done, close, and advance.
+  // The last tick finishes the exercise: mark it done now (so the row turns
+  // green and survives a close) and fire the confetti — but leave the modal open
+  // on its Complete button so you move on when you're ready, not on a timer.
   useEffect(() => {
-    if (initiallyComplete || !allSetsDone) return undefined;
+    if (initiallyComplete || !allSetsDone) return;
     setFinishing(true);
-    const t = setTimeout(() => onComplete(blockName, ex.n), 750);
-    return () => clearTimeout(t);
+    onMarkDone?.(blockName, ex.n);
+    onCelebrate?.();
   }, [allSetsDone]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Ticks are one-way (you finished the set) so a mis-log can't double-post.
@@ -209,13 +214,20 @@ export default function ExerciseModal({
               ))}
             </div>
 
-            <div style={ST.hint}>
-              {finishing
-                ? "Set complete — next up…"
-                : timed
+            {allSetsDone ? (
+              <button
+                style={{ ...S.btnAccent, width: "100%", marginTop: 4, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 7 }}
+                onClick={() => onComplete(blockName, ex.n)}
+              >
+                <Icon name="check" size={16} strokeWidth={2.6} /> Complete → next exercise
+              </button>
+            ) : (
+              <div style={ST.hint}>
+                {timed
                   ? "Start the stopwatch for each hold — it buzzes when you hit the target. Stopping it checks the set off; the last one finishes the exercise."
                   : "Tap each set as you finish it. The last one checks off the exercise."}
-            </div>
+              </div>
+            )}
           </>
         ) : (
           <>
@@ -224,7 +236,7 @@ export default function ExerciseModal({
                 <Icon name="timer" size={15} /> Start {clock(ex.timer)} timer
               </button>
             )}
-            <button style={{ ...S.btnAccent, width: "100%", marginTop: 4 }} onClick={() => onComplete(blockName, ex.n)}>
+            <button style={{ ...S.btnAccent, width: "100%", marginTop: 4 }} onClick={() => { onCelebrate?.(); onComplete(blockName, ex.n); }}>
               Mark complete
             </button>
           </>
@@ -250,12 +262,44 @@ export default function ExerciseModal({
               </div>
             ) : (
               <div>
-                <div style={{ fontSize: 12, color: "#8a8a9e", marginBottom: 7, lineHeight: 1.5 }}>
-                  Replace “{subbed ? origName : ex.n}” with a movement you can do. This phone only — it
-                  won't touch the plan or your partner's week, and it logs under its own name.
+                <div style={{ fontSize: 12, color: "#8a8a9e", marginBottom: 9, lineHeight: 1.5 }}>
+                  Replace “{subbed ? origName : ex.n}”. This phone only — it won't touch the plan or
+                  your partner's week, and it logs under its own name.
                 </div>
+
+                {suggest.keep.length > 0 && (
+                  <>
+                    <div style={ST.swapLabel}>
+                      <span style={{ color: "#54b37e" }}>●</span> Keeps your plan on track
+                    </div>
+                    <div style={ST.chipWrap}>
+                      {suggest.keep.map((c) => (
+                        <button key={c.n} style={ST.swapChip} onClick={() => onSwap({ n: c.n, s: baseScheme, d: c.d })}>
+                          {c.n}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+
+                {suggest.shift.length > 0 && (
+                  <>
+                    <div style={{ ...ST.swapLabel, marginTop: 10 }}>
+                      <span style={{ color: "#E0B44A" }}>●</span> Changes what this day trains
+                    </div>
+                    <div style={ST.chipWrap}>
+                      {suggest.shift.map((c) => (
+                        <button key={c.n} style={{ ...ST.swapChip, ...ST.swapChipShift }} onClick={() => onSwap({ n: c.n, s: baseScheme, d: c.d })}>
+                          {c.n}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+
+                <div style={{ ...ST.swapLabel, marginTop: 10 }}>Or your own</div>
                 <input
-                  autoFocus style={{ ...S.textInput, marginBottom: 6 }}
+                  style={{ ...S.textInput, marginBottom: 6 }}
                   placeholder="Replacement, e.g. Landmine Press"
                   value={swapName} onChange={(e) => setSwapName(e.target.value)}
                 />
@@ -268,7 +312,7 @@ export default function ExerciseModal({
                   <button
                     style={{ ...S.btnAccent, flex: 1, padding: "9px", opacity: swapName.trim() ? 1 : 0.5 }}
                     disabled={!swapName.trim()}
-                    onClick={() => onSwap({ n: swapName.trim(), s: swapScheme.trim() || ex.s, d: ex.d, timer: ex.timer })}
+                    onClick={() => onSwap({ n: swapName.trim(), s: swapScheme.trim() || baseScheme, d: ex.d, timer: ex.timer })}
                   >
                     Use this instead
                   </button>
@@ -337,4 +381,11 @@ const ST = {
   },
   setCircleDone: { background: ACCENT, border: `2px solid ${ACCENT}`, color: "#0B1020" },
   hint: { fontSize: 12, color: "#6a6a80", lineHeight: 1.5 },
+  swapLabel: { display: "flex", alignItems: "center", gap: 6, fontSize: 11, letterSpacing: 0.4, textTransform: "uppercase", color: "#8a8a9e", marginBottom: 6 },
+  chipWrap: { display: "flex", flexWrap: "wrap", gap: 6 },
+  swapChip: {
+    background: "#16171f", border: "1px solid #2a2c3b", color: "#d2d2de",
+    borderRadius: 999, padding: "7px 12px", fontSize: 12.5, cursor: "pointer", fontFamily: "inherit",
+  },
+  swapChipShift: { border: "1px solid rgba(224,180,74,.4)", color: "#e6cf9a", background: "rgba(224,180,74,.06)" },
 };
