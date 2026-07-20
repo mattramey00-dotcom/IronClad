@@ -55,10 +55,11 @@ function Bar({ label, value, target, color, over }) {
 
 export default function FuelCard({
   meals, allMeals, today, weight, targets, apiKey, model, restMode, favorites = [],
-  onAddMeal, onRemoveMeal, onRelogMeal, onLogFavorite, onSaveFavorite, onRemoveFavorite, onWeigh, onOpenInsights,
+  onAddMeal, onRemoveMeal, onEditMeal, onRelogMeal, onLogFavorite, onSaveFavorite, onRemoveFavorite, onWeigh, onOpenInsights,
 }) {
   const [mode, setMode] = useState(null); // null | "text" | "draft"
   const [draft, setDraft] = useState(null);
+  const [editingId, setEditingId] = useState(null); // set when the draft is fixing an existing meal
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const [busyLabel, setBusyLabel] = useState("Reading the plate…");
@@ -76,7 +77,26 @@ export default function FuelCard({
   const reset = () => {
     setMode(null);
     setDraft(null);
+    setEditingId(null);
     setText("");
+    setError("");
+  };
+
+  // Load an already-logged meal back into the draft editor to fix its numbers.
+  const startEdit = (m) => {
+    setDraft({
+      name: m.name || "",
+      kcal: Math.round(num(m.kcal)),
+      protein: Math.round(num(m.protein)),
+      carbs: Math.round(num(m.carbs)),
+      fat: Math.round(num(m.fat)),
+      items: m.items || [],
+      caveat: "",
+      confidence: null,
+      source: m.source || "manual",
+    });
+    setEditingId(m.id);
+    setMode("draft");
     setError("");
   };
 
@@ -161,6 +181,18 @@ export default function FuelCard({
 
   const save = () => {
     if (!draft) return;
+    // Editing an existing meal: patch its numbers in place, don't add a new one.
+    if (editingId) {
+      onEditMeal(editingId, {
+        name: draft.name.trim() || "Meal",
+        kcal: num(draft.kcal),
+        protein: num(draft.protein),
+        carbs: num(draft.carbs),
+        fat: num(draft.fat),
+      });
+      reset();
+      return;
+    }
     onAddMeal({
       id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       time: new Date().toTimeString().slice(0, 5),
@@ -281,6 +313,14 @@ export default function FuelCard({
                 </div>
               </div>
               <div style={S.mealKcal}>{Math.round(m.kcal).toLocaleString()}</div>
+              <button
+                style={{ background: "transparent", border: "none", color: "#6a6a80", cursor: "pointer", padding: "4px 2px", display: "grid", placeItems: "center", fontFamily: "inherit" }}
+                onClick={() => startEdit(m)}
+                title="Edit meal"
+                aria-label={`Edit ${m.name}`}
+              >
+                <Icon name="pencil" size={14} />
+              </button>
               <button
                 style={{ background: "transparent", border: "none", color: "#6a6a80", cursor: "pointer", padding: "4px 2px", display: "grid", placeItems: "center", fontFamily: "inherit" }}
                 onClick={() => onSaveFavorite?.(m)}
@@ -454,8 +494,8 @@ export default function FuelCard({
           )}
 
           <div style={{ ...S.addRow, marginTop: 12 }}>
-            <button style={{ ...S.addBtn, ...S.addBtnPrimary }} onClick={save}>Save meal</button>
-            <button style={S.addBtn} onClick={reset}>Discard</button>
+            <button style={{ ...S.addBtn, ...S.addBtnPrimary }} onClick={save}>{editingId ? "Save changes" : "Save meal"}</button>
+            <button style={S.addBtn} onClick={reset}>{editingId ? "Cancel" : "Discard"}</button>
           </div>
         </div>
       )}

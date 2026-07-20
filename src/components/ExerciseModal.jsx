@@ -25,7 +25,7 @@ import HoldTimer from "./HoldTimer.jsx";
 const clock = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 
 export default function ExerciseModal({
-  ex, blockName, isDone, todaySession, lastSession, muscles = [], video,
+  ex, blockName, isDone, todaySession, lastSession, pr, muscles = [], video,
   rest, onCloseRest, wxKey,
   onLogSet, onStartRest, onStartTimer, onOpenVideo, onComplete, onClose,
 }) {
@@ -110,7 +110,10 @@ export default function ExerciseModal({
         {/* header */}
         <div style={ST.head}>
           <div style={{ minWidth: 0 }}>
-            <div style={ST.title}>{ex.n}</div>
+            <div style={ST.title}>
+              {ex.n}
+              {pr && <span style={S.prBadge}><Icon name="star" size={11} /> New best</span>}
+            </div>
             <div style={ST.sub}>
               {ex.s}
               {blockName ? <span style={{ color: "#5a5a70" }}> · {blockName}</span> : null}

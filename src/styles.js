@@ -328,4 +328,16 @@ export const S = {
     background: "rgba(129,140,248,.07)", border: "1px solid rgba(129,140,248,.28)",
     borderRadius: 14, padding: "11px 13px", margin: "0 0 14px",
   },
+  weekNav: {
+    flex: "0 0 auto", width: 30, height: 30, borderRadius: 9,
+    background: "#16171f", border: "1px solid #2a2c3b", color: "#c9c9d6",
+    cursor: "pointer", fontFamily: "inherit", fontSize: 17, lineHeight: 1,
+    display: "grid", placeItems: "center",
+  },
+  prBadge: {
+    display: "inline-flex", alignItems: "center", gap: 3, marginLeft: 7,
+    padding: "1px 6px", borderRadius: 6, fontSize: 10, fontWeight: 800, letterSpacing: 0.4,
+    background: "rgba(224,180,74,.14)", border: "1px solid rgba(224,180,74,.42)",
+    color: "#E0B44A", verticalAlign: "middle", whiteSpace: "nowrap",
+  },
 };

@@ -26,7 +26,7 @@ import {
   loadLastBackup, saveLastBackup, loadBackupNudge, saveBackupNudge,
 } from "./lib/storage.js";
 import { downloadBackup, backupReminderDue, monthKeyOf } from "./lib/backup.js";
-import { estimateTDEE, resolveTargets, weightTrend, DEFAULT_TARGETS } from "./lib/nutrition.js";
+import { estimateTDEE, resolveTargets, weightTrend, bestE1RM, shiftKey, DEFAULT_TARGETS } from "./lib/nutrition.js";
 import { MODELS, DEFAULT_MODEL } from "./lib/claude.js";
 import { S } from "./styles.js";
 import Demo from "./components/Demo.jsx";
@@ -234,6 +234,13 @@ function Trainer({
   const agenda = useMemo(() => agendaFor(plan, me, selected), [plan, me, selected]);
   const week = useMemo(() => weekAgenda(plan, me, selected), [plan, me, selected]);
   const blocks = useMemo(() => blocksFor(agenda), [agenda]);
+
+  // Which week we're looking at, so the ‹ › nav can label it and offer a jump
+  // back to today. Moving `selected` a week at a time lets you backfill or fix
+  // any past day's meals, weigh-in or sets, not just the current week.
+  const fmtDay = (k) => new Date(`${k}T00:00:00`).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  const weekLabel = week.length ? `${fmtDay(week[0].date)} – ${fmtDay(week[week.length - 1].date)}` : "";
+  const onThisWeek = week.some((a) => a.date === today);
   // Count the exercises under the same weight-free lens the rows are drawn with,
   // so the progress bar tallies the moves you're actually doing today.
   const allExercises = useMemo(
@@ -329,6 +336,14 @@ function Trainer({
   const addMeal = (meal) =>
     persistMeals({ ...meals, [selected]: [...(meals[selected] || []), meal] });
 
+  // Fix a logged meal in place — a fat-fingered macro shouldn't mean delete and
+  // re-add. Only the edited day is touched.
+  const editMeal = (id, fields) =>
+    persistMeals({
+      ...meals,
+      [selected]: (meals[selected] || []).map((m) => (m.id === id ? { ...m, ...fields } : m)),
+    });
+
   // ---- favourite meals ----
   const persistFavs = (next) => { setFavMeals(next); saveFavMeals(me, next); };
 
@@ -419,6 +434,18 @@ function Trainer({
   const sessionOn = (exName, date) => (logs[exName] || []).find((e) => e.date === date) || null;
   const lastSession = (exName) =>
     (logs[exName] || []).find((e) => e.date !== selected && e.date < selected) || null;
+
+  // A personal best: this day's best estimated 1RM for the lift beats every
+  // prior session. Needs prior history — a first-ever session isn't a "PR".
+  const isPR = (exName, date) => {
+    const entries = logs[exName] || [];
+    const todayEntry = entries.find((e) => e.date === date);
+    if (!todayEntry?.sets?.length) return false;
+    const todayBest = bestE1RM(todayEntry);
+    if (todayBest <= 0) return false;
+    const priorBest = Math.max(0, ...entries.filter((e) => e.date < date).map((e) => bestE1RM(e)));
+    return priorBest > 0 && todayBest > priorBest + 0.01;
+  };
 
   const loggedExercises = Object.keys(logs).filter((k) => (logs[k] || []).length > 0).sort();
 
@@ -524,6 +551,19 @@ function Trainer({
           {person.name}
         </button>
         <span style={S.whoChipPartner}>with {other.name}</span>
+      </div>
+
+      {/* Week navigation — step back to any past week to log a missed weigh-in,
+          meal or set; jump straight back to today when you've wandered off. */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 7 }}>
+        <button style={S.weekNav} onClick={() => setSelected(shiftKey(selected, -7))} aria-label="Previous week">‹</button>
+        <div style={{ flex: 1, textAlign: "center", fontSize: 12, color: "#8a8a9e", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+          {onThisWeek ? "This week" : weekLabel}
+          {!onThisWeek && (
+            <button style={S.resetBtn} onClick={() => setSelected(today)}>today</button>
+          )}
+        </div>
+        <button style={S.weekNav} onClick={() => setSelected(shiftKey(selected, 7))} aria-label="Next week">›</button>
       </div>
 
       <div style={S.weekRow}>
@@ -687,6 +727,7 @@ function Trainer({
             const ex = forTravel(forMachine(raw, machine), travel);
             const done = isDone(block.name, ex.n);
             const tSession = sessionOn(ex.n, selected);
+            const pr = isPR(ex.n, selected);
             const muscles = musclesFor(ex);
             const full = muscles.includes("fullbody");
             return (
@@ -716,6 +757,7 @@ function Trainer({
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ ...S.exName, ...(done ? { textDecoration: "line-through", color: "#666" } : {}) }}>
                       {ex.n}
+                      {pr && <span style={S.prBadge}><Icon name="star" size={10} /> PR</span>}
                     </div>
                     <div style={S.exSets}>
                       {ex.s}
@@ -783,6 +825,7 @@ function Trainer({
           favorites={favMeals}
           onAddMeal={addMeal}
           onRemoveMeal={removeMeal}
+          onEditMeal={editMeal}
           onRelogMeal={relogMeal}
           onLogFavorite={logFavorite}
           onSaveFavorite={saveFavorite}
@@ -817,6 +860,7 @@ function Trainer({
           isDone={isDone(openEx.blockName, openEx.ex.n)}
           todaySession={sessionOn(openEx.ex.n, selected)}
           lastSession={lastSession(openEx.ex.n)}
+          pr={isPR(openEx.ex.n, selected)}
           muscles={musclesFor(openEx.ex)}
           video={EX_VIDEO[openEx.ex.n]}
           rest={rest}
