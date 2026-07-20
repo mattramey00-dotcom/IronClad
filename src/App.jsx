@@ -619,12 +619,32 @@ function Trainer({
             </div>
           )}
 
-          {travel && !agenda.isRest && (
-            <div
-              style={{ ...S.machineChip, marginLeft: machine ? 6 : 0, border: `1px solid ${ACCENT}`, color: ACCENT }}
-            >
-              <Icon name="plane" size={13} /> Weight-free · every lift swapped for bodyweight
-            </div>
+          {/* Training mode — swap the whole session to a no-gym version, right
+              here on the day rather than buried in Settings. Phone-only; it
+              never touches the shared plan or your partner's week. */}
+          {!agenda.isRest && (
+            <>
+              <div style={{ ...S.segRow, marginTop: 12 }}>
+                <button
+                  style={{ ...S.seg, ...(!travel ? S.segActive : {}), fontSize: 12, padding: "8px 4px", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+                  onClick={() => onSetTravel(false)}
+                >
+                  <Icon name="dumbbell" size={14} /> Full gym
+                </button>
+                <button
+                  style={{ ...S.seg, ...(travel ? S.segActive : {}), fontSize: 12, padding: "8px 4px", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+                  onClick={() => onSetTravel(true)}
+                >
+                  <Icon name="plane" size={13} /> Weight-free
+                </button>
+              </div>
+              {travel && (
+                <div style={{ ...S.blockNote, marginTop: 6 }}>
+                  Every barbell and dumbbell lift is swapped for a bodyweight version that trains the same
+                  movement — your runs and planks carry over. This phone only; it doesn't touch {other.name}'s week.
+                </div>
+              )}
+            </>
           )}
 
           {total > 0 && (
@@ -827,8 +847,6 @@ function Trainer({
           me={me}
           apiKey={apiKey}
           model={model}
-          travel={travel}
-          onSetTravel={onSetTravel}
           wxKey={wxKey}
           onSetWxKey={onSetWxKey}
           onSetApiKey={onSetApiKey}
@@ -896,7 +914,7 @@ function PartnerCard({ agenda, other }) {
 }
 
 // ---- settings ---------------------------------------------------------
-function SettingsModal({ plan, me, apiKey, model, travel, onSetTravel, wxKey, onSetWxKey, onSetApiKey, onSetModel, onSwitchPerson, onExportBackup, backupBusy, lastBackup, onClose }) {
+function SettingsModal({ plan, me, apiKey, model, wxKey, onSetWxKey, onSetApiKey, onSetModel, onSwitchPerson, onExportBackup, backupBusy, lastBackup, onClose }) {
   const [copied, setCopied] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
   const [keyDraft, setKeyDraft] = useState(apiKey);
@@ -939,29 +957,6 @@ function SettingsModal({ plan, me, apiKey, model, travel, onSetTravel, wxKey, on
               {p.name}
             </button>
           ))}
-        </div>
-
-        <label style={S.label}>Training</label>
-        <div style={S.segRow}>
-          <button
-            style={{ ...S.seg, ...(!travel ? S.segActive : {}), display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 7 }}
-            onClick={() => onSetTravel(false)}
-          >
-            <Icon name="dumbbell" size={15} /> Full gym
-          </button>
-          <button
-            style={{ ...S.seg, ...(travel ? S.segActive : {}), display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 7 }}
-            onClick={() => onSetTravel(true)}
-          >
-            <Icon name="plane" size={14} /> Weight-free
-          </button>
-        </div>
-        <div style={{ ...S.note, marginBottom: 18 }}>
-          Traveling with no gym? Weight-free mode swaps every barbell and dumbbell lift for a
-          bodyweight or towel-and-chair version that trains the same movement — your runs, planks
-          and push-ups carry over unchanged. It's a switch on this phone only, so it doesn't touch
-          the shared plan or {plan.people.find((p) => p.id !== me)?.name || "your partner"}'s week.
-          Flip it back to Full gym when you're home.
         </div>
 
         <label style={S.label}>Rotation</label>
