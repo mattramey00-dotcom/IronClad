@@ -10,7 +10,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
-  ACCENT, DEMOS, EX_VIDEO, TOGETHER, REST_DAY, forMachine, forTravel, musclesFor, MUSCLE_LABELS,
+  ACCENT, DEMOS, EX_VIDEO, TOGETHER, REST_DAY, forMachine, forTravel, forSub, musclesFor, MUSCLE_LABELS,
 } from "./data/program.js";
 import {
   agendaFor, weekAgenda, blocksFor, exercisesFor, dateKey,
@@ -20,7 +20,7 @@ import {
   loadPlan, savePlan, loadMe, saveMe, loadProgress, saveProgress,
   loadLogs, saveLogs, migrateLegacy, encodePlan, resetEverything,
   loadMeals, saveMeals, loadWeights, saveWeights, loadTargets, saveTargets,
-  loadFavMeals, saveFavMeals, loadPhotos, savePhotos,
+  loadFavMeals, saveFavMeals, loadPhotos, savePhotos, loadSubs, saveSubs,
   loadApiKey, saveApiKey, loadModel, saveModel, loadTravel, saveTravel,
   loadWxKey, saveWxKey,
   loadLastBackup, saveLastBackup, loadBackupNudge, saveBackupNudge,
@@ -57,6 +57,7 @@ export default function App() {
   const [logs, setLogs] = useState({});
   const [meals, setMeals] = useState({});
   const [favMeals, setFavMeals] = useState([]);
+  const [subs, setSubs] = useState({});
   const [photos, setPhotos] = useState([]);
   const [showPhotos, setShowPhotos] = useState(false);
   const [weights, setWeights] = useState({});
@@ -92,6 +93,7 @@ export default function App() {
     setLogs(loadLogs(me));
     setMeals(loadMeals(me));
     setFavMeals(loadFavMeals(me));
+    setSubs(loadSubs(me));
     setPhotos(loadPhotos(me));
     setWeights(loadWeights(me));
     setTargets(loadTargets(me) || DEFAULT_TARGETS);
@@ -138,6 +140,8 @@ export default function App() {
       setMeals={setMeals}
       favMeals={favMeals}
       setFavMeals={setFavMeals}
+      subs={subs}
+      setSubs={setSubs}
       photos={photos}
       setPhotos={setPhotos}
       showPhotos={showPhotos}
@@ -190,7 +194,7 @@ function Shell({ children }) {
 
 function Trainer({
   plan, me, selected, setSelected, progress, setProgress, logs, setLogs,
-  meals, setMeals, favMeals, setFavMeals, photos, setPhotos, showPhotos, setShowPhotos,
+  meals, setMeals, favMeals, setFavMeals, subs, setSubs, photos, setPhotos, showPhotos, setShowPhotos,
   weights, setWeights, targets, setTargets,
   apiKey, model, onSetApiKey, onSetModel, wxKey, onSetWxKey, travel, onSetTravel,
   openLog, setOpenLog, timer, setTimer, video, setVideo,
@@ -244,15 +248,22 @@ function Trainer({
   // Count the exercises under the same weight-free lens the rows are drawn with,
   // so the progress bar tallies the moves you're actually doing today.
   const allExercises = useMemo(
-    () => exercisesFor(agenda).map((e) => forTravel(e, travel)),
-    [agenda, travel],
+    () => exercisesFor(agenda).map((e) => forTravel(forSub(e, subs), travel)),
+    [agenda, travel, subs],
   );
   const machine = agenda.machine;
-  // The exercises in render order, machine- and travel-resolved. Lets the
-  // exercise modal advance to the next one when a set finishes an exercise.
+  // One place resolves a raw program exercise into what you actually train:
+  // your personal substitution first, then the machine you're on, then the
+  // weight-free swap. Used everywhere exercises are drawn so they all agree.
+  const resolveEx = useCallback(
+    (raw) => forTravel(forMachine(forSub(raw, subs), machine), travel),
+    [subs, machine, travel],
+  );
+  // The exercises in render order. Lets the exercise modal advance to the next
+  // one when a set finishes an exercise.
   const flatExercises = useMemo(
-    () => blocks.flatMap((b) => b.exercises.map((raw) => ({ blockName: b.name, ex: forTravel(forMachine(raw, machine), travel) }))),
-    [blocks, machine, travel],
+    () => blocks.flatMap((b) => b.exercises.map((raw) => ({ blockName: b.name, ex: resolveEx(raw) }))),
+    [blocks, resolveEx],
   );
 
   // ---- persistence ----
@@ -265,6 +276,15 @@ function Trainer({
     setLogs(next);
     saveLogs(me, next);
   }, [me, setLogs]);
+
+  // Set (or clear, with a null replacement) a personal exercise substitution.
+  const swapExercise = (origName, replacement) => {
+    const next = { ...subs };
+    if (replacement && replacement.n) next[origName] = replacement;
+    else delete next[origName];
+    setSubs(next);
+    saveSubs(me, next);
+  };
 
   // Completion is keyed by date (and block, so a Plank in the Together block
   // and a Plank inside the day's workout are tracked separately).
@@ -749,7 +769,7 @@ function Trainer({
           )}
 
           {block.exercises.map((raw, ei) => {
-            const ex = forTravel(forMachine(raw, machine), travel);
+            const ex = resolveEx(raw);
             const done = isDone(block.name, ex.n);
             const tSession = sessionOn(ex.n, selected);
             const pr = isPR(ex.n, selected);
@@ -901,6 +921,9 @@ function Trainer({
           todaySession={sessionOn(openEx.ex.n, selected)}
           lastSession={lastSession(openEx.ex.n)}
           pr={isPR(openEx.ex.n, selected)}
+          origName={openEx.ex._orig || openEx.ex.n}
+          subbed={!!openEx.ex._sub}
+          onSwap={(rep) => { swapExercise(openEx.ex._orig || openEx.ex.n, rep); setOpenEx(null); }}
           muscles={musclesFor(openEx.ex)}
           video={EX_VIDEO[openEx.ex.n]}
           rest={rest}

@@ -141,6 +141,17 @@ export const saveTargets = (personId, targets) =>
 export const loadFavMeals = (personId) => readJSON(`favmeals:${personId}`, []);
 export const saveFavMeals = (personId, favs) => write(`favmeals:${personId}`, JSON.stringify(favs));
 
+// ---- exercise substitutions (per profile, this device only) ----------
+//  A personal "I can't do that movement — give me this instead" override,
+//  keyed by the original exercise name → the replacement { n, s, d }. Like
+//  travel mode it's a switch on this phone, never part of the shared plan, so
+//  swapping the overhead press for a landmine press doesn't touch the rotation
+//  or your partner's week. Logs land under the replacement's own name, which is
+//  what you want — a different lift is different history.
+
+export const loadSubs = (personId) => readJSON(`subs:${personId}`, {});
+export const saveSubs = (personId, subs) => write(`subs:${personId}`, JSON.stringify(subs));
+
 // ---- progress photo index (per profile) -----------------------------
 //  Just the index — [{ id, date, angle }] — pointing at blobs held in
 //  IndexedDB (lib/photos.js). The scale wobbles week to week; a photo doesn't.
@@ -235,6 +246,6 @@ export function migrateLegacy(personId) {
 export function resetEverything() {
   ["plan", "me", "apikey", "model", "travel", "wxkey", "lastbackup", "backupnudge"].forEach(remove);
   ["p1", "p2"].forEach((id) => {
-    ["progress", "logs", "meals", "weights", "targets", "favmeals"].forEach((k) => remove(`${k}:${id}`));
+    ["progress", "logs", "meals", "weights", "targets", "favmeals", "subs"].forEach((k) => remove(`${k}:${id}`));
   });
 }

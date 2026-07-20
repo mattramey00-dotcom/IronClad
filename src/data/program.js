@@ -568,6 +568,17 @@ export function forTravel(ex, travel) {
   return { ...ex, ...sub, eq: EQ.BODYWEIGHT };
 }
 
+// Apply a personal substitution, if the user set one for this movement. Keyed
+// by the ORIGINAL name; `_orig` remembers it so the modal can offer to swap
+// back, and so completion/logging key off the replacement's own name. A no-op
+// (returns the exercise untouched) whenever there's no override — so the whole
+// feature is invisible until someone actually swaps something.
+export function forSub(ex, subs) {
+  const rep = subs?.[ex.n];
+  if (!rep || !rep.n) return ex;
+  return { ...ex, ...rep, _orig: ex.n, _sub: true };
+}
+
 // Read the prescription string ("4 × 6–8", "3 × 10 each", "4 × 15–20") into the
 // numbers the logger needs: how many sets, and a sensible rest between them.
 //

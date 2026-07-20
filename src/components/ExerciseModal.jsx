@@ -25,10 +25,13 @@ import HoldTimer from "./HoldTimer.jsx";
 const clock = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 
 export default function ExerciseModal({
-  ex, blockName, isDone, todaySession, lastSession, pr, muscles = [], video,
+  ex, blockName, isDone, todaySession, lastSession, pr, origName, subbed, onSwap, muscles = [], video,
   rest, onCloseRest, wxKey,
   onLogSet, onStartRest, onStartTimer, onOpenVideo, onComplete, onClose,
 }) {
+  const [swapping, setSwapping] = useState(false);
+  const [swapName, setSwapName] = useState("");
+  const [swapScheme, setSwapScheme] = useState(ex.s || "");
   // A rest belongs to this modal only when the running clock is for this
   // exercise — a stale rest from a set you logged elsewhere shouldn't surface.
   const restHere = rest && rest.label === ex.n ? rest : null;
@@ -223,6 +226,55 @@ export default function ExerciseModal({
               Mark complete
             </button>
           </>
+        )}
+
+        {/* Swap this movement for one you can actually do — a personal override
+            on this phone, never a change to the shared plan. */}
+        {onSwap && (
+          <div style={{ marginTop: 12, borderTop: "1px solid #1a1b24", paddingTop: 10 }}>
+            {!swapping ? (
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <button
+                  style={{ ...S.btnGhost, flex: 1, fontSize: 12.5, padding: "8px 10px", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+                  onClick={() => { setSwapName(""); setSwapScheme(ex.s || ""); setSwapping(true); }}
+                >
+                  <Icon name="refresh" size={14} /> {subbed ? "Swap again" : "Swap this exercise"}
+                </button>
+                {subbed && (
+                  <button style={{ ...S.btnGhost, fontSize: 12.5, padding: "8px 12px" }} onClick={() => onSwap(null)}>
+                    Restore original
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div>
+                <div style={{ fontSize: 12, color: "#8a8a9e", marginBottom: 7, lineHeight: 1.5 }}>
+                  Replace “{subbed ? origName : ex.n}” with a movement you can do. This phone only — it
+                  won't touch the plan or your partner's week, and it logs under its own name.
+                </div>
+                <input
+                  autoFocus style={{ ...S.textInput, marginBottom: 6 }}
+                  placeholder="Replacement, e.g. Landmine Press"
+                  value={swapName} onChange={(e) => setSwapName(e.target.value)}
+                />
+                <input
+                  style={{ ...S.textInput, marginBottom: 8 }}
+                  placeholder="Sets, e.g. 3 × 8–10"
+                  value={swapScheme} onChange={(e) => setSwapScheme(e.target.value)}
+                />
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button
+                    style={{ ...S.btnAccent, flex: 1, padding: "9px", opacity: swapName.trim() ? 1 : 0.5 }}
+                    disabled={!swapName.trim()}
+                    onClick={() => onSwap({ n: swapName.trim(), s: swapScheme.trim() || ex.s, d: ex.d, timer: ex.timer })}
+                  >
+                    Use this instead
+                  </button>
+                  <button style={{ ...S.btnGhost, padding: "9px 14px" }} onClick={() => setSwapping(false)}>Cancel</button>
+                </div>
+              </div>
+            )}
+          </div>
         )}
 
         {/* The between-sets clock, right here under the sets rather than behind
