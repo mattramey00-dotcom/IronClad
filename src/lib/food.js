@@ -16,6 +16,7 @@ export async function lookupBarcode(code) {
   const url =
     `https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(clean)}.json` +
     `?fields=product_name,brands,nutriments,serving_size`;
+  // (nutriments already carries sodium/salt — no extra field needed)
 
   let data;
   try {
@@ -45,6 +46,10 @@ export async function lookupBarcode(code) {
   const protein = val("proteins");
   const carbs = val("carbohydrates");
   const fat = val("fat");
+  // Sodium is stored in grams; fall back to salt (salt ÷ 2.5 ≈ sodium). → mg.
+  let sodiumG = val("sodium");
+  if (!sodiumG) { const salt = val("salt"); if (salt) sodiumG = salt / 2.5; }
+  const sodiumMg = Math.round(sodiumG * 1000);
   let kcal = val("energy-kcal");
   if (!kcal) {
     // Some entries only list kilojoules, or nothing — derive a sensible number.
@@ -65,6 +70,7 @@ export async function lookupBarcode(code) {
     protein_g: Math.round(protein),
     carbs_g: Math.round(carbs),
     fat_g: Math.round(fat),
+    sodium_mg: sodiumMg,
     confidence: "medium",
     caveat,
   };

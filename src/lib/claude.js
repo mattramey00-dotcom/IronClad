@@ -109,6 +109,7 @@ const MEAL_SCHEMA = {
     protein_g: { type: "number" },
     carbs_g: { type: "number" },
     fat_g: { type: "number" },
+    sodium_mg: { type: "number", description: "Total sodium for the meal, in milligrams. A rough estimate — sodium is mostly invisible (salt, cure, brine, sauce)." },
     confidence: {
       type: "string",
       enum: ["low", "medium", "high"],
@@ -121,7 +122,7 @@ const MEAL_SCHEMA = {
         "The single biggest thing that could make this estimate wrong, in one plain sentence. Always name something real — there is always something.",
     },
   },
-  required: ["name", "items", "kcal", "protein_g", "carbs_g", "fat_g", "confidence", "caveat"],
+  required: ["name", "items", "kcal", "protein_g", "carbs_g", "fat_g", "sodium_mg", "confidence", "caveat"],
   additionalProperties: false,
 };
 
@@ -145,6 +146,7 @@ Be a good estimator, not a confident one. Specifically:
 - Count the invisible calories. Cooking oil, butter, dressing and sauce are the single largest source of error in photo estimation and they are usually not visible. If a food was plausibly cooked in fat, include it and say so.
 - Protein is the number this app cares about most, and it is also the one you can estimate best — a chicken breast is ~30 g per 4 oz whatever else is going on. Get it right.
 - Prefer round numbers. Returning 487 kcal implies a precision you do not have; 490 is honest.
+- Estimate sodium (mg) too. It is mostly invisible — table salt, cured or brined meats, cheese, bread, soy sauce and other condiments carry most of it, while plain fresh foods carry little. Give a rounded best guess (nearest 50 mg); restaurant and packaged foods run high.
 - Set confidence honestly. A mixed curry or a casserole is 'low' and you should say so. Grilled chicken, plain rice and steamed broccoli on a white plate is 'high'.
 - The caveat field must name a real, specific source of error in *this* meal. Never write "estimates may vary".
 

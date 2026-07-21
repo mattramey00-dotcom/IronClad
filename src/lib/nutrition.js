@@ -79,7 +79,13 @@ export function windowKeys(endKey, days) {
 
 // ---- meals -----------------------------------------------------------
 
-export const EMPTY_TOTALS = { kcal: 0, protein: 0, carbs: 0, fat: 0 };
+export const EMPTY_TOTALS = { kcal: 0, protein: 0, carbs: 0, fat: 0, sodium: 0 };
+
+// The FDA Daily Value for sodium, in mg. A neutral label reference — the same
+// "2,300 mg" printed on every nutrition panel — not a personal prescription.
+// Active, heavy-sweating people often need more; anyone with a medical reason to
+// limit sodium should follow their clinician, not this number.
+export const SODIUM_DV_MG = 2300;
 
 export function mealTotals(list) {
   return (list || []).reduce(
@@ -88,6 +94,7 @@ export function mealTotals(list) {
       protein: acc.protein + (Number(m.protein) || 0),
       carbs: acc.carbs + (Number(m.carbs) || 0),
       fat: acc.fat + (Number(m.fat) || 0),
+      sodium: acc.sodium + (Number(m.sodium) || 0),
     }),
     { ...EMPTY_TOTALS },
   );
@@ -147,6 +154,10 @@ export function intakeStats(meals, endKey, days = 21) {
     avgProtein: mean(logged.map((d) => d.t.protein)),
     avgCarbs: mean(logged.map((d) => d.t.carbs)),
     avgFat: mean(logged.map((d) => d.t.fat)),
+    // Only days that actually carry sodium figures — old logs from before
+    // sodium was tracked would otherwise drag the average toward zero.
+    avgSodium: mean(logged.filter((d) => d.t.sodium > 0).map((d) => d.t.sodium)),
+    sodiumDays: logged.filter((d) => d.t.sodium > 0).length,
   };
 }
 

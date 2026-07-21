@@ -20,7 +20,7 @@ import MealHistoryModal from "./MealHistoryModal.jsx";
 import SavedMealsModal from "./SavedMealsModal.jsx";
 import BarcodeScanner from "./BarcodeScanner.jsx";
 import FuelArt from "./FuelArt.jsx";
-import { mealTotals, proteinDistribution } from "../lib/nutrition.js";
+import { mealTotals, proteinDistribution, SODIUM_DV_MG } from "../lib/nutrition.js";
 import { lookupBarcode } from "../lib/food.js";
 import {
   compressImage, estimateMealFromPhoto, estimateMealFromText, lookupChainMeal, explainError, DEFAULT_MODEL,
@@ -28,11 +28,13 @@ import {
 
 const PROTEIN_COLOR = "#e0b44a";
 const WATER_COLOR = "#56b6d9";
+const SODIUM_COLOR = "#8f9bb3"; // a cool slate — distinct from protein amber, calorie indigo, water blue
+const OVER_COLOR = "#e08a6a";   // the same warm tone the calorie bar uses when past target
 const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 
 // Blank draft — what "add by hand" starts from, and the shape the model fills.
 const EMPTY_DRAFT = {
-  name: "", kcal: "", protein: "", carbs: "", fat: "",
+  name: "", kcal: "", protein: "", carbs: "", fat: "", sodium: "",
   items: [], caveat: "", confidence: null, source: "manual",
 };
 
@@ -106,6 +108,7 @@ export default function FuelCard({
       protein: Math.round(num(m.protein)),
       carbs: Math.round(num(m.carbs)),
       fat: Math.round(num(m.fat)),
+      sodium: m.sodium != null ? Math.round(num(m.sodium)) : "",
       items: m.items || [],
       caveat: "",
       confidence: null,
@@ -125,6 +128,7 @@ export default function FuelCard({
       protein: Math.round(num(est.protein_g)),
       carbs: Math.round(num(est.carbs_g)),
       fat: Math.round(num(est.fat_g)),
+      sodium: est.sodium_mg != null ? Math.round(num(est.sodium_mg)) : "",
       items: est.items || [],
       caveat: est.caveat || "",
       confidence: est.confidence || null,
@@ -224,6 +228,7 @@ export default function FuelCard({
         protein: num(draft.protein),
         carbs: num(draft.carbs),
         fat: num(draft.fat),
+        sodium: draft.sodium === "" ? undefined : num(draft.sodium),
       });
       reset();
       return;
@@ -236,6 +241,7 @@ export default function FuelCard({
       protein: num(draft.protein),
       carbs: num(draft.carbs),
       fat: num(draft.fat),
+      sodium: draft.sodium === "" ? undefined : num(draft.sodium),
       source: draft.source,
       // Keep what the model said *and* the fact that you changed it. If the
       // TDEE estimate ever looks wrong, this is the audit trail.
@@ -278,6 +284,9 @@ export default function FuelCard({
         <div style={{ ...S.macroMini, marginTop: 0, marginBottom: 8, fontSize: 13 }}>
           <span><b style={{ color: "var(--text)" }}>{Math.round(totals.kcal).toLocaleString()}</b> kcal</span>
           <span><b style={{ color: PROTEIN_COLOR }}>{Math.round(totals.protein)}</b> g protein</span>
+          {totals.sodium > 0 && (
+            <span><b style={{ color: totals.sodium > SODIUM_DV_MG ? OVER_COLOR : "var(--text)" }}>{Math.round(totals.sodium).toLocaleString()}</b> mg sodium</span>
+          )}
           {!meals?.length && <span style={{ color: "var(--text-faint)" }}>nothing logged yet</span>}
         </div>
       ) : (
@@ -329,6 +338,29 @@ export default function FuelCard({
               <span style={{ marginLeft: "auto", color: "var(--text-faint)" }}>target from your own TDEE</span>
             )}
           </div>
+
+          {/* sodium — a ceiling to watch, shown against the FDA daily value.
+              Only appears once something you've logged carries a sodium figure,
+              so it never implies "zero sodium" for foods we simply don't know. */}
+          {totals.sodium > 0 && (
+            <div style={{ marginTop: 9 }}>
+              <div style={S.macroTop}>
+                <span style={S.macroName}>Sodium</span>
+                <span style={{ ...S.macroVal, color: totals.sodium > SODIUM_DV_MG ? OVER_COLOR : "var(--text)" }}>
+                  {Math.round(totals.sodium).toLocaleString()}
+                  <span style={{ color: "var(--text-faint)", fontWeight: 400 }}> / {SODIUM_DV_MG.toLocaleString()} mg</span>
+                </span>
+              </div>
+              <div style={S.macroBar}>
+                <div style={{ ...S.macroFill, width: `${Math.min(100, (totals.sodium / SODIUM_DV_MG) * 100)}%`, background: totals.sodium > SODIUM_DV_MG ? OVER_COLOR : SODIUM_COLOR }} />
+              </div>
+              <div style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 4 }}>
+                {totals.sodium > SODIUM_DV_MG
+                  ? `${Math.round(totals.sodium - SODIUM_DV_MG).toLocaleString()} mg over the 2,300 mg daily value`
+                  : "of the 2,300 mg daily value"}
+              </div>
+            </div>
+          )}
           </div>
         </div>
       )}
@@ -456,6 +488,7 @@ export default function FuelCard({
                 </div>
                 <div style={S.mealMacros}>
                   {Math.round(m.protein)}p · {Math.round(m.carbs)}c · {Math.round(m.fat)}f
+                  {m.sodium > 0 ? ` · ${Math.round(m.sodium).toLocaleString()} mg` : ""}
                   {m.time ? ` · ${m.time}` : ""}
                 </div>
               </div>
@@ -646,6 +679,19 @@ export default function FuelCard({
                 />
               </div>
             ))}
+          </div>
+
+          {/* sodium — its own row so the four energy macros keep their tidy grid */}
+          <div style={{ ...S.macroCell, marginTop: 8, maxWidth: 150 }}>
+            <span style={S.macroCellLabel}>Sodium (mg)</span>
+            <input
+              type="number"
+              inputMode="numeric"
+              placeholder="—"
+              style={S.macroCellInput}
+              value={draft.sodium}
+              onChange={(e) => setDraft({ ...draft, sodium: e.target.value })}
+            />
           </div>
 
           {draft.caveat && (

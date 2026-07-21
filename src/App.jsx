@@ -497,7 +497,7 @@ function Trainer({
     // One entry per name — re-saving updates the numbers rather than piling up.
     const rest = favMeals.filter((f) => f.name.toLowerCase() !== name.toLowerCase());
     persistFavs([
-      { id: `fav-${Date.now()}`, name, kcal: meal.kcal, protein: meal.protein, carbs: meal.carbs, fat: meal.fat },
+      { id: `fav-${Date.now()}`, name, kcal: meal.kcal, protein: meal.protein, carbs: meal.carbs, fat: meal.fat, sodium: meal.sodium },
       ...rest,
     ].slice(0, 24));
   };
@@ -528,7 +528,7 @@ function Trainer({
     addMeal({
       id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       time: new Date().toTimeString().slice(0, 5),
-      name: fav.name, kcal: fav.kcal, protein: fav.protein, carbs: fav.carbs, fat: fav.fat,
+      name: fav.name, kcal: fav.kcal, protein: fav.protein, carbs: fav.carbs, fat: fav.fat, sodium: fav.sodium,
       source: "favorite",
     });
 
@@ -538,7 +538,7 @@ function Trainer({
     addMeal({
       id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       time: new Date().toTimeString().slice(0, 5),
-      name: m.name, kcal: m.kcal, protein: m.protein, carbs: m.carbs, fat: m.fat,
+      name: m.name, kcal: m.kcal, protein: m.protein, carbs: m.carbs, fat: m.fat, sodium: m.sodium,
       source: m.source && m.source !== "manual" ? m.source : "history",
       items: m.items?.length ? m.items : undefined,
     });

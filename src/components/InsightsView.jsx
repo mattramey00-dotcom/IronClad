@@ -294,6 +294,16 @@ export default function InsightsView({
               {tdee.intake.daysLogged}/{tdee.intake.days} days logged
             </div>
           </div>
+          {/* only surfaces once meals actually carry sodium figures */}
+          {tdee.intake.sodiumDays > 0 && (
+            <div style={S.statBox}>
+              <div style={S.statLabel}>Sodium</div>
+              <div style={S.statValue}>{Math.round(tdee.intake.avgSodium).toLocaleString()} mg</div>
+              <div style={{ fontSize: 11, color: "var(--text-mute)", marginTop: 2 }}>
+                avg · daily value 2,300 mg
+              </div>
+            </div>
+          )}
         </div>
 
         {/* BMI — reference only, with the muscle caveat spelled out */}
