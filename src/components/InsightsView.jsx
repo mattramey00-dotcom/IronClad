@@ -74,9 +74,9 @@ export default function InsightsView({
   const streak = useMemo(() => loggingStreak(meals, weights, today), [meals, weights, today]);
   const lifts = useMemo(() => trackedLifts(logs, today), [logs, today]);
   const [liftPick, setLiftPick] = useState("");
-  // "About me" holds the personal facts plus the headline stats, so it starts
-  // open (the stats are worth seeing); tap to fold it away.
-  const [showAbout, setShowAbout] = useState(true);
+  // "About me" holds the personal facts, headline stats and BMI — collapsed by
+  // default behind a clear Show button so the screen opens uncluttered.
+  const [showAbout, setShowAbout] = useState(false);
   const activeLift = lifts.some((l) => l.name === liftPick) ? liftPick : (lifts[0]?.name || "");
   const liftSeries = useMemo(
     () => (activeLift ? liftE1rmSeries(logs, activeLift, today) : []),
@@ -194,6 +194,9 @@ export default function InsightsView({
     if (day.level === 0) return "var(--border)";
     return `rgba(129,140,248,${[0, 0.4, 0.68, 1][day.level]})`;
   };
+  // Each chart's title carries a divider + generous top space, so the charts read
+  // as separate blocks instead of running into one another.
+  const chartLabel = { ...S.label, marginTop: 26, paddingTop: 18, borderTop: "1px solid var(--border)" };
 
   return (
     <div style={{ textAlign: "left", animation: "fade .3s ease" }}>
@@ -232,9 +235,9 @@ export default function InsightsView({
             bodyweight trend and TDEE it feeds. Defaults to today; step back to
             backfill a missed morning. */}
         {onWeigh && (
-          <div style={{ ...S.insightCard, marginBottom: 10 }}>
+          <div style={{ ...S.insightCard, marginBottom: 10, background: "rgba(129,140,248,.07)", border: "1px solid rgba(129,140,248,.4)" }}>
             <div style={{ display: "flex", alignItems: "center", marginBottom: 8 }}>
-              <div style={S.label}>Weigh-in</div>
+              <div style={{ ...S.label, color: ACCENT }}>Weigh-in</div>
               <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 6 }}>
                 <button style={{ ...S.weekNav, width: 26, height: 26, fontSize: 15 }} onClick={() => stepWDate(-1)} aria-label="Previous day">‹</button>
                 <span style={{ fontSize: 12, color: "var(--text-mute)", minWidth: 52, textAlign: "center" }}>{onWDateToday ? "Today" : fmtDate(wDate)}</span>
@@ -363,16 +366,19 @@ export default function InsightsView({
             Sex/height/age feed the formula TDEE and BMI. ---- */}
         <button
           onClick={() => setShowAbout((o) => !o)}
-          style={{ display: "flex", alignItems: "center", gap: 6, width: "100%", background: "transparent", border: "none", padding: 0, cursor: "pointer", fontFamily: "inherit", ...S.label, marginTop: 18, marginBottom: showAbout ? 8 : 0 }}
+          style={{
+            display: "flex", alignItems: "center", gap: 8, width: "100%",
+            background: "var(--surface-2)", border: "1px solid var(--border-hi)", borderRadius: 12,
+            padding: "11px 13px", cursor: "pointer", fontFamily: "inherit", marginTop: 18, marginBottom: showAbout ? 10 : 0,
+          }}
           aria-expanded={showAbout}
         >
-          About me
-          {!showAbout && (
-            <span style={{ color: "var(--text-faint)", fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>
-              your stats &amp; details
-            </span>
-          )}
-          <Icon name="chevron" size={14} style={{ marginLeft: "auto", color: "var(--text-dim)", transform: showAbout ? "rotate(180deg)" : "none", transition: "transform .2s ease" }} />
+          <span style={{ ...S.label, margin: 0 }}>About me</span>
+          <span style={{ fontSize: 12, color: "var(--text-dim)" }}>stats &amp; details</span>
+          <span style={{ marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12.5, color: ACCENT, fontWeight: 700 }}>
+            {showAbout ? "Hide" : "Show"}
+            <Icon name="chevron" size={14} style={{ transform: showAbout ? "rotate(180deg)" : "none", transition: "transform .2s ease" }} />
+          </span>
         </button>
         {showAbout && (
           <>
@@ -507,7 +513,7 @@ export default function InsightsView({
             their own, matching the bodyweight/strength charts below. */}
         {(trend14.water.some((d) => d.v > 0) || trend14.sodium.some((d) => d.v > 0)) && (
           <>
-            <label style={{ ...S.label, marginTop: 20 }}>Hydration &amp; sodium · 14 days</label>
+            <label style={chartLabel}>Hydration &amp; sodium · 14 days</label>
             <div style={S.insightCard}>
               {trend14.water.some((d) => d.v > 0) && (
                 <div style={{ marginBottom: trend14.sodium.some((d) => d.v > 0) ? 16 : 0 }}>
@@ -530,7 +536,7 @@ export default function InsightsView({
         {/* ---- calorie balance: weekly intake vs maintenance ---- */}
         {calShow && (
           <>
-            <label style={{ ...S.label, marginTop: 20 }}>Calorie balance · 8 weeks</label>
+            <label style={chartLabel}>Calorie balance · 8 weeks</label>
             <div style={{ height: 175, marginTop: 4 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <ComposedChart data={series} margin={{ top: 6, right: 6, bottom: 0, left: -2 }}>
@@ -563,7 +569,7 @@ export default function InsightsView({
         {/* ---- bodyweight trend (raw dots + regression line) ---- */}
         {bw.n >= 2 && (
           <>
-            <label style={{ ...S.label, marginTop: 20 }}>Bodyweight trend</label>
+            <label style={chartLabel}>Bodyweight trend</label>
             <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 2 }}>
               <span style={{ fontFamily: "'Inter', sans-serif", fontWeight: 800, fontSize: 22, letterSpacing: -0.4 }}>
                 {bw.smoothed?.toFixed(1)} lb
@@ -625,7 +631,7 @@ export default function InsightsView({
         {/* ---- the recomp chart ---- */}
         {hasChart && (
           <>
-            <label style={{ ...S.label, marginTop: 20 }}>Weight vs strength</label>
+            <label style={chartLabel}>Weight vs strength</label>
             <div style={{ height: 190, marginTop: 4 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <ComposedChart data={chartData} margin={{ top: 6, right: 6, bottom: 0, left: -2 }}>
@@ -681,7 +687,7 @@ export default function InsightsView({
         {/* ---- per-lift strength curve ---- */}
         {lifts.length > 0 && (
           <>
-            <div style={{ display: "flex", alignItems: "center", marginTop: 20, marginBottom: 6 }}>
+            <div style={{ display: "flex", alignItems: "center", marginTop: 26, paddingTop: 18, borderTop: "1px solid var(--border)", marginBottom: 6 }}>
               <label style={{ ...S.label, margin: 0 }}>Lift progression</label>
               <select
                 value={activeLift}
@@ -727,7 +733,7 @@ export default function InsightsView({
         {/* ---- weekly training volume ---- */}
         {volShow && (
           <>
-            <label style={{ ...S.label, marginTop: 20 }}>Training volume · 8 weeks</label>
+            <label style={chartLabel}>Training volume · 8 weeks</label>
             <div style={{ height: 155, marginTop: 4 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <ComposedChart data={series} margin={{ top: 6, right: 6, bottom: 0, left: -2 }}>
@@ -752,7 +758,7 @@ export default function InsightsView({
         {/* ---- consistency heatmap ---- */}
         {grid.some((wk) => wk.some((d) => d.level > 0)) && (
           <>
-            <label style={{ ...S.label, marginTop: 20 }}>Consistency · {grid.length} weeks</label>
+            <label style={chartLabel}>Consistency · {grid.length} weeks</label>
             <div style={S.insightCard}>
               <div style={{ display: "flex", gap: 3 }}>
                 {grid.map((wk, wi) => (
