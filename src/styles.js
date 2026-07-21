@@ -18,8 +18,9 @@ export const S = {
     // the safe-area insets to keep the header clear of it on mobile.
     paddingTop: "calc(16px + env(safe-area-inset-top))",
     paddingRight: "calc(14px + env(safe-area-inset-right))",
-    // clear the fixed tab bar at the bottom
-    paddingBottom: "calc(86px + env(safe-area-inset-bottom))",
+    // clear the fixed tab bar AND the floating coach button, so the last bit of
+    // content (e.g. a "Show charts" button) always scrolls above them.
+    paddingBottom: "calc(148px + env(safe-area-inset-bottom))",
     paddingLeft: "calc(14px + env(safe-area-inset-left))",
     maxWidth: 520,
     margin: "0 auto",
