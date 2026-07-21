@@ -84,7 +84,7 @@ export default function PhotosModal({ photos = [], onAdd, onRemove, onClose }) {
         onClick={(e) => e.stopPropagation()}
       >
         <div style={{ display: "flex", alignItems: "center", marginBottom: 4 }}>
-          <div style={{ fontFamily: "'Inter', sans-serif", fontWeight: 800, fontSize: 20, letterSpacing: -0.4 }}>Progress photos</div>
+          <div style={S.modalTitle}>Progress photos</div>
           <button style={{ ...S.btnGhost, marginLeft: "auto", padding: "6px 12px" }} onClick={onClose}>✕</button>
         </div>
         <div style={{ ...S.note, marginTop: 0 }}>Stored on this phone only — never uploaded. One set a month is plenty.</div>

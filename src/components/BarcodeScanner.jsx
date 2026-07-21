@@ -65,7 +65,7 @@ export default function BarcodeScanner({ onResult, onClose }) {
       >
         <div style={{ display: "flex", alignItems: "center", gap: 9, padding: "16px 18px 12px" }}>
           <Icon name="barcode" size={18} style={{ color: "var(--text-mute)" }} />
-          <div style={{ fontFamily: "'Inter', sans-serif", fontWeight: 800, fontSize: 17, letterSpacing: -0.3 }}>Scan a barcode</div>
+          <div style={S.modalTitle}>Scan a barcode</div>
           <button style={{ ...S.btnGhost, marginLeft: "auto", padding: "6px 12px" }} onClick={onClose}>✕</button>
         </div>
 

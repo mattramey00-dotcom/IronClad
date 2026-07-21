@@ -42,7 +42,7 @@ export default function WeeklySummaryModal({ summary, who, onAddPhoto, onClose }
         {/* header + the week it covers, up top */}
         <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
           <div style={{ minWidth: 0 }}>
-            <div style={{ fontFamily: "'Inter', sans-serif", fontWeight: 800, fontSize: 20, letterSpacing: -0.4 }}>Your week</div>
+            <div style={S.modalTitle}>Your week</div>
             <div style={{ fontSize: 12.5, color: ACCENT, fontWeight: 600, marginTop: 2 }}>
               {fmt(s.startKey)} – {fmt(s.endKey)}
             </div>

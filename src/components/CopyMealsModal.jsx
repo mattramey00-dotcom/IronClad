@@ -40,7 +40,7 @@ export default function CopyMealsModal({ sourceKey, allMeals, today, onSubmit, o
       <div style={{ ...S.modalCard, maxWidth: 420, padding: 20, textAlign: "left" }} onClick={(e) => e.stopPropagation()}>
         <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 4 }}>
           <Icon name="calendar" size={18} style={{ color: "var(--text-mute)" }} />
-          <div style={{ fontFamily: "'Inter', sans-serif", fontWeight: 800, fontSize: 18, letterSpacing: -0.3 }}>Copy or move meals</div>
+          <div style={S.modalTitle}>Copy or move meals</div>
           <button style={{ ...S.btnGhost, marginLeft: "auto", padding: "6px 12px" }} onClick={onClose}>✕</button>
         </div>
 

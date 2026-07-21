@@ -344,7 +344,7 @@ const ST = {
     maxHeight: "92vh", overflowY: "auto", animation: "fade .2s ease",
   },
   head: { display: "flex", alignItems: "flex-start", gap: 10, marginBottom: 10 },
-  title: { fontFamily: "'Inter', sans-serif", fontWeight: 800, fontSize: 19, letterSpacing: -0.4, lineHeight: 1.15 },
+  title: { fontFamily: "'Inter', sans-serif", fontWeight: 800, fontSize: 18, letterSpacing: -0.4, lineHeight: 1.15 },
   sub: { fontSize: 13, color: "var(--text-mute)", marginTop: 2 },
   close: {
     marginLeft: "auto", flex: "0 0 auto", width: 32, height: 32, borderRadius: "50%",

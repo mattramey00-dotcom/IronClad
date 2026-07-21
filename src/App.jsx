@@ -213,6 +213,8 @@ function Shell({ children }) {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
         *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+        /* native form controls don't inherit font-family — force Inter everywhere */
+        button,input,select,textarea{font-family:inherit}
         ::-webkit-scrollbar{height:0;width:0}
         @keyframes pop{0%{transform:scale(.6);opacity:0}60%{transform:scale(1.15)}100%{transform:scale(1);opacity:1}}
         @keyframes fade{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
@@ -1304,7 +1306,7 @@ function SettingsModal({ plan, me, apiKey, model, wxKey, onSetWxKey, onSetApiKey
         style={{ ...S.modalCard, maxWidth: 420, textAlign: "left", maxHeight: "88vh", overflowY: "auto" }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div style={{ fontFamily: "'Inter', sans-serif", fontWeight: 800, letterSpacing: -0.4, fontSize: 20, marginBottom: 14 }}>
+        <div style={{ ...S.modalTitle, marginBottom: 14 }}>
           Settings
         </div>
 

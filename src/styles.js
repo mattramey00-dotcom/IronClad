@@ -57,6 +57,13 @@ export const S = {
   cdTime: { fontSize: 20, fontWeight: 700, color: ACCENT, fontVariantNumeric: "tabular-nums" },
   statsBtn: { background: "var(--surface-2)", border: "1px solid var(--border-hi)", color: "var(--text-2)", borderRadius: 10, padding: "7px 12px", fontSize: 13, cursor: "pointer", fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 6 },
 
+  // ---- shared type treatments ----
+  //  One family (Inter) and one set of heading treatments, so a screen title or
+  //  a modal header is the same size and letter-spacing wherever it appears
+  //  instead of each place inventing its own.
+  screenTitle: { fontFamily: "'Inter', sans-serif", fontWeight: 800, fontSize: 26, letterSpacing: -0.6, lineHeight: 1.1 },
+  modalTitle: { fontFamily: "'Inter', sans-serif", fontWeight: 800, fontSize: 18, letterSpacing: -0.4, lineHeight: 1.15 },
+
   // ---- profile ----
   whoRow: { display: "flex", alignItems: "center", gap: 8, marginBottom: 14 },
   whoChip: {

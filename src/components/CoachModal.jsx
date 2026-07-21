@@ -92,7 +92,7 @@ export default function CoachModal({ apiKey, model, snapshot, planCtx, who, onCl
         <div style={{ display: "flex", alignItems: "center", gap: 9, padding: "18px 20px 12px", borderBottom: "1px solid var(--border)" }}>
           <Icon name="sparkle" size={18} style={{ color: ACCENT }} />
           <div>
-            <div style={{ fontFamily: "'Inter', sans-serif", fontWeight: 800, fontSize: 18, letterSpacing: -0.3 }}>Coach</div>
+            <div style={S.modalTitle}>Coach</div>
             <div style={{ fontSize: 11, color: "var(--text-dim)" }}>{who} · reads your measured data</div>
           </div>
           <button style={{ ...S.btnGhost, marginLeft: "auto", padding: "6px 12px" }} onClick={onClose}>✕</button>

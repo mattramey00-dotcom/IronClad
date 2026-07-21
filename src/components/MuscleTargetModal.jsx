@@ -75,7 +75,7 @@ export default function MuscleTargetModal({ onPickExercise, onClose }) {
         <div style={{ display: "flex", alignItems: "center", gap: 9, padding: "18px 20px 12px", borderBottom: "1px solid var(--border)" }}>
           <Icon name="stretch" size={18} style={{ color: ACCENT }} />
           <div>
-            <div style={{ fontFamily: "'Inter', sans-serif", fontWeight: 800, fontSize: 18, letterSpacing: -0.3 }}>Target a muscle</div>
+            <div style={S.modalTitle}>Target a muscle</div>
             <div style={{ fontSize: 11, color: "var(--text-dim)" }}>Adds to today, on top of your plan</div>
           </div>
           <button style={{ ...S.btnGhost, marginLeft: "auto", padding: "6px 12px" }} onClick={onClose}>✕</button>

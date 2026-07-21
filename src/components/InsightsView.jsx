@@ -162,7 +162,7 @@ export default function InsightsView({
 
   return (
     <div style={{ textAlign: "left", animation: "fade .3s ease" }}>
-        <div style={{ fontFamily: "'Inter', sans-serif", fontWeight: 800, letterSpacing: -0.6, fontSize: 26, marginBottom: 3 }}>
+        <div style={{ ...S.screenTitle, marginBottom: 3 }}>
           Insights
         </div>
         <div style={{ fontSize: 12, color: "var(--text-dim)", marginBottom: 18 }}>{who} · measured from your own logs</div>

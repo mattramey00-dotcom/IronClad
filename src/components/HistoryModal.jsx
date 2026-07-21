@@ -55,7 +55,7 @@ export default function HistoryModal({ logs, exercises, who, theme, onClose, onE
       <div style={{ ...S.modalCard, maxWidth: 460, textAlign: "left" }} onClick={(e) => e.stopPropagation()}>
         <div style={{ display: "flex", alignItems: "center", marginBottom: 14 }}>
           <div>
-            <div style={{ fontFamily: "'Inter', sans-serif", fontWeight: 800, letterSpacing: -0.4, fontSize: 20 }}>Progression</div>
+            <div style={S.modalTitle}>Progression</div>
             {who && <div style={{ fontSize: 11, color: "var(--text-dim)", marginTop: 2 }}>{who}</div>}
           </div>
           <button style={{ ...S.btnGhost, marginLeft: "auto", padding: "6px 12px", display: "inline-flex", alignItems: "center", gap: 6 }} onClick={onExport}>
