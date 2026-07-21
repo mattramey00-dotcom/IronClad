@@ -25,7 +25,7 @@ import {
   loadApiKey, saveApiKey, loadModel, saveModel, loadTravel, saveTravel,
   loadWxKey, saveWxKey,
   loadLastBackup, saveLastBackup, loadBackupNudge, saveBackupNudge,
-  loadTheme, saveTheme, loadWeeklySeen, saveWeeklySeen,
+  loadTheme, saveTheme, loadWeeklySeen, saveWeeklySeen, loadWeighNudge, saveWeighNudge,
 } from "./lib/storage.js";
 import { downloadBackup, backupReminderDue, monthKeyOf } from "./lib/backup.js";
 import { estimateTDEE, resolveTargets, weightTrend, bestE1RM, shiftKey, daysBetween, mealTotals, weeklySummary, waterTargetOz, coachContext, DEFAULT_TARGETS } from "./lib/nutrition.js";
@@ -319,6 +319,13 @@ function Trainer({
     return s.size;
   })();
   const backupDue = backupReminderDue({ now, lastBackupISO: lastBackup, nudgedMonth: backupNudge, hasData, dataDays });
+
+  // Morning weigh-in reminder: on the first open of a new day, if you're an
+  // established logger and haven't weighed in yet (and haven't dismissed today).
+  const [weighNudgeDay, setWeighNudgeDay] = useState(() => loadWeighNudge(me));
+  useEffect(() => { setWeighNudgeDay(loadWeighNudge(me)); }, [me]);
+  const weighDue = hasData && !weights?.[today] && weighNudgeDay !== today;
+  const dismissWeighReminder = () => { saveWeighNudge(me, today); setWeighNudgeDay(today); };
 
   const agenda = useMemo(() => agendaFor(plan, me, selected), [plan, me, selected]);
   const week = useMemo(() => weekAgenda(plan, me, selected), [plan, me, selected]);
@@ -803,6 +810,30 @@ function Trainer({
               {backupBusy ? "Saving…" : "Export"}
             </button>
             <button style={{ ...S.btnGhost, padding: "5px 12px", fontSize: 11.5 }} onClick={dismissBackupReminder}>
+              Later
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Morning weigh-in reminder — first open of a new day, if you haven't
+          logged today's weight yet. Weight is the other half of the TDEE math. */}
+      {weighDue && (
+        <div style={S.backupBanner}>
+          <span style={{ color: ACCENT, display: "grid", placeItems: "center", flex: "0 0 auto" }}>
+            <Icon name="scale" size={18} />
+          </span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 13.5, fontWeight: 700, color: "var(--text)" }}>Morning weigh-in</div>
+            <div style={{ fontSize: 12, color: "var(--text-mute)", lineHeight: 1.45, marginTop: 1 }}>
+              Log today's weight — same time each morning keeps your trend honest.
+            </div>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6, flex: "0 0 auto" }}>
+            <button style={{ ...S.btnAccent, padding: "7px 12px", fontSize: 12.5 }} onClick={() => setTab("insights")}>
+              Log it
+            </button>
+            <button style={{ ...S.btnGhost, padding: "5px 12px", fontSize: 11.5 }} onClick={dismissWeighReminder}>
               Later
             </button>
           </div>

@@ -175,6 +175,11 @@ export const saveSubs = (personId, subs) => write(`subs:${personId}`, JSON.strin
 export const loadWeeklySeen = (personId) => read(`weeklyseen:${personId}`) || "";
 export const saveWeeklySeen = (personId, endKey) => write(`weeklyseen:${personId}`, endKey);
 
+// The last day we nudged (or you dismissed) the morning weigh-in reminder, so it
+// fires once on the first open of a new day rather than on every open.
+export const loadWeighNudge = (personId) => read(`weighnudge:${personId}`) || "";
+export const saveWeighNudge = (personId, dateKey) => write(`weighnudge:${personId}`, dateKey);
+
 // ---- added / accessory exercises (per profile) ----------------------
 //  Extra movements a person tacks onto a day from the "Target a muscle" picker,
 //  keyed by date → [{ n, s, d }]. They show up in that day's exercise list on
@@ -290,6 +295,6 @@ export function migrateLegacy(personId) {
 export function resetEverything() {
   ["plan", "me", "apikey", "model", "travel", "wxkey", "lastbackup", "backupnudge", "restnotify", "theme"].forEach(remove);
   ["p1", "p2"].forEach((id) => {
-    ["progress", "logs", "meals", "weights", "targets", "favmeals", "subs", "extras", "weeklyseen", "water", "supps", "supplog"].forEach((k) => remove(`${k}:${id}`));
+    ["progress", "logs", "meals", "weights", "targets", "favmeals", "subs", "extras", "weeklyseen", "water", "supps", "supplog", "weighnudge"].forEach((k) => remove(`${k}:${id}`));
   });
 }

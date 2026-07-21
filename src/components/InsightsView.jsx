@@ -74,8 +74,9 @@ export default function InsightsView({
   const streak = useMemo(() => loggingStreak(meals, weights, today), [meals, weights, today]);
   const lifts = useMemo(() => trackedLifts(logs, today), [logs, today]);
   const [liftPick, setLiftPick] = useState("");
-  // "About you" starts open only if it's still missing a fact it needs.
-  const [showAbout, setShowAbout] = useState(() => !(targets?.sex && targets?.heightIn > 0 && targets?.age > 0));
+  // "About me" holds the personal facts plus the headline stats, so it starts
+  // open (the stats are worth seeing); tap to fold it away.
+  const [showAbout, setShowAbout] = useState(true);
   const activeLift = lifts.some((l) => l.name === liftPick) ? liftPick : (lifts[0]?.name || "");
   const liftSeries = useMemo(
     () => (activeLift ? liftE1rmSeries(logs, activeLift, today) : []),
@@ -199,14 +200,25 @@ export default function InsightsView({
         <div style={{ ...S.screenTitle, marginBottom: 3 }}>
           Insights
         </div>
-        <div style={{ fontSize: 12, color: "var(--text-dim)", marginBottom: streak.current >= 2 ? 12 : 18 }}>{who} · measured from your own logs</div>
+        <div style={{ fontSize: 12, color: "var(--text-dim)", marginBottom: 14 }}>{who} · measured from your own logs</div>
 
-        {/* logging streak — quiet acknowledgement of the habit the whole app
-            depends on, not a gamified nag. Only shown once it's a real run. */}
-        {streak.current >= 2 && (
-          <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "rgba(224,180,74,.1)", border: "1px solid rgba(224,180,74,.3)", color: "#e0b44a", borderRadius: 999, padding: "4px 11px", fontSize: 12.5, fontWeight: 600, marginBottom: 16 }}>
-            <Icon name="flame" size={13} /> {streak.current}-day logging streak
-            {!streak.loggedToday && <span style={{ color: "var(--text-dim)", fontWeight: 400 }}>· log today to keep it</span>}
+        {/* streak + a one-tap link to last week's summary, on one row */}
+        {(streak.current >= 2 || onOpenWeekly) && (
+          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, marginBottom: 16 }}>
+            {streak.current >= 2 && (
+              <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "rgba(224,180,74,.1)", border: "1px solid rgba(224,180,74,.3)", color: "#e0b44a", borderRadius: 999, padding: "5px 12px", fontSize: 12.5, fontWeight: 600 }}>
+                <Icon name="flame" size={13} /> {streak.current}-day streak
+                {!streak.loggedToday && <span style={{ color: "var(--text-dim)", fontWeight: 400 }}>· log today</span>}
+              </div>
+            )}
+            {onOpenWeekly && (
+              <button
+                onClick={onOpenWeekly}
+                style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "var(--surface-2)", border: "1px solid var(--border-hi)", color: "var(--text-2)", borderRadius: 999, padding: "5px 12px", fontSize: 12.5, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}
+              >
+                <Icon name="clock" size={13} style={{ color: ACCENT }} /> Last week's summary
+              </button>
+            )}
           </div>
         )}
 
@@ -215,28 +227,6 @@ export default function InsightsView({
           each morning and your meals on the Fuel tab, and over a couple of weeks the estimates
           sharpen into your real numbers.
         </Hint>
-
-        {/* ---- goal — at the top: it's the context everything else is measured
-            against. Changing it recalibrates the plan (confirmed below). */}
-        <label style={{ ...S.label, marginTop: 14 }}>Goal</label>
-        <div style={S.segRow}>
-          {Object.values(GOALS).map((g) => (
-            <button
-              key={g.id}
-              style={{ ...S.seg, ...(resolved.goal.id === g.id ? S.segActive : {}), fontSize: 12, padding: "9px 4px" }}
-              onClick={() => { if (g.id !== resolved.goal.id) setPendingGoal(g); }}
-            >
-              {g.label}
-            </button>
-          ))}
-        </div>
-        <div style={S.note}>
-          {resolved.kcal
-            ? `Targets: ${resolved.kcal.toLocaleString()} kcal and ${resolved.protein} g protein a day${
-                resolved.derived ? " — derived from your measured TDEE, not a calculator." : "."
-              }`
-            : "Calorie target appears once there's enough data to measure your TDEE. Protein target needs a weigh-in."}
-        </div>
 
         {/* daily weigh-in — the second of the two TDEE inputs, kept next to the
             bodyweight trend and TDEE it feeds. Defaults to today; step back to
@@ -286,14 +276,27 @@ export default function InsightsView({
           </div>
         )}
 
-        {onOpenWeekly && (
-          <button
-            style={{ ...S.btnGhost, width: "100%", marginBottom: 4, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8 }}
-            onClick={onOpenWeekly}
-          >
-            <Icon name="clock" size={15} style={{ color: ACCENT }} /> Last week's summary
-          </button>
-        )}
+        {/* ---- goal — below the weigh-in: the context the targets derive from.
+            Changing it recalibrates the plan (confirmed below). */}
+        <label style={{ ...S.label, marginTop: 16 }}>Goal</label>
+        <div style={S.segRow}>
+          {Object.values(GOALS).map((g) => (
+            <button
+              key={g.id}
+              style={{ ...S.seg, ...(resolved.goal.id === g.id ? S.segActive : {}), fontSize: 12, padding: "9px 4px" }}
+              onClick={() => { if (g.id !== resolved.goal.id) setPendingGoal(g); }}
+            >
+              {g.label}
+            </button>
+          ))}
+        </div>
+        <div style={S.note}>
+          {resolved.kcal
+            ? `Targets: ${resolved.kcal.toLocaleString()} kcal and ${resolved.protein} g protein a day${
+                resolved.derived ? " — derived from your measured TDEE, not a calculator." : "."
+              }`
+            : "Calorie target appears once there's enough data to measure your TDEE. Protein target needs a weigh-in."}
+        </div>
 
         {/* ---- TDEE ---- */}
         <label style={{ ...S.label, marginTop: 14 }}>Your measured TDEE</label>
@@ -340,22 +343,33 @@ export default function InsightsView({
           </>
         )}
 
-        {/* ---- about you (collapsible): sex / height / age — the three facts the
-            logs can't supply. They feed the formula TDEE before it's measured,
-            and height drives BMI. Collapsed once they're filled in. ---- */}
+        {/* ---- metabolic adaptation (right under the TDEE it's about) ---- */}
+        {adapt.ready && adapt.adapting && (
+          <div style={{ ...S.insightCard, ...S.insightWarn, marginTop: 12 }}>
+            <div style={S.insightTitle}>Your metabolism is adapting</div>
+            <div style={S.insightBody}>
+              Your measured TDEE has slid from ~{adapt.prior.toLocaleString()} to ~{adapt.now.toLocaleString()} kcal
+              ({adapt.delta} kcal · {adapt.pct}%) over the last few weeks of dieting. That's adaptive
+              thermogenesis — your body meeting the lower intake, and the reason a cut stalls even when
+              the food hasn't changed. A <b>3–5 day break at maintenance</b> (or a couple of higher-carb
+              refeed days) usually restores it and makes the next stretch work again. Cutting harder here
+              tends to backfire.
+            </div>
+          </div>
+        )}
+
+        {/* ---- about me (collapsible): the personal facts (sex/height/age) plus
+            your headline stats and BMI, folded into one section you can tuck away.
+            Sex/height/age feed the formula TDEE and BMI. ---- */}
         <button
           onClick={() => setShowAbout((o) => !o)}
-          style={{ display: "flex", alignItems: "center", gap: 6, width: "100%", background: "transparent", border: "none", padding: 0, cursor: "pointer", fontFamily: "inherit", ...S.label, marginTop: 16, marginBottom: showAbout ? 8 : 0 }}
+          style={{ display: "flex", alignItems: "center", gap: 6, width: "100%", background: "transparent", border: "none", padding: 0, cursor: "pointer", fontFamily: "inherit", ...S.label, marginTop: 18, marginBottom: showAbout ? 8 : 0 }}
           aria-expanded={showAbout}
         >
-          About you
+          About me
           {!showAbout && (
             <span style={{ color: "var(--text-faint)", fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>
-              {[
-                targets?.sex === "male" ? "Male" : targets?.sex === "female" ? "Female" : null,
-                targets?.heightIn > 0 ? `${Math.floor(targets.heightIn / 12)}′${targets.heightIn % 12}″` : null,
-                targets?.age > 0 ? `${targets.age} yr` : null,
-              ].filter(Boolean).join(" · ") || "not set"}
+              your stats &amp; details
             </span>
           )}
           <Icon name="chevron" size={14} style={{ marginLeft: "auto", color: "var(--text-dim)", transform: showAbout ? "rotate(180deg)" : "none", transition: "transform .2s ease" }} />
@@ -382,26 +396,9 @@ export default function InsightsView({
               <span style={{ fontSize: 12, color: "var(--text-mute)" }}>yrs</span>
             </div>
             <div style={S.note}>Sex, height and age let the app estimate your TDEE before there's enough logged data to measure it — and height drives BMI.</div>
-          </>
-        )}
-
-        {/* ---- metabolic adaptation ---- */}
-        {adapt.ready && adapt.adapting && (
-          <div style={{ ...S.insightCard, ...S.insightWarn, marginTop: 12 }}>
-            <div style={S.insightTitle}>Your metabolism is adapting</div>
-            <div style={S.insightBody}>
-              Your measured TDEE has slid from ~{adapt.prior.toLocaleString()} to ~{adapt.now.toLocaleString()} kcal
-              ({adapt.delta} kcal · {adapt.pct}%) over the last few weeks of dieting. That's adaptive
-              thermogenesis — your body meeting the lower intake, and the reason a cut stalls even when
-              the food hasn't changed. A <b>3–5 day break at maintenance</b> (or a couple of higher-carb
-              refeed days) usually restores it and makes the next stretch work again. Cutting harder here
-              tends to backfire.
-            </div>
-          </div>
-        )}
 
         {/* ---- headline stats ---- */}
-        <div style={S.statGrid}>
+        <div style={{ ...S.statGrid, marginTop: 14 }}>
           <div style={S.statBox}>
             <div style={S.statLabel}>Bodyweight</div>
             <div style={S.statValue}>{bodyweight ? `${bodyweight.toFixed(1)} lb` : "—"}</div>
@@ -472,6 +469,8 @@ export default function InsightsView({
             </div>
           );
         })()}
+          </>
+        )}
 
         {/* progress photos — the check the scale can't give you */}
         {onOpenPhotos && (
@@ -483,9 +482,25 @@ export default function InsightsView({
           </button>
         )}
 
-        {/* ================= CHARTS ================= */}
+        {/* ---- what it means (coach's read, above the charts) ---- */}
+        {ins.notes.length > 0 && (
+          <>
+            <label style={{ ...S.label, marginTop: 20 }}>What that means</label>
+            {ins.notes.map((n, i) => (
+              <div key={i} style={{ ...S.insightCard, ...(TONE[n.kind] || {}) }}>
+                <div style={S.insightTitle}>{n.title}</div>
+                <div style={S.insightBody}>{n.body}</div>
+              </div>
+            ))}
+          </>
+        )}
+
+        {/* ================= CHARTS — its own defined section ================= */}
         {hasAnyChart && (
-          <div style={{ ...S.label, marginTop: 24, marginBottom: 2, paddingTop: 16, borderTop: "1px solid var(--border)", fontSize: 12.5, color: "var(--text-mute)" }}>Charts</div>
+          <div style={{ marginTop: 26, paddingTop: 18, borderTop: "1px solid var(--border)" }}>
+            <div style={{ ...S.label, fontSize: 13.5, color: "var(--text-2)", margin: 0, letterSpacing: 1 }}>Charts</div>
+            <div style={{ fontSize: 11.5, color: "var(--text-faint)", marginTop: 2 }}>Trends measured from your logs.</div>
+          </div>
         )}
 
         {/* hydration & sodium — a light 14-day strip so these two get a trend of
@@ -757,19 +772,6 @@ export default function InsightsView({
                 <span style={{ marginLeft: "auto" }}>a meal · a weigh-in · a workout</span>
               </div>
             </div>
-          </>
-        )}
-
-        {/* ---- what it means ---- */}
-        {ins.notes.length > 0 && (
-          <>
-            <label style={{ ...S.label, marginTop: 20 }}>What that means</label>
-            {ins.notes.map((n, i) => (
-              <div key={i} style={{ ...S.insightCard, ...(TONE[n.kind] || {}) }}>
-                <div style={S.insightTitle}>{n.title}</div>
-                <div style={S.insightBody}>{n.body}</div>
-              </div>
-            ))}
           </>
         )}
 
