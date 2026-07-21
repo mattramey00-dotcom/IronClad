@@ -38,7 +38,7 @@ const EMPTY_DRAFT = {
   items: [], caveat: "", confidence: null, source: "manual",
 };
 
-function Bar({ label, value, target, color, over }) {
+function Bar({ label, value, target, color, over, unit, hint }) {
   const pct = target ? Math.min(100, (value / target) * 100) : 0;
   const past = target && value > target;
   return (
@@ -47,13 +47,19 @@ function Bar({ label, value, target, color, over }) {
         <span style={S.macroName}>{label}</span>
         <span style={{ ...S.macroVal, color: past && over ? "#e08a6a" : "var(--text)" }}>
           {Math.round(value).toLocaleString()}
-          {target ? <span style={{ color: "var(--text-dim)", fontWeight: 400 }}> / {Math.round(target).toLocaleString()}</span> : null}
+          {target
+            ? <span style={{ color: "var(--text-dim)", fontWeight: 400 }}> / {Math.round(target).toLocaleString()}</span>
+            : unit ? <span style={{ color: "var(--text-faint)", fontWeight: 400 }}> {unit}</span> : null}
         </span>
       </div>
       {target ? (
         <div style={S.macroBar}>
           <div style={{ ...S.macroFill, width: `${pct}%`, background: past && over ? "#e08a6a" : color }} />
         </div>
+      ) : hint ? (
+        // No target to scale against — say why the bar isn't here, don't just
+        // drop it silently (that reads as "the bar disappeared").
+        <div style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 2, lineHeight: 1.4 }}>{hint}</div>
       ) : null}
     </div>
   );
@@ -307,7 +313,14 @@ export default function FuelCard({
         <div style={{ ...S.fuelSection, position: "relative", overflow: "hidden" }}>
           <FuelArt kind="protein" />
           <div style={{ position: "relative", zIndex: 1 }}>
-          <Bar label="Protein" value={totals.protein} target={targets.protein} color={PROTEIN_COLOR} />
+          <Bar
+            label="Protein"
+            value={totals.protein}
+            target={targets.protein}
+            color={PROTEIN_COLOR}
+            unit="g"
+            hint="Log a weigh-in on Insights and your protein target — and this bar — appear."
+          />
 
           {/* how protein is spread today + how much is left */}
           {targets.protein > 0 && (
@@ -344,7 +357,15 @@ export default function FuelCard({
             </>
           )}
 
-          <Bar label="Calories" value={totals.kcal} target={targets.kcal} color={ACCENT} over />
+          <Bar
+            label="Calories"
+            value={totals.kcal}
+            target={targets.kcal}
+            color={ACCENT}
+            over
+            unit="kcal"
+            hint="Your calorie target appears once there's enough logged data to measure your TDEE."
+          />
           <div style={S.macroMini}>
             <span>Carbs {Math.round(totals.carbs)} g</span>
             <span>Fat {Math.round(totals.fat)} g</span>
