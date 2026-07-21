@@ -79,7 +79,13 @@ export const S = {
 
   // ---- week strip ----
   // All seven days share the width evenly (a 7-col grid), so the whole week is
-  // visible at once on a phone instead of scrolling sideways.
+  // visible at once on a phone instead of scrolling sideways. The whole thing is
+  // wrapped in its own inset panel (weekCard) so the calendar reads as one
+  // contained widget with breathing room, rather than bleeding into the day card.
+  weekCard: {
+    background: "var(--sunken)", border: "1px solid var(--border-strong)",
+    borderRadius: 16, padding: "10px 11px 12px", marginBottom: 16,
+  },
   weekRow: { display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4, marginBottom: 14 },
   weekCell: {
     minWidth: 0, background: "var(--surface)", border: "1px solid var(--border)",

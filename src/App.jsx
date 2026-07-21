@@ -809,8 +809,11 @@ function Trainer({
       </div>
 
       {/* Week navigation — step back to any past week to log a missed weigh-in,
-          meal or set; jump straight back to today when you've wandered off. */}
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 7 }}>
+          meal or set; jump straight back to today when you've wandered off. The
+          nav and the 7-day grid share one inset panel so the calendar is a
+          self-contained block with space around it. */}
+      <div style={S.weekCard}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 9 }}>
         <button style={S.weekNav} onClick={() => setSelected(shiftKey(selected, -7))} aria-label="Previous week">‹</button>
         <div style={{ flex: 1, textAlign: "center", fontSize: 12, color: "var(--text-mute)", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
           {onThisWeek ? "This week" : weekLabel}
@@ -821,7 +824,7 @@ function Trainer({
         <button style={S.weekNav} onClick={() => setSelected(shiftKey(selected, 7))} aria-label="Next week">›</button>
       </div>
 
-      <div style={S.weekRow}>
+      <div style={{ ...S.weekRow, marginBottom: 0 }}>
         {week.map((a) => {
           const active = a.date === selected;
           const yours = !a.isRest;
@@ -858,6 +861,7 @@ function Trainer({
             </button>
           );
         })}
+      </div>
       </div>
       </>
       )}
