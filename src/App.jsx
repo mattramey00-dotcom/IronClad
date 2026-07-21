@@ -1302,7 +1302,7 @@ function Trainer({
           boxShadow: "0 10px 26px -8px rgba(129,140,248,.6)", transition: "bottom .25s ease",
         }}
       >
-        <Icon name="sparkle" size={24} />
+        <Icon name="person" size={26} />
       </button>
 
       {showCoach && (

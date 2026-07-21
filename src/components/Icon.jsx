@@ -166,6 +166,12 @@ const PATHS = {
       <path d="M6 9.5l6 6 6-6" />
     </>
   ),
+  person: (
+    <>
+      <circle cx="12" cy="8.5" r="4.2" />
+      <path d="M4 20.5a8 8 0 0 1 16 0Z" />
+    </>
+  ),
   drop: (
     <>
       <path d="M12 3.4c3.6 4.6 5.6 7.2 5.6 10.1a5.6 5.6 0 0 1-11.2 0c0-2.9 2-5.5 5.6-10.1Z" />
@@ -195,7 +201,7 @@ const PATHS = {
 
 // Glyphs that are line drawings (stroked) vs. solid shapes (filled). Filled
 // glyphs read better small and where a "played/active" feel is wanted.
-const FILLED = new Set(["play", "sparkle", "plane"]);
+const FILLED = new Set(["play", "sparkle", "plane", "person"]);
 
 export default function Icon({ name, size = 16, style, strokeWidth = 1.75, filled }) {
   const content = PATHS[name];
