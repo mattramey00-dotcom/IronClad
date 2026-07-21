@@ -8,7 +8,7 @@
 //  no pull day, forever). See lib/schedule.js for how the calendar is derived.
 // ============================================================
 
-import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense } from "react";
 import {
   ACCENT, DEMOS, EX_VIDEO, TOGETHER, REST_DAY, forMachine, forTravel, forSub, musclesFor, MUSCLE_LABELS,
 } from "./data/program.js";
@@ -38,10 +38,8 @@ import ExerciseGif, { preloadGifs, allGifIds } from "./components/ExerciseGif.js
 import Hint from "./components/Hint.jsx";
 import PhotosModal from "./components/PhotosModal.jsx";
 import { putPhoto, deletePhoto, compressToBlob } from "./lib/photos.js";
-import HistoryModal from "./components/HistoryModal.jsx";
 import Setup from "./components/Setup.jsx";
 import FuelCard from "./components/FuelCard.jsx";
-import InsightsView from "./components/InsightsView.jsx";
 import TabBar from "./components/TabBar.jsx";
 import RestTimer from "./components/RestTimer.jsx";
 import MuscleMap from "./components/MuscleMap.jsx";
@@ -50,6 +48,12 @@ import WeeklySummaryModal from "./components/WeeklySummaryModal.jsx";
 import CopyMealsModal from "./components/CopyMealsModal.jsx";
 import Confetti from "./components/Confetti.jsx";
 import Icon from "./components/Icon.jsx";
+
+// Lazy-loaded because they're the only two screens that pull in Recharts (~150
+// KB). Splitting them out keeps that weight off the first paint — you only pay
+// for the charts when you open Insights or an exercise's history.
+const InsightsView = lazy(() => import("./components/InsightsView.jsx"));
+const HistoryModal = lazy(() => import("./components/HistoryModal.jsx"));
 
 const DOW = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const MACHINE_ICON = { treadmill: "run", bike: "bike" };
@@ -1130,21 +1134,23 @@ function Trainer({
 
       {/* ============ INSIGHTS ============ */}
       {tab === "insights" && (
-        <InsightsView
-          meals={meals}
-          weights={weights}
-          logs={logs}
-          targets={targets}
-          today={today}
-          who={person.name}
-          apiKey={apiKey}
-          model={model}
-          theme={theme}
-          onSetTargets={persistTargets}
-          onOpenPhotos={() => setShowPhotos(true)}
-          onOpenWeekly={() => setShowWeekly(true)}
-          onWeigh={setWeight}
-        />
+        <Suspense fallback={<div style={{ padding: "40px 0", textAlign: "center", color: "var(--text-mute)", fontSize: 13 }}>Loading insights…</div>}>
+          <InsightsView
+            meals={meals}
+            weights={weights}
+            logs={logs}
+            targets={targets}
+            today={today}
+            who={person.name}
+            apiKey={apiKey}
+            model={model}
+            theme={theme}
+            onSetTargets={persistTargets}
+            onOpenPhotos={() => setShowPhotos(true)}
+            onOpenWeekly={() => setShowWeekly(true)}
+            onWeigh={setWeight}
+          />
+        </Suspense>
       )}
 
       {openEx && (
@@ -1193,14 +1199,16 @@ function Trainer({
       {timer && <TimerModal seconds={timer.seconds} label={timer.label} onClose={() => setTimer(null)} />}
       {video && <VideoModal video={video.video} name={video.name} onClose={() => setVideo(null)} />}
       {showHistory && (
-        <HistoryModal
-          logs={logs}
-          exercises={loggedExercises}
-          who={person.name}
-          theme={theme}
-          onClose={() => setShowHistory(false)}
-          onExport={exportCSV}
-        />
+        <Suspense fallback={null}>
+          <HistoryModal
+            logs={logs}
+            exercises={loggedExercises}
+            who={person.name}
+            theme={theme}
+            onClose={() => setShowHistory(false)}
+            onExport={exportCSV}
+          />
+        </Suspense>
       )}
       {showSettings && (
         <SettingsModal
