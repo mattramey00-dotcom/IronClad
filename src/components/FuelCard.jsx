@@ -38,6 +38,21 @@ const EMPTY_DRAFT = {
   items: [], caveat: "", confidence: null, source: "manual",
 };
 
+// The tappable meal-row area (name + macros + kcal) opens the editor, so you no
+// longer have to hit a tiny pencil. Its siblings — save and remove — get proper
+// ~40px touch targets instead of the old 18px icons that were nearly impossible
+// to tap on a phone.
+const rowEditBtn = {
+  flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 10,
+  background: "transparent", border: "none", padding: "2px 0", margin: 0,
+  cursor: "pointer", fontFamily: "inherit", textAlign: "left", color: "inherit",
+};
+const rowActBtn = {
+  flex: "0 0 auto", width: 38, height: 38, borderRadius: 9, background: "transparent",
+  border: "none", cursor: "pointer", fontFamily: "inherit", display: "grid", placeItems: "center",
+  color: "var(--text-dim)",
+};
+
 function Bar({ label, value, target, color, over, unit, hint }) {
   const pct = target ? Math.min(100, (value / target) * 100) : 0;
   const past = target && value > target;
@@ -513,41 +528,46 @@ export default function FuelCard({
 
       {meals?.length > 0 && (
         <div>
-          {meals.map((m) => (
+          {meals.map((m) => {
+            const saved = favorites.some((f) => (f.name || "").trim().toLowerCase() === (m.name || "").trim().toLowerCase());
+            return (
             <div key={m.id} style={S.mealRow}>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={S.mealName}>
-                  {m.name}
-                  {(m.source === "photo" || m.source === "text" || m.source === "web" || m.source === "barcode") && (
-                    <span style={S.srcTag}>{m.source === "photo" ? "photo" : m.source === "web" ? "web" : m.source === "barcode" ? "scan" : "ai"}</span>
-                  )}
+              {/* tap the meal itself to edit it */}
+              <button style={rowEditBtn} onClick={() => startEdit(m)} title="Edit meal" aria-label={`Edit ${m.name}`}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={S.mealName}>
+                    {m.name}
+                    {(m.source === "photo" || m.source === "text" || m.source === "web" || m.source === "barcode") && (
+                      <span style={S.srcTag}>{m.source === "photo" ? "photo" : m.source === "web" ? "web" : m.source === "barcode" ? "scan" : "ai"}</span>
+                    )}
+                  </div>
+                  <div style={S.mealMacros}>
+                    {Math.round(m.protein)}p · {Math.round(m.carbs)}c · {Math.round(m.fat)}f
+                    {m.sodium > 0 ? ` · ${Math.round(m.sodium).toLocaleString()} mg` : ""}
+                    {m.time ? ` · ${m.time}` : ""}
+                  </div>
                 </div>
-                <div style={S.mealMacros}>
-                  {Math.round(m.protein)}p · {Math.round(m.carbs)}c · {Math.round(m.fat)}f
-                  {m.sodium > 0 ? ` · ${Math.round(m.sodium).toLocaleString()} mg` : ""}
-                  {m.time ? ` · ${m.time}` : ""}
-                </div>
-              </div>
-              <div style={S.mealKcal}>{Math.round(m.kcal).toLocaleString()}</div>
-              <button
-                style={{ background: "transparent", border: "none", color: "var(--text-dim)", cursor: "pointer", padding: "4px 2px", display: "grid", placeItems: "center", fontFamily: "inherit" }}
-                onClick={() => startEdit(m)}
-                title="Edit meal"
-                aria-label={`Edit ${m.name}`}
-              >
-                <Icon name="pencil" size={14} />
+                <div style={S.mealKcal}>{Math.round(m.kcal).toLocaleString()}</div>
               </button>
               <button
-                style={{ background: "transparent", border: "none", color: "var(--text-dim)", cursor: "pointer", padding: "4px 2px", display: "grid", placeItems: "center", fontFamily: "inherit" }}
+                style={{ ...rowActBtn, color: saved ? ACCENT : "var(--text-dim)" }}
                 onClick={() => onSaveFavorite?.(m)}
-                title="Save to Quick add"
+                title={saved ? "Saved to Quick add" : "Save to Quick add"}
                 aria-label={`Save ${m.name} to quick add`}
               >
-                <Icon name="star" size={14} />
+                <Icon name="star" size={16} />
               </button>
-              <button style={S.mealX} onClick={() => onRemoveMeal(m.id)} aria-label="remove meal">×</button>
+              <button
+                style={rowActBtn}
+                onClick={() => onRemoveMeal(m.id)}
+                title="Remove meal"
+                aria-label={`Remove ${m.name}`}
+              >
+                <Icon name="close" size={16} />
+              </button>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
