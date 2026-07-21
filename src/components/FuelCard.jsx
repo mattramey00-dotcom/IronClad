@@ -559,7 +559,7 @@ export default function FuelCard({
               style={{ ...S.addBtn, flex: "0 0 auto", padding: "10px 14px", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }}
               onClick={onCopyDay}
             >
-              <Icon name="pencil" size={13} /> Edit meals
+              <Icon name="calendar" size={14} /> Move meals
             </button>
           )}
         </div>
