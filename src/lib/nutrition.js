@@ -776,3 +776,52 @@ export function weeklySummary({ meals, weights, logs, startKey, endKey }) {
     hasActivity: workouts > 0 || loggedDays.length > 0 || wKeys.length > 0,
   };
 }
+
+// ---- coach context --------------------------------------------------
+//  Everything the AI coach is allowed to see, assembled from the raw logs in one
+//  place so the coach can live anywhere in the app, not only on Insights. It's
+//  handed the *computed* figures, never the raw logs — interpretation is the only
+//  part it's better at than the arithmetic. `snapshot` is the read-out it reasons
+//  from; `planCtx` is what the timeline tool (lib/claude.js) computes against.
+export function coachContext({ meals, weights, logs, targets, today }) {
+  const ins = buildInsights({ meals, weights, logs, targets, endKey: today });
+  const { tdee, strength, resolved, bodyweight, proteinPerLb } = ins;
+  const formula = formulaTDEE({ sex: targets?.sex, heightIn: targets?.heightIn, age: targets?.age, weightLb: bodyweight });
+  const adapt = tdeeAdaptation(meals, weights, today, resolved.goal.id);
+  const bw = bodyweightSeries(weights, today);
+  const goalProj = projectGoal({ smoothed: bw.smoothed, goalWeight: targets?.goalWeight, slopePerWeek: bw.slopePerWeek });
+
+  const snapshot = {
+    goal: resolved.goal.label,
+    bodyweight_lb: bodyweight,
+    measured_tdee_kcal: tdee.tdee,
+    tdee_plausible_range: tdee.ready ? [tdee.lo, tdee.hi] : null,
+    avg_daily_intake_kcal: Math.round(tdee.intake.avgKcal) || null,
+    avg_daily_protein_g: Math.round(tdee.intake.avgProtein) || null,
+    protein_g_per_lb: proteinPerLb ? Number(proteinPerLb.toFixed(2)) : null,
+    bodyweight_change_lb_per_week: tdee.trend.slopePerWeek !== null ? Number(tdee.trend.slopePerWeek.toFixed(2)) : null,
+    est_1rm_change_pct_28d: strength.pct !== null ? Number(strength.pct.toFixed(1)) : null,
+    lifts_tracked: strength.n,
+    training_volume_lb_28d: strength.volume,
+    per_lift_change_pct: strength.moves.slice(0, 6).map((m) => ({ lift: m.name, change_pct: Number(m.pct.toFixed(1)), sessions: m.sessions })),
+    days_of_meals_logged: tdee.intake.daysLogged,
+    days_of_weigh_ins: tdee.trend.n,
+    data_is_sufficient_for_tdee: tdee.ready,
+    formula_tdee_estimate_kcal: !tdee.ready && formula ? formula.tdee : null,
+    tdee_trend: adapt.ready
+      ? { recent_kcal: adapt.now, prior_kcal: adapt.prior, change_kcal: adapt.delta, metabolic_adaptation: adapt.adapting }
+      : null,
+    goal_weight_lb: Number(targets?.goalWeight) || null,
+    weeks_to_goal_at_current_rate: goalProj && !goalProj.reached && !goalProj.stalled ? goalProj.weeks : null,
+  };
+
+  const planCtx = {
+    currentLb: bw.smoothed ?? bodyweight,
+    tdee: tdee.ready ? tdee.tdee : formula ? formula.tdee : null,
+    tdeeMeasured: tdee.ready,
+    ratePerWeek: bw.slopePerWeek,
+    today,
+  };
+
+  return { snapshot, planCtx };
+}

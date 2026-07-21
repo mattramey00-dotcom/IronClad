@@ -28,7 +28,7 @@ import {
   loadTheme, saveTheme, loadWeeklySeen, saveWeeklySeen,
 } from "./lib/storage.js";
 import { downloadBackup, backupReminderDue, monthKeyOf } from "./lib/backup.js";
-import { estimateTDEE, resolveTargets, weightTrend, bestE1RM, shiftKey, daysBetween, mealTotals, weeklySummary, waterTargetOz, DEFAULT_TARGETS } from "./lib/nutrition.js";
+import { estimateTDEE, resolveTargets, weightTrend, bestE1RM, shiftKey, daysBetween, mealTotals, weeklySummary, waterTargetOz, coachContext, DEFAULT_TARGETS } from "./lib/nutrition.js";
 import { MODELS, DEFAULT_MODEL } from "./lib/claude.js";
 import { S } from "./styles.js";
 import Demo from "./components/Demo.jsx";
@@ -54,6 +54,9 @@ import Icon from "./components/Icon.jsx";
 // for the charts when you open Insights or an exercise's history.
 const InsightsView = lazy(() => import("./components/InsightsView.jsx"));
 const HistoryModal = lazy(() => import("./components/HistoryModal.jsx"));
+// The coach is reachable from every tab via a floating button, but its code (and
+// the Anthropic SDK it pulls) only loads when you actually open it.
+const CoachModal = lazy(() => import("./components/CoachModal.jsx"));
 
 const DOW = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const MACHINE_ICON = { treadmill: "run", bike: "bike" };
@@ -247,6 +250,7 @@ function Trainer({
 }) {
   const [tab, setTab] = useState("train");
   const [showCopyMeals, setShowCopyMeals] = useState(false); // the copy/move-a-day's-meals picker
+  const [showCoach, setShowCoach] = useState(false); // the AI coach — reachable from any tab
   // The Fuel compose form — including its in-flight loading state — lives here
   // (not in FuelCard) so a web/API lookup keeps running and stays visible when
   // you switch to another tab and back, instead of restarting.
@@ -638,6 +642,11 @@ function Trainer({
   const resolvedTargets = useMemo(
     () => resolveTargets(targets, tdee, bodyweight),
     [targets, tdee, bodyweight],
+  );
+  // Everything the coach sees, built once here so it's the same from any tab.
+  const coach = useMemo(
+    () => coachContext({ meals, weights, logs, targets, today }),
+    [meals, weights, logs, targets, today],
   );
   const waterTarget = useMemo(() => waterTargetOz(bodyweight), [bodyweight]);
 
@@ -1275,6 +1284,38 @@ function Trainer({
           onSetDuration={setRestPref}
           onClose={() => setRest(null)}
         />
+      )}
+
+      {/* the coach — a floating button on every tab, so it's never buried on the
+          Insights screen. Lifts above the rest timer when it's showing. */}
+      <button
+        onClick={() => setShowCoach(true)}
+        aria-label="Talk to your coach"
+        title="Talk to your coach"
+        style={{
+          position: "fixed", zIndex: 55,
+          right: "calc(16px + env(safe-area-inset-right))",
+          bottom: rest ? "calc(150px + env(safe-area-inset-bottom))" : "calc(80px + env(safe-area-inset-bottom))",
+          width: 54, height: 54, borderRadius: "50%",
+          background: ACCENT, color: "#0B1020", border: "none", cursor: "pointer",
+          display: "grid", placeItems: "center",
+          boxShadow: "0 10px 26px -8px rgba(129,140,248,.6)", transition: "bottom .25s ease",
+        }}
+      >
+        <Icon name="sparkle" size={24} />
+      </button>
+
+      {showCoach && (
+        <Suspense fallback={null}>
+          <CoachModal
+            apiKey={apiKey}
+            model={model}
+            snapshot={coach.snapshot}
+            planCtx={coach.planCtx}
+            who={person.name}
+            onClose={() => setShowCoach(false)}
+          />
+        </Suspense>
       )}
 
       <TabBar tab={tab} setTab={setTab} />
