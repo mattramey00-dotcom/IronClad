@@ -510,7 +510,9 @@ function Trainer({
     // One entry per name — re-saving updates the numbers rather than piling up.
     const rest = favMeals.filter((f) => f.name.toLowerCase() !== name.toLowerCase());
     persistFavs([
-      { id: `fav-${Date.now()}`, name, kcal: meal.kcal, protein: meal.protein, carbs: meal.carbs, fat: meal.fat, sodium: meal.sodium },
+      // Keep the itemized breakdown too, so re-logging this later brings the
+      // per-food detail back — not just the totals.
+      { id: `fav-${Date.now()}`, name, kcal: meal.kcal, protein: meal.protein, carbs: meal.carbs, fat: meal.fat, sodium: meal.sodium, items: meal.items?.length ? meal.items : undefined },
       ...rest,
     ].slice(0, 24));
   };
@@ -543,6 +545,7 @@ function Trainer({
       time: new Date().toTimeString().slice(0, 5),
       name: fav.name, kcal: fav.kcal, protein: fav.protein, carbs: fav.carbs, fat: fav.fat, sodium: fav.sodium,
       source: "favorite",
+      items: fav.items?.length ? fav.items : undefined,
     });
 
   // Re-log any past meal from history onto the selected day, keeping its macros
