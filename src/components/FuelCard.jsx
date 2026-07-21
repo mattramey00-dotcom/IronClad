@@ -62,7 +62,7 @@ export default function FuelCard({
   water = 0, waterTarget = 80, onAddWater,
   supps = [], suppTaken = [], onAddSupp, onRemoveSupp, onToggleSupp,
   compose, setCompose,
-  onAddMeal, onRemoveMeal, onEditMeal, onRelogMeal, onLogFavorite, onSaveFavorite, onRemoveFavorite, onWeigh, onOpenInsights,
+  onAddMeal, onRemoveMeal, onEditMeal, onRelogMeal, onLogFavorite, onSaveFavorite, onRemoveFavorite, onWeigh, onOpenInsights, onCopyDay,
 }) {
   // The whole in-progress compose lifecycle — which panel is open, the editable
   // draft a web lookup / photo / description produced, the text box, AND the
@@ -479,6 +479,15 @@ export default function FuelCard({
               <button style={S.mealX} onClick={() => onRemoveMeal(m.id)} aria-label="remove meal">×</button>
             </div>
           ))}
+          {/* logged on the wrong day? send the whole day elsewhere */}
+          {onCopyDay && (
+            <button
+              style={{ ...S.addBtn, width: "100%", marginTop: 3, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 7, color: "var(--text-mute)" }}
+              onClick={onCopyDay}
+            >
+              <Icon name="calendar" size={14} /> Copy or move to another day
+            </button>
+          )}
         </div>
       )}
 

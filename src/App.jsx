@@ -47,6 +47,7 @@ import RestTimer from "./components/RestTimer.jsx";
 import MuscleMap from "./components/MuscleMap.jsx";
 import MuscleTargetModal from "./components/MuscleTargetModal.jsx";
 import WeeklySummaryModal from "./components/WeeklySummaryModal.jsx";
+import CopyMealsModal from "./components/CopyMealsModal.jsx";
 import Confetti from "./components/Confetti.jsx";
 import Icon from "./components/Icon.jsx";
 
@@ -239,6 +240,7 @@ function Trainer({
   showSettings, setShowSettings, now, theme, onToggleTheme, onSwitchPerson,
 }) {
   const [tab, setTab] = useState("train");
+  const [showCopyMeals, setShowCopyMeals] = useState(false); // the copy/move-a-day's-meals picker
   // The Fuel compose form — including its in-flight loading state — lives here
   // (not in FuelCard) so a web/API lookup keeps running and stays visible when
   // you switch to another tab and back, instead of restarting.
@@ -550,6 +552,21 @@ function Trainer({
     if (rest.length) next[selected] = rest;
     else delete next[selected];
     persistMeals(next);
+  };
+
+  // Fix a wrong-day log: copy (or move) the whole selected day's meals onto
+  // another date. Clones get fresh ids so the two days never share a meal id.
+  // Moving also clears the source and jumps to the target so you can confirm.
+  const copyMealsToDay = (targetKey, move) => {
+    const src = meals[selected] || [];
+    if (!src.length || targetKey === selected) { setShowCopyMeals(false); return; }
+    const stamp = Date.now();
+    const clones = src.map((m, i) => ({ ...m, id: `${stamp}-${i}-${Math.random().toString(36).slice(2, 6)}` }));
+    const next = { ...meals, [targetKey]: [...(meals[targetKey] || []), ...clones] };
+    if (move) delete next[selected];
+    persistMeals(next);
+    setShowCopyMeals(false);
+    if (move) setSelected(targetKey);
   };
 
   const setWeight = (lb) => {
@@ -1094,8 +1111,19 @@ function Trainer({
           onRemoveFavorite={removeFavorite}
           onWeigh={setWeight}
           onOpenInsights={() => setTab("insights")}
+          onCopyDay={() => setShowCopyMeals(true)}
         />
       </>
+      )}
+
+      {showCopyMeals && (
+        <CopyMealsModal
+          sourceKey={selected}
+          allMeals={meals}
+          today={today}
+          onSubmit={copyMealsToDay}
+          onClose={() => setShowCopyMeals(false)}
+        />
       )}
 
       {/* ============ INSIGHTS ============ */}
