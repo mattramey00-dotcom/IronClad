@@ -102,6 +102,25 @@ export function mealTotals(list) {
 
 export const dayTotals = (meals, key) => mealTotals(meals?.[key]);
 
+// ---- logging streak --------------------------------------------------
+//  Consecutive days, ending at today (or yesterday if today isn't logged yet),
+//  on which anything was logged — a meal or a weigh-in. The whole app rests on
+//  the habit of logging, so this rewards the habit, nothing more. A day counts
+//  the moment it has any entry; today not being logged doesn't break a streak
+//  that's alive through yesterday.
+export function loggingStreak(meals, weights, endKey) {
+  const logged = (k) => (meals?.[k]?.length || 0) > 0 || Number(weights?.[k]) > 0;
+  let start = endKey;
+  if (!logged(start)) {
+    const y = shiftKey(endKey, -1);
+    if (!logged(y)) return { current: 0, loggedToday: false };
+    start = y;
+  }
+  let n = 0;
+  for (let k = start; logged(k); k = shiftKey(k, -1)) n++;
+  return { current: n, loggedToday: logged(endKey) };
+}
+
 // ---- bodyweight trend ------------------------------------------------
 //  Least-squares slope, not (last − first).
 //

@@ -571,12 +571,12 @@ function Trainer({
     if (move) setSelected(targetKey);
   };
 
-  // The weigh-in lives on Insights now, which has no day selector — so it always
-  // logs for today (the morning weigh-in it's meant for), not the selected day.
-  const setWeight = (lb) => {
+  // The weigh-in lives on Insights now. It defaults to today, but its own date
+  // stepper can target a past day to backfill — so this takes the day key.
+  const setWeight = (key, lb) => {
     const next = { ...weights };
-    if (lb == null) delete next[today];
-    else next[today] = lb;
+    if (lb == null) delete next[key];
+    else next[key] = lb;
     persistWeights(next);
   };
 

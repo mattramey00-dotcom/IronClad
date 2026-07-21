@@ -16,6 +16,12 @@ export default function BarcodeScanner({ onResult, onClose }) {
   const videoRef = useRef(null);
   const [error, setError] = useState("");
   const [starting, setStarting] = useState(true);
+  const [manual, setManual] = useState("");
+
+  const submitManual = () => {
+    const code = manual.replace(/\D/g, ""); // barcodes are digits only
+    if (code.length >= 6) onResult(code);
+  };
 
   useEffect(() => {
     let controls;
@@ -98,6 +104,29 @@ export default function BarcodeScanner({ onResult, onClose }) {
             </div>
           </>
         )}
+
+        {/* manual fallback — for a camera that won't focus, a torn label, or a
+            product the reader can't lock onto. Type the number under the bars. */}
+        <div style={{ padding: "6px 18px 2px" }}>
+          <div style={{ fontSize: 11.5, color: "var(--text-dim)", marginBottom: 6 }}>Can't scan it? Type the number under the barcode.</div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <input
+              inputMode="numeric"
+              placeholder="e.g. 0123456789012"
+              style={{ ...S.textInput, flex: 1, fontVariantNumeric: "tabular-nums" }}
+              value={manual}
+              onChange={(e) => setManual(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && submitManual()}
+            />
+            <button
+              style={{ ...S.btnAccent, flex: "0 0 auto", opacity: manual.replace(/\D/g, "").length >= 6 ? 1 : 0.4 }}
+              disabled={manual.replace(/\D/g, "").length < 6}
+              onClick={submitManual}
+            >
+              Look up
+            </button>
+          </div>
+        </div>
 
         <div style={{ padding: 12 }}>
           <button style={{ ...S.btnGhost, width: "100%" }} onClick={onClose}>Cancel</button>

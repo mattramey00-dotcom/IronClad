@@ -21,7 +21,7 @@ import Hint from "./Hint.jsx";
 import CoachModal from "./CoachModal.jsx";
 import {
   buildInsights, weeklySeries, bodyweightSeries, projectGoal, tdeeAdaptation, formulaTDEE, shiftKey,
-  bmi, bmiBand, GOALS, MIN_DAYS, MIN_INTAKE_DAYS, MIN_WEIGH_INS,
+  bmi, bmiBand, loggingStreak, GOALS, MIN_DAYS, MIN_INTAKE_DAYS, MIN_WEIGH_INS,
 } from "../lib/nutrition.js";
 
 const TONE = { good: S.insightGood, warn: S.insightWarn, info: {} };
@@ -37,14 +37,24 @@ export default function InsightsView({
   const [showCoach, setShowCoach] = useState(false);
   const [pendingGoal, setPendingGoal] = useState(null); // goal awaiting confirmation
   const [weighing, setWeighing] = useState(""); // the in-progress weigh-in entry
+  const [wDate, setWDate] = useState(today);    // which day the weigh-in is for
 
   // The daily weigh-in lives here now — it's the other half of the TDEE math, so
-  // it belongs next to the bodyweight trend and TDEE it feeds, not in Fuel.
-  const todayWeight = weights?.[today];
+  // it belongs next to the bodyweight trend and TDEE it feeds, not in Fuel. It
+  // defaults to today but can step back a day at a time to backfill a missed
+  // morning, so you're never locked out of fixing the record.
+  const dayWeight = weights?.[wDate];
+  const onWDateToday = wDate === today;
+  const stepWDate = (delta) => {
+    const next = shiftKey(wDate, delta);
+    if (next > today) return; // a weigh-in can't be in the future
+    setWDate(next);
+    setWeighing("");
+  };
   const submitWeight = () => {
     const lb = parseFloat(weighing);
     if (Number.isFinite(lb) && lb > 0 && lb < 1000) {
-      onWeigh?.(lb);
+      onWeigh?.(wDate, lb);
       setWeighing("");
     }
   };
@@ -61,6 +71,7 @@ export default function InsightsView({
   const { tdee, strength, resolved, bodyweight } = ins;
   const hasChart = series.some((p) => p.weight !== null) || series.some((p) => p.strength !== null);
 
+  const streak = useMemo(() => loggingStreak(meals, weights, today), [meals, weights, today]);
   const bw = useMemo(() => bodyweightSeries(weights, today), [weights, today]);
   const adapt = useMemo(
     () => tdeeAdaptation(meals, weights, today, resolved.goal.id),
@@ -165,7 +176,16 @@ export default function InsightsView({
         <div style={{ ...S.screenTitle, marginBottom: 3 }}>
           Insights
         </div>
-        <div style={{ fontSize: 12, color: "var(--text-dim)", marginBottom: 18 }}>{who} · measured from your own logs</div>
+        <div style={{ fontSize: 12, color: "var(--text-dim)", marginBottom: streak.current >= 2 ? 12 : 18 }}>{who} · measured from your own logs</div>
+
+        {/* logging streak — quiet acknowledgement of the habit the whole app
+            depends on, not a gamified nag. Only shown once it's a real run. */}
+        {streak.current >= 2 && (
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "rgba(224,180,74,.1)", border: "1px solid rgba(224,180,74,.3)", color: "#e0b44a", borderRadius: 999, padding: "4px 11px", fontSize: 12.5, fontWeight: 600, marginBottom: 16 }}>
+            <Icon name="flame" size={13} /> {streak.current}-day logging streak
+            {!streak.loggedToday && <span style={{ color: "var(--text-dim)", fontWeight: 400 }}>· log today to keep it</span>}
+          </div>
+        )}
 
         <Hint id="insights">
           Every number here is measured from what you log — no calculators. Log your weight below
@@ -174,22 +194,30 @@ export default function InsightsView({
         </Hint>
 
         {/* daily weigh-in — the second of the two TDEE inputs, kept next to the
-            bodyweight trend and TDEE it feeds. Always logs for today. */}
+            bodyweight trend and TDEE it feeds. Defaults to today; step back to
+            backfill a missed morning. */}
         {onWeigh && (
           <div style={{ ...S.insightCard, marginBottom: 10 }}>
-            <div style={{ ...S.label, marginBottom: 8 }}>Today's weigh-in</div>
+            <div style={{ display: "flex", alignItems: "center", marginBottom: 8 }}>
+              <div style={S.label}>Weigh-in</div>
+              <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 6 }}>
+                <button style={{ ...S.weekNav, width: 26, height: 26, fontSize: 15 }} onClick={() => stepWDate(-1)} aria-label="Previous day">‹</button>
+                <span style={{ fontSize: 12, color: "var(--text-mute)", minWidth: 52, textAlign: "center" }}>{onWDateToday ? "Today" : fmtDate(wDate)}</span>
+                <button style={{ ...S.weekNav, width: 26, height: 26, fontSize: 15, opacity: onWDateToday ? 0.35 : 1 }} onClick={() => stepWDate(1)} disabled={onWDateToday} aria-label="Next day">›</button>
+              </div>
+            </div>
             <div style={S.weighRow}>
               <span style={{ color: "var(--text-mute)", display: "grid", placeItems: "center" }}><Icon name="scale" size={15} /></span>
-              {todayWeight ? (
+              {dayWeight ? (
                 <>
-                  <span style={{ ...S.statValue, fontSize: 17 }}>{todayWeight} lb</span>
+                  <span style={{ ...S.statValue, fontSize: 17 }}>{dayWeight} lb</span>
                   <button
                     style={{ ...S.resetBtn, marginLeft: 0 }}
-                    onClick={() => { setWeighing(String(todayWeight)); onWeigh(null); }}
+                    onClick={() => { setWeighing(String(dayWeight)); onWeigh(wDate, null); }}
                   >
                     change
                   </button>
-                  <span style={S.weighDone}>logged today</span>
+                  <span style={S.weighDone}>logged {onWDateToday ? "today" : fmtDate(wDate)}</span>
                 </>
               ) : (
                 <>
@@ -206,7 +234,7 @@ export default function InsightsView({
                   <button style={{ ...S.btnGhost, flex: "0 0 auto", padding: "9px 14px" }} onClick={submitWeight}>
                     Log weight
                   </button>
-                  <span style={{ ...S.weighDone, marginLeft: "auto" }}>daily · same time</span>
+                  <span style={{ ...S.weighDone, marginLeft: "auto" }}>{onWDateToday ? "daily · same time" : "backfilling"}</span>
                 </>
               )}
             </div>
