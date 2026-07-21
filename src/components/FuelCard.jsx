@@ -53,6 +53,16 @@ const rowActBtn = {
   color: "var(--text-dim)",
 };
 
+// A translucent colour per logging method, so the meal list reads at a glance —
+// a scanned item, a photo estimate and a hand-entered meal each get their own
+// faint tint and matching source tag. Manual/re-logged meals stay neutral.
+const MEAL_TINT = {
+  photo: "129,140,248",   // indigo — the photo estimator
+  barcode: "86,182,217",  // teal — a barcode scan
+  web: "122,176,138",     // green — a published/online lookup
+  text: "224,180,74",     // amber — a described meal
+};
+
 function Bar({ label, value, target, color, over, unit, hint }) {
   const pct = target ? Math.min(100, (value / target) * 100) : 0;
   const past = target && value > target;
@@ -529,16 +539,23 @@ export default function FuelCard({
       {meals?.length > 0 && (
         <div>
           {meals.map((m) => {
-            const saved = favorites.some((f) => (f.name || "").trim().toLowerCase() === (m.name || "").trim().toLowerCase());
+            const savedFav = favorites.find((f) => (f.name || "").trim().toLowerCase() === (m.name || "").trim().toLowerCase());
+            const saved = !!savedFav;
+            const rgb = MEAL_TINT[m.source];
+            const rowStyle = rgb
+              ? { ...S.mealRow, background: `rgba(${rgb},.08)`, border: `1px solid rgba(${rgb},.35)` }
+              : S.mealRow;
             return (
-            <div key={m.id} style={S.mealRow}>
+            <div key={m.id} style={rowStyle}>
               {/* tap the meal itself to edit it */}
               <button style={rowEditBtn} onClick={() => startEdit(m)} title="Edit meal" aria-label={`Edit ${m.name}`}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={S.mealName}>
                     {m.name}
                     {(m.source === "photo" || m.source === "text" || m.source === "web" || m.source === "barcode") && (
-                      <span style={S.srcTag}>{m.source === "photo" ? "photo" : m.source === "web" ? "web" : m.source === "barcode" ? "scan" : "ai"}</span>
+                      <span style={rgb ? { ...S.srcTag, color: `rgb(${rgb})`, borderColor: `rgba(${rgb},.55)` } : S.srcTag}>
+                        {m.source === "photo" ? "photo" : m.source === "web" ? "web" : m.source === "barcode" ? "scan" : "ai"}
+                      </span>
                     )}
                   </div>
                   <div style={S.mealMacros}>
@@ -549,13 +566,14 @@ export default function FuelCard({
                 </div>
                 <div style={S.mealKcal}>{Math.round(m.kcal).toLocaleString()}</div>
               </button>
+              {/* star toggles the meal in/out of Quick add — solid when saved */}
               <button
-                style={{ ...rowActBtn, color: saved ? ACCENT : "var(--text-dim)" }}
-                onClick={() => onSaveFavorite?.(m)}
-                title={saved ? "Saved to Quick add" : "Save to Quick add"}
-                aria-label={`Save ${m.name} to quick add`}
+                style={{ ...rowActBtn, color: saved ? "#e0b44a" : "var(--text-dim)" }}
+                onClick={() => (saved ? onRemoveFavorite?.(savedFav.id) : onSaveFavorite?.(m))}
+                title={saved ? "In Quick add — tap to remove" : "Save to Quick add"}
+                aria-label={saved ? `Remove ${m.name} from quick add` : `Save ${m.name} to quick add`}
               >
-                <Icon name="star" size={16} />
+                <Icon name="star" size={16} filled={saved} />
               </button>
               <button
                 style={rowActBtn}

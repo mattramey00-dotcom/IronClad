@@ -197,17 +197,19 @@ const PATHS = {
 // glyphs read better small and where a "played/active" feel is wanted.
 const FILLED = new Set(["play", "sparkle", "plane"]);
 
-export default function Icon({ name, size = 16, style, strokeWidth = 1.75 }) {
+export default function Icon({ name, size = 16, style, strokeWidth = 1.75, filled }) {
   const content = PATHS[name];
   if (!content) return null;
-  const filled = FILLED.has(name);
+  // `filled` prop forces a solid glyph (e.g. a saved star); otherwise the glyph
+  // uses its default treatment.
+  const solid = filled ?? FILLED.has(name);
   return (
     <svg
       width={size}
       height={size}
       viewBox="0 0 24 24"
-      fill={filled ? "currentColor" : "none"}
-      stroke={filled ? "none" : "currentColor"}
+      fill={solid ? "currentColor" : "none"}
+      stroke={solid ? "none" : "currentColor"}
       strokeWidth={strokeWidth}
       strokeLinecap="round"
       strokeLinejoin="round"
