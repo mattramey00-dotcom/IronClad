@@ -12,7 +12,7 @@
 
 import React, { useState, useMemo } from "react";
 import {
-  ComposedChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine,
+  ComposedChart, Line, Bar, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine,
 } from "recharts";
 import { ACCENT } from "../data/program.js";
 import { S } from "../styles.js";
@@ -20,7 +20,8 @@ import Icon from "./Icon.jsx";
 import Hint from "./Hint.jsx";
 import {
   buildInsights, weeklySeries, bodyweightSeries, projectGoal, tdeeAdaptation, formulaTDEE, shiftKey,
-  bmi, bmiBand, loggingStreak, mealTotals, SODIUM_DV_MG, GOALS, MIN_DAYS, MIN_INTAKE_DAYS, MIN_WEIGH_INS,
+  bmi, bmiBand, loggingStreak, mealTotals, liftE1rmSeries, trackedLifts, activityGrid,
+  SODIUM_DV_MG, GOALS, MIN_DAYS, MIN_INTAKE_DAYS, MIN_WEIGH_INS,
 } from "../lib/nutrition.js";
 
 const TONE = { good: S.insightGood, warn: S.insightWarn, info: {} };
@@ -71,6 +72,14 @@ export default function InsightsView({
   const hasChart = series.some((p) => p.weight !== null) || series.some((p) => p.strength !== null);
 
   const streak = useMemo(() => loggingStreak(meals, weights, today), [meals, weights, today]);
+  const lifts = useMemo(() => trackedLifts(logs, today), [logs, today]);
+  const [liftPick, setLiftPick] = useState("");
+  const activeLift = lifts.some((l) => l.name === liftPick) ? liftPick : (lifts[0]?.name || "");
+  const liftSeries = useMemo(
+    () => (activeLift ? liftE1rmSeries(logs, activeLift, today) : []),
+    [logs, activeLift, today],
+  );
+  const grid = useMemo(() => activityGrid(meals, weights, logs, today), [meals, weights, logs, today]);
   const trend14 = useMemo(() => {
     const days = [];
     for (let i = 13; i >= 0; i--) days.push(shiftKey(today, -i));
@@ -159,9 +168,26 @@ export default function InsightsView({
     weightIdx: wBase && p.weight != null ? Math.round((p.weight / wBase) * 1000) / 10 : null,
   }));
 
+  // Calorie-balance chart: weekly average intake against the maintenance line
+  // (measured TDEE, or the formula estimate before it's ready). The gap between
+  // each bar and the line is the deficit/surplus that actually moved the scale.
+  const OVER_COLOR = "#e08a6a";
+  const tdeeRef = tdee.ready ? tdee.tdee : (formula ? formula.tdee : null);
+  const calShow = tdeeRef != null && series.some((p) => p.kcal != null);
+  const calDomain = (() => {
+    const vals = series.map((p) => p.kcal).filter((v) => v != null);
+    if (tdeeRef != null) vals.push(tdeeRef);
+    if (!vals.length) return [0, "auto"];
+    return [Math.max(0, Math.floor((Math.min(...vals) - 150) / 100) * 100), Math.ceil((Math.max(...vals) + 150) / 100) * 100];
+  })();
+  const volShow = series.some((p) => p.volume > 0);
 
-  // What the timeline tool computes against: current smoothed weight, the best
-  // TDEE we have (measured if ready, else the formula estimate), and the trend.
+  const heatColor = (day) => {
+    if (day.future) return "transparent";
+    if (day.level === 0) return "var(--border)";
+    return `rgba(129,140,248,${[0, 0.4, 0.68, 1][day.level]})`;
+  };
+
   return (
     <div style={{ textAlign: "left", animation: "fade .3s ease" }}>
         <div style={{ ...S.screenTitle, marginBottom: 3 }}>
@@ -401,6 +427,39 @@ export default function InsightsView({
           </>
         )}
 
+        {/* ---- calorie balance: weekly intake vs maintenance ---- */}
+        {calShow && (
+          <>
+            <label style={{ ...S.label, marginTop: 20 }}>Calorie balance · 8 weeks</label>
+            <div style={{ height: 175, marginTop: 4 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart data={series} margin={{ top: 6, right: 6, bottom: 0, left: -2 }}>
+                  <CartesianGrid stroke={CH.grid} vertical={false} />
+                  <XAxis dataKey="week" tick={{ fill: CH.axis, fontSize: 10 }} axisLine={false} tickLine={false} />
+                  <YAxis domain={calDomain} tickFormatter={(v) => (v >= 1000 ? `${Math.round(v / 100) / 10}k` : v)} tick={{ fill: CH.axis, fontSize: 10 }} axisLine={false} tickLine={false} width={30} />
+                  <Tooltip
+                    contentStyle={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, fontSize: 12 }}
+                    labelStyle={{ color: "var(--text-mute)" }} itemStyle={{ padding: 0 }} cursor={{ fill: "rgba(129,140,248,.06)" }}
+                    formatter={(v) => [`${Math.round(v).toLocaleString()} kcal/day`, v > tdeeRef ? "Surplus" : "Deficit"]}
+                  />
+                  <ReferenceLine y={tdeeRef} stroke={WEIGHT_COLOR} strokeDasharray="4 4" strokeOpacity={0.8} />
+                  <Bar dataKey="kcal" radius={[4, 4, 0, 0]} maxBarSize={34} isAnimationActive={false}>
+                    {series.map((p, i) => <Cell key={i} fill={p.kcal > tdeeRef ? OVER_COLOR : ACCENT} />)}
+                  </Bar>
+                </ComposedChart>
+              </ResponsiveContainer>
+            </div>
+            <div style={S.legendRow}>
+              <span><i style={{ ...S.dot, background: ACCENT }} />Under maintenance</span>
+              <span><i style={{ ...S.dot, background: OVER_COLOR }} />Over maintenance</span>
+              <span><i style={{ ...S.dot, background: WEIGHT_COLOR }} />Your {tdee.ready ? "" : "est. "}TDEE</span>
+            </div>
+            <div style={S.note}>
+              Weekly average intake against maintenance ({Math.round(tdeeRef).toLocaleString()} kcal{tdee.ready ? "" : ", still an estimate"}). The gap is the deficit or surplus that's actually moving your weight.
+            </div>
+          </>
+        )}
+
         {/* BMI — reference only, with the muscle caveat spelled out */}
         {(() => {
           const bmiVal = bmi(bodyweight, targets?.heightIn);
@@ -543,6 +602,103 @@ export default function InsightsView({
               strength up while bodyweight drifts down — the two crossing — is a recomposition. Each
               lift is scored against its own starting point, so the rotation putting squats in one week
               and presses in the next doesn't move the line. Bodyweight keeps its real lb in the tooltip.
+            </div>
+          </>
+        )}
+
+        {/* ---- per-lift strength curve ---- */}
+        {lifts.length > 0 && (
+          <>
+            <div style={{ display: "flex", alignItems: "center", marginTop: 20, marginBottom: 6 }}>
+              <label style={{ ...S.label, margin: 0 }}>Lift progression</label>
+              <select
+                value={activeLift}
+                onChange={(e) => setLiftPick(e.target.value)}
+                style={{ ...S.select, width: "auto", maxWidth: 200, marginLeft: "auto", padding: "6px 8px", fontSize: 12.5 }}
+              >
+                {lifts.map((l) => <option key={l.name} value={l.name}>{l.name}</option>)}
+              </select>
+            </div>
+            {liftSeries.length >= 2 ? (
+              <>
+                <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 2 }}>
+                  <span style={{ fontFamily: "'Inter', sans-serif", fontWeight: 800, fontSize: 22, letterSpacing: -0.4 }}>{liftSeries[liftSeries.length - 1].e1rm} lb</span>
+                  <span style={{ fontSize: 12, color: "var(--text-mute)" }}>
+                    est. 1RM · {(() => { const d = liftSeries[liftSeries.length - 1].e1rm - liftSeries[0].e1rm; return `${d >= 0 ? "+" : ""}${d} lb since ${liftSeries[0].date}`; })()}
+                  </span>
+                </div>
+                <div style={{ height: 165, marginTop: 4 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <ComposedChart data={liftSeries} margin={{ top: 6, right: 6, bottom: 0, left: -2 }}>
+                      <CartesianGrid stroke={CH.grid} vertical={false} />
+                      <XAxis dataKey="date" tick={{ fill: CH.axis, fontSize: 10 }} axisLine={false} tickLine={false} interval="preserveStartEnd" minTickGap={24} />
+                      <YAxis domain={["dataMin - 10", "dataMax + 10"]} allowDecimals={false} tickFormatter={(v) => Math.round(v)} tick={{ fill: CH.axis, fontSize: 10 }} axisLine={false} tickLine={false} width={34} />
+                      <Tooltip
+                        contentStyle={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, fontSize: 12 }}
+                        labelStyle={{ color: "var(--text-mute)" }} itemStyle={{ padding: 0 }}
+                        formatter={(v, n, item) => [`${v} lb${item?.payload?.w ? ` · best set ${item.payload.w}×${item.payload.r}` : ""}`, "est. 1RM"]}
+                      />
+                      <Line name="est. 1RM" type="monotone" dataKey="e1rm" stroke={STRENGTH_COLOR} strokeWidth={2} dot={{ r: 3, fill: STRENGTH_COLOR, strokeWidth: 0 }} activeDot={{ r: 5, strokeWidth: 0 }} isAnimationActive={false} />
+                    </ComposedChart>
+                  </ResponsiveContainer>
+                </div>
+                <div style={S.note}>
+                  Estimated 1RM (Epley) from each session's best set. It reads high above ~10 reps, but it's a fair take on whether this lift is trending up.
+                </div>
+              </>
+            ) : (
+              <div style={S.note}>Log {activeLift} at least twice to draw its curve.</div>
+            )}
+          </>
+        )}
+
+        {/* ---- weekly training volume ---- */}
+        {volShow && (
+          <>
+            <label style={{ ...S.label, marginTop: 20 }}>Training volume · 8 weeks</label>
+            <div style={{ height: 155, marginTop: 4 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart data={series} margin={{ top: 6, right: 6, bottom: 0, left: -2 }}>
+                  <CartesianGrid stroke={CH.grid} vertical={false} />
+                  <XAxis dataKey="week" tick={{ fill: CH.axis, fontSize: 10 }} axisLine={false} tickLine={false} />
+                  <YAxis tickFormatter={(v) => (v >= 1000 ? `${Math.round(v / 100) / 10}k` : v)} tick={{ fill: CH.axis, fontSize: 10 }} axisLine={false} tickLine={false} width={34} />
+                  <Tooltip
+                    contentStyle={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, fontSize: 12 }}
+                    labelStyle={{ color: "var(--text-mute)" }} itemStyle={{ padding: 0 }} cursor={{ fill: "rgba(129,140,248,.06)" }}
+                    formatter={(v) => [`${Math.round(v).toLocaleString()} lb`, "Volume"]}
+                  />
+                  <Bar dataKey="volume" radius={[4, 4, 0, 0]} maxBarSize={34} fill={STRENGTH_COLOR} isAnimationActive={false} />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </div>
+            <div style={S.note}>
+              Total weight moved each week — every set's load × reps, added up. Rising volume is the other half of progress besides a climbing 1RM.
+            </div>
+          </>
+        )}
+
+        {/* ---- consistency heatmap ---- */}
+        {grid.some((wk) => wk.some((d) => d.level > 0)) && (
+          <>
+            <label style={{ ...S.label, marginTop: 20 }}>Consistency · {grid.length} weeks</label>
+            <div style={S.insightCard}>
+              <div style={{ display: "flex", gap: 3 }}>
+                {grid.map((wk, wi) => (
+                  <div key={wi} style={{ flex: 1, display: "flex", flexDirection: "column", gap: 3 }}>
+                    {wk.map((day, di) => (
+                      <div key={di} title={day.future ? "" : `${day.key}: ${day.level}/3 logged`} style={{ width: "100%", aspectRatio: "1", borderRadius: 3, background: heatColor(day) }} />
+                    ))}
+                  </div>
+                ))}
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 10, fontSize: 11, color: "var(--text-faint)" }}>
+                <span>Less</span>
+                {[0, 1, 2, 3].map((l) => (
+                  <span key={l} style={{ width: 11, height: 11, borderRadius: 3, background: l === 0 ? "var(--border)" : `rgba(129,140,248,${[0, 0.4, 0.68, 1][l]})` }} />
+                ))}
+                <span>More</span>
+                <span style={{ marginLeft: "auto" }}>a meal · a weigh-in · a workout</span>
+              </div>
             </div>
           </>
         )}

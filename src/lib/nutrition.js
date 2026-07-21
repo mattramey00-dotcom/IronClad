@@ -335,7 +335,12 @@ export function weeklySeries({ meals, weights, logs, endKey, weeks = 8 }) {
     const kcals = keys.filter((k) => meals?.[k]?.length).map((k) => dayTotals(meals, k).kcal);
 
     const ratios = [];
+    let volume = 0;
     Object.entries(logs || {}).forEach(([name, entries]) => {
+      (entries || []).forEach((e) => {
+        if (!inWeek(e.date)) return;
+        (e.sets || []).forEach((s) => { volume += (Number(s.w) || 0) * (Number(s.r) || 0); });
+      });
       if (!baseline[name]) return;
       const best = Math.max(
         0,
@@ -349,6 +354,7 @@ export function weeklySeries({ meals, weights, logs, endKey, weeks = 8 }) {
       weight: lbs.length ? round(mean(lbs), 1) : null,
       kcal: kcals.length ? Math.round(mean(kcals)) : null,
       strength: ratios.length ? round(mean(ratios), 1) : null,
+      volume: Math.round(volume),
     });
   }
   return out;
@@ -824,4 +830,65 @@ export function coachContext({ meals, weights, logs, targets, today }) {
   };
 
   return { snapshot, planCtx };
+}
+
+// ---- per-lift strength curve ----------------------------------------
+//  One lift's estimated 1RM, session by session, so you can watch a single bar
+//  climb rather than the averaged index. Each point is the best e1RM of that
+//  day's sets; the set that produced it rides along for the tooltip.
+export function liftE1rmSeries(logs, name, endKey, days = 120) {
+  const from = shiftKey(endKey, -(days - 1));
+  const entries = (logs?.[name] || [])
+    .filter((e) => e.date >= from && e.date <= endKey && (e.sets?.length || 0) > 0)
+    .sort((a, b) => a.date.localeCompare(b.date));
+  return entries.map((e) => {
+    let top = null, topV = 0;
+    (e.sets || []).forEach((s) => { const v = e1rm(s.w, s.r); if (v > topV) { topV = v; top = s; } });
+    return { date: e.date.slice(5).replace("-", "/"), e1rm: Math.round(topV), w: top?.w ?? null, r: top?.r ?? null };
+  });
+}
+
+// The lifts worth charting — those with at least two logged sessions, so there's
+// actually a line to draw. Newest-trained first.
+export function trackedLifts(logs, endKey, days = 120) {
+  const from = shiftKey(endKey, -(days - 1));
+  return Object.entries(logs || {})
+    .map(([name, entries]) => {
+      const sessions = (entries || []).filter((e) => e.date >= from && e.date <= endKey && (e.sets?.length || 0) > 0);
+      const last = sessions.length ? sessions.map((e) => e.date).sort().slice(-1)[0] : null;
+      return { name, sessions: sessions.length, last };
+    })
+    .filter((l) => l.sessions >= 2)
+    .sort((a, b) => (b.last || "").localeCompare(a.last || ""));
+}
+
+// ---- consistency grid -----------------------------------------------
+//  A calendar heatmap: for each day, how many of the three logs it has — a meal,
+//  a weigh-in, a workout (0–3). Laid out Monday→Sunday in weekly columns ending
+//  on this week, so the habit (and the gaps) reads at a glance.
+export function activityGrid(meals, weights, logs, endKey, weeks = 15) {
+  const trained = new Set();
+  Object.values(logs || {}).forEach((entries) => (entries || []).forEach((e) => { if (e.sets?.length) trained.add(e.date); }));
+
+  const isoDow = (key) => { const d = new Date(`${key}T00:00:00Z`).getUTCDay(); return d === 0 ? 7 : d; };
+  const thisMon = shiftKey(endKey, -(isoDow(endKey) - 1));
+  const startMon = shiftKey(thisMon, -(weeks - 1) * 7);
+
+  const cols = [];
+  for (let w = 0; w < weeks; w++) {
+    const days = [];
+    for (let d = 0; d < 7; d++) {
+      const key = shiftKey(startMon, w * 7 + d);
+      const future = key > endKey;
+      let level = 0;
+      if (!future) {
+        if ((meals?.[key]?.length || 0) > 0) level++;
+        if (Number(weights?.[key]) > 0) level++;
+        if (trained.has(key)) level++;
+      }
+      days.push({ key, level, future });
+    }
+    cols.push(days);
+  }
+  return cols;
 }
