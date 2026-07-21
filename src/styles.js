@@ -309,8 +309,11 @@ export const S = {
     display: "flex", alignItems: "center", gap: 10, background: "var(--surface)",
     border: "1px solid var(--border)", borderRadius: 12, padding: "9px 11px", marginBottom: 7,
   },
-  mealName: { fontSize: 14, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" },
-  mealMacros: { fontSize: 12, color: "var(--text-dim)", marginTop: 2, fontVariantNumeric: "tabular-nums" },
+  // The name wraps to as many lines as it needs (rather than truncating with an
+  // ellipsis), so a long AI/barcode title like "Brand — Product name" is fully
+  // readable. Slightly smaller than before so more fits per line.
+  mealName: { fontSize: 13.5, fontWeight: 600, lineHeight: 1.3, wordBreak: "break-word" },
+  mealMacros: { fontSize: 11.5, color: "var(--text-dim)", marginTop: 2, lineHeight: 1.35, fontVariantNumeric: "tabular-nums" },
   mealKcal: { fontSize: 15, fontWeight: 700, fontVariantNumeric: "tabular-nums", color: "var(--text)" },
   mealX: { background: "none", border: "none", color: "var(--text-faint)", fontSize: 19, cursor: "pointer", lineHeight: 1, fontFamily: "inherit", padding: "0 2px" },
   srcTag: {
