@@ -77,6 +77,7 @@ export default function InsightsView({
   // "About me" holds the personal facts, headline stats and BMI — collapsed by
   // default behind a clear Show button so the screen opens uncluttered.
   const [showAbout, setShowAbout] = useState(false);
+  const [showCharts, setShowCharts] = useState(false); // the charts live in a collapsible menu too
   const activeLift = lifts.some((l) => l.name === liftPick) ? liftPick : (lifts[0]?.name || "");
   const liftSeries = useMemo(
     () => (activeLift ? liftE1rmSeries(logs, activeLift, today) : []),
@@ -501,13 +502,28 @@ export default function InsightsView({
           </>
         )}
 
-        {/* ================= CHARTS — its own defined section ================= */}
+        {/* ================= CHARTS — collapsible menu ================= */}
         {hasAnyChart && (
-          <div style={{ marginTop: 26, paddingTop: 18, borderTop: "1px solid var(--border)" }}>
-            <div style={{ ...S.label, fontSize: 13.5, color: "var(--text-2)", margin: 0, letterSpacing: 1 }}>Charts</div>
-            <div style={{ fontSize: 11.5, color: "var(--text-faint)", marginTop: 2 }}>Trends measured from your logs.</div>
-          </div>
+          <button
+            onClick={() => setShowCharts((o) => !o)}
+            style={{
+              display: "flex", alignItems: "center", gap: 8, width: "100%",
+              background: "var(--surface-2)", border: "1px solid var(--border-hi)", borderRadius: 12,
+              padding: "11px 13px", cursor: "pointer", fontFamily: "inherit", marginTop: 24,
+            }}
+            aria-expanded={showCharts}
+          >
+            <span style={{ ...S.label, margin: 0, fontSize: 13, color: "var(--text-2)" }}>Charts</span>
+            <span style={{ fontSize: 12, color: "var(--text-dim)" }}>trends from your logs</span>
+            <span style={{ marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12.5, color: ACCENT, fontWeight: 700 }}>
+              {showCharts ? "Hide" : "Show"}
+              <Icon name="chevron" size={14} style={{ transform: showCharts ? "rotate(180deg)" : "none", transition: "transform .2s ease" }} />
+            </span>
+          </button>
         )}
+
+        {hasAnyChart && showCharts && (
+          <>
 
         {/* hydration & sodium — a light 14-day strip so these two get a trend of
             their own, matching the bodyweight/strength charts below. */}
@@ -778,6 +794,8 @@ export default function InsightsView({
                 <span style={{ marginLeft: "auto" }}>a meal · a weigh-in · a workout</span>
               </div>
             </div>
+          </>
+        )}
           </>
         )}
 
