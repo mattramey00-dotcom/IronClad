@@ -86,7 +86,7 @@ export default function FuelCard({
   const [showHistory, setShowHistory] = useState(false);
   const [showSaved, setShowSaved] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
-  const [quickOpen, setQuickOpen] = useState(false); // Quick-add chips start collapsed
+  const [addMenuOpen, setAddMenuOpen] = useState(false); // the "+ Meal" how-to-add popup
   const [addingSupp, setAddingSupp] = useState(false);
   const [suppName, setSuppName] = useState("");
   const [suppDose, setSuppDose] = useState("");
@@ -259,6 +259,26 @@ export default function FuelCard({
       setWeighing("");
     }
   };
+
+  // One row of the "+ Meal" popup — an icon tile, a label and a one-line hint.
+  // Picking one closes the sheet and runs the chosen add flow.
+  const addItem = (icon, label, sub, fn) => (
+    <button
+      onClick={() => { setAddMenuOpen(false); fn(); }}
+      style={{
+        display: "flex", alignItems: "center", gap: 12, width: "100%", background: "transparent",
+        border: "none", borderRadius: 12, padding: "10px 8px", cursor: "pointer", fontFamily: "inherit", textAlign: "left",
+      }}
+    >
+      <span style={{ width: 36, height: 36, borderRadius: 10, background: "var(--surface-2)", border: "1px solid var(--border-hi)", display: "grid", placeItems: "center", color: "var(--text-2)", flex: "0 0 auto" }}>
+        <Icon name={icon} size={17} />
+      </span>
+      <span style={{ minWidth: 0 }}>
+        <span style={{ display: "block", fontSize: 15, fontWeight: 600, color: "var(--text)" }}>{label}</span>
+        <span style={{ display: "block", fontSize: 12, color: "var(--text-dim)" }}>{sub}</span>
+      </span>
+    </button>
+  );
 
   return (
     <div style={S.fuelCard}>
@@ -516,106 +536,33 @@ export default function FuelCard({
               <button style={S.mealX} onClick={() => onRemoveMeal(m.id)} aria-label="remove meal">×</button>
             </div>
           ))}
-          {/* logged on the wrong day? send the whole day elsewhere */}
-          {onCopyDay && (
+        </div>
+      )}
+
+      {/* nothing logged yet — a quiet prompt above the button */}
+      {!meals?.length && mode === null && !busy && (
+        <div style={{ fontSize: 12.5, color: "var(--text-faint)", padding: "1px 2px 2px" }}>Nothing logged yet.</div>
+      )}
+
+      {/* add / edit — one "+ Meal" button opens the how-to-add menu (keeps the
+          section uncluttered); "Edit meals" moves the day's meals elsewhere. */}
+      {mode === null && !busy && (
+        <div style={{ ...S.addRow, marginTop: meals?.length ? 12 : 8 }}>
+          <button
+            style={{ ...S.addBtn, ...S.addBtnPrimary, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+            onClick={() => { setError(""); setAddMenuOpen(true); }}
+          >
+            <Icon name="plus" size={15} /> Meal
+          </button>
+          {meals?.length > 0 && onCopyDay && (
             <button
-              style={{ ...S.addBtn, width: "100%", marginTop: 3, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 7, color: "var(--text-mute)" }}
+              style={{ ...S.addBtn, flex: "0 0 auto", padding: "10px 14px", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }}
               onClick={onCopyDay}
             >
-              <Icon name="calendar" size={14} /> Copy or move to another day
+              <Icon name="pencil" size={13} /> Edit meals
             </button>
           )}
         </div>
-      )}
-
-      {/* quick add — the meals you eat on repeat, one tap to re-log. Collapsed
-          by default so a long list of saved meals doesn't crowd the section. */}
-      {favorites.length > 0 && mode === null && !busy && (
-        <div style={{ marginTop: meals?.length ? 12 : 14 }}>
-          <button
-            onClick={() => setQuickOpen((o) => !o)}
-            style={{
-              display: "flex", alignItems: "center", gap: 6, width: "100%", background: "transparent",
-              border: "none", padding: "2px 0", cursor: "pointer", fontFamily: "inherit",
-              ...S.label, marginBottom: quickOpen ? 8 : 0,
-            }}
-            aria-expanded={quickOpen}
-          >
-            Quick add
-            <span style={{ color: "var(--text-faint)", fontWeight: 400 }}>{favorites.length}</span>
-            <Icon
-              name="chevron"
-              size={14}
-              style={{ marginLeft: "auto", color: "var(--text-dim)", transform: quickOpen ? "rotate(180deg)" : "none", transition: "transform .2s ease" }}
-            />
-          </button>
-          {quickOpen && (
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
-            {favorites.map((f) => (
-              <div key={f.id} style={{ display: "inline-flex", alignItems: "center", background: "var(--surface-2)", border: "1px solid var(--border-hi)", borderRadius: 99, overflow: "hidden" }}>
-                <button
-                  onClick={() => onLogFavorite(f)}
-                  style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "transparent", border: "none", color: "var(--text-2)", fontFamily: "inherit", fontSize: 12, padding: "7px 4px 7px 11px", cursor: "pointer", maxWidth: 200, minWidth: 0 }}
-                >
-                  <Icon name="plus" size={11} style={{ color: ACCENT }} />
-                  <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.name}</span>
-                  <span style={{ color: "var(--text-dim)", fontVariantNumeric: "tabular-nums" }}>{Math.round(f.kcal)}</span>
-                </button>
-                <button
-                  onClick={() => onRemoveFavorite(f.id)}
-                  style={{ background: "transparent", border: "none", color: "var(--text-faint)", cursor: "pointer", padding: "6px 9px 6px 4px", fontSize: 13, fontFamily: "inherit" }}
-                  aria-label={`Remove ${f.name} from quick add`}
-                >
-                  ×
-                </button>
-              </div>
-            ))}
-          </div>
-          )}
-        </div>
-      )}
-
-      {/* add a meal */}
-      {mode === null && !busy && (
-        <>
-          <div style={{ ...S.addRow, marginTop: meals?.length ? 10 : 13 }}>
-            <button style={{ ...S.addBtn, ...S.addBtnPrimary, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }} onClick={() => fileRef.current?.click()}>
-              <Icon name="camera" size={15} /> Photo
-            </button>
-            <button style={{ ...S.addBtn, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }} onClick={() => { setMode("text"); setError(""); }}>
-              <Icon name="pencil" size={14} /> Describe
-            </button>
-            <button style={{ ...S.addBtn, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }} onClick={() => { setDraft({ ...EMPTY_DRAFT }); setMode("draft"); setError(""); }}>
-              <Icon name="plus" size={14} /> By hand
-            </button>
-          </div>
-          <button
-            style={{ ...S.addBtn, width: "100%", marginTop: 8, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 7 }}
-            onClick={() => { setError(""); setShowScanner(true); }}
-          >
-            <Icon name="barcode" size={16} /> Scan a barcode — for packaged foods
-          </button>
-          {(favorites.length > 0 || hasHistory) && (
-            <div style={{ ...S.addRow, marginTop: 8 }}>
-              {favorites.length > 0 && (
-                <button
-                  style={{ ...S.addBtn, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 7 }}
-                  onClick={() => setShowSaved(true)}
-                >
-                  <Icon name="star" size={14} /> Saved meals
-                </button>
-              )}
-              {hasHistory && (
-                <button
-                  style={{ ...S.addBtn, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 7 }}
-                  onClick={() => setShowHistory(true)}
-                >
-                  <Icon name="clock" size={14} /> Past meals
-                </button>
-              )}
-            </div>
-          )}
-        </>
       )}
 
       {/* No `capture` attribute on purpose: on a phone this lets the picker
@@ -796,6 +743,31 @@ export default function FuelCard({
           onResult={onScanResult}
           onClose={() => setShowScanner(false)}
         />
+      )}
+
+      {/* the "+ Meal" popup — a bottom sheet listing the ways to add, so the
+          section shows one button instead of a wall of them. */}
+      {addMenuOpen && (
+        <div style={{ ...S.modalWrap, alignItems: "flex-end", padding: 0 }} onClick={() => setAddMenuOpen(false)}>
+          <div
+            style={{
+              width: "100%", maxWidth: 520, margin: "0 auto", background: "var(--surface)",
+              borderTop: "1px solid var(--border-hi)", borderRadius: "20px 20px 0 0",
+              padding: "10px 12px calc(16px + env(safe-area-inset-bottom))",
+              boxShadow: "0 -12px 40px -12px rgba(0,0,0,.5)", animation: "fade .18s ease",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ width: 40, height: 4, borderRadius: 99, background: "var(--border-hi)", margin: "2px auto 12px" }} />
+            <div style={{ ...S.label, padding: "0 6px", marginBottom: 6 }}>Add a meal</div>
+            {addItem("camera", "Photo", "Snap or upload a plate", () => fileRef.current?.click())}
+            {addItem("pencil", "Describe it", "Type what you ate", () => { setMode("text"); setError(""); })}
+            {addItem("barcode", "Scan a barcode", "For packaged foods", () => { setError(""); setShowScanner(true); })}
+            {addItem("plus", "By hand", "Enter the numbers yourself", () => { setDraft({ ...EMPTY_DRAFT }); setMode("draft"); setError(""); })}
+            {favorites.length > 0 && addItem("star", "Saved meals", "Re-log a favourite", () => setShowSaved(true))}
+            {hasHistory && addItem("clock", "Past meals", "Re-log from history", () => setShowHistory(true))}
+          </div>
+        </div>
       )}
     </div>
   );
