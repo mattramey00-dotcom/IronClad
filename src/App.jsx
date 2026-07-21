@@ -1270,7 +1270,7 @@ function PartnerCard({ agenda, other }) {
   const p = agenda.partner;
   let what;
   if (agenda.isRest) what = "Off today as well — the gym stays shut";
-  else if (p.trains) what = `${p.workout.title} · on the ${p.machine}`;
+  else if (p.trains) what = `${p.workout.title} · cardio on the ${p.machine}`;
   else if (p.runs) what = `Out for a ${p.machine === "bike" ? "ride" : "run"} · on the ${p.machine}`;
   else what = "Mobility — walking and stretching";
 
