@@ -100,7 +100,7 @@ export function backupSummary(backup) {
 // Should the end-of-month "back up your data" reminder show right now? Fires
 // only in the last three days of the month, at most once per month, and never
 // for an empty account or one already backed up this month.
-export function backupReminderDue({ now, lastBackupISO, nudgedMonth, hasData }) {
+export function backupReminderDue({ now, lastBackupISO, nudgedMonth, hasData, dataDays = 0 }) {
   if (!hasData) return false;
   const y = now.getFullYear();
   const m = now.getMonth();
@@ -110,6 +110,10 @@ export function backupReminderDue({ now, lastBackupISO, nudgedMonth, hasData }) 
   if (lastBackupISO) {
     const d = new Date(lastBackupISO);
     if (!Number.isNaN(d.getTime()) && d.getFullYear() === y && d.getMonth() === m) return false;
+  } else if (dataDays >= 10) {
+    // Never backed up, but there's already a couple of weeks of data to lose —
+    // don't make a new user wait until month-end for the very first reminder.
+    return true;
   }
 
   const daysInMonth = new Date(y, m + 1, 0).getDate();

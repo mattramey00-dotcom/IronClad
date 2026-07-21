@@ -307,7 +307,14 @@ function Trainer({
     Object.keys(meals || {}).length > 0 ||
     Object.keys(weights || {}).length > 0 ||
     Object.keys(logs || {}).length > 0;
-  const backupDue = backupReminderDue({ now, lastBackupISO: lastBackup, nudgedMonth: backupNudge, hasData });
+  // Distinct days of data — used to nudge a never-backed-up user once they've
+  // built up enough to be worth losing, rather than waiting for month-end.
+  const dataDays = (() => {
+    const s = new Set([...Object.keys(meals || {}), ...Object.keys(weights || {})]);
+    Object.values(logs || {}).forEach((entries) => (entries || []).forEach((e) => e?.date && s.add(e.date)));
+    return s.size;
+  })();
+  const backupDue = backupReminderDue({ now, lastBackupISO: lastBackup, nudgedMonth: backupNudge, hasData, dataDays });
 
   const agenda = useMemo(() => agendaFor(plan, me, selected), [plan, me, selected]);
   const week = useMemo(() => weekAgenda(plan, me, selected), [plan, me, selected]);
