@@ -268,19 +268,13 @@ export const S = {
   macroMini: { display: "flex", gap: 14, fontSize: 12, color: "var(--text-dim)", marginTop: 4 },
 
   // ---- fuel sectioning ----
-  //  The Fuel card carries three kinds of thing — the day's targets (a summary),
-  //  the trackers (water, supplements), and the meal log — so it reads on three
-  //  levels: targets sit flat at the top, trackers are enclosed inset panels, and
-  //  the meal/weigh-in groups are set off by a hairline rule and an uppercase
-  //  label. Without that, every section is just another margin and they blur.
-  fuelDivider: { height: 1, background: "var(--border)", margin: "16px 0 0" },
-  fuelGroupLabel: {
-    fontSize: 11, letterSpacing: 1.5, textTransform: "uppercase", color: "var(--text-dim)",
-    fontWeight: 600, margin: "14px 2px 10px", display: "flex", alignItems: "center", gap: 6,
-  },
+  //  Every section of the Fuel card — the day's targets, the trackers (water,
+  //  supplements), the meal log, and the weigh-in — is an enclosed panel with a
+  //  strong border and an uppercase header, so each reads as its own distinct
+  //  block instead of blurring into the next.
   fuelSection: {
-    background: "var(--sunken)", border: "1px solid var(--border)",
-    borderRadius: 14, padding: "11px 13px", marginTop: 12,
+    background: "var(--sunken)", border: "1px solid var(--border-strong)",
+    borderRadius: 14, padding: "12px 13px", marginTop: 12,
   },
   fuelSectionHead: {
     display: "flex", alignItems: "center", gap: 6, marginBottom: 10,

@@ -86,6 +86,7 @@ export default function FuelCard({
   const [showHistory, setShowHistory] = useState(false);
   const [showSaved, setShowSaved] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
+  const [quickOpen, setQuickOpen] = useState(false); // Quick-add chips start collapsed
   const [addingSupp, setAddingSupp] = useState(false);
   const [suppName, setSuppName] = useState("");
   const [suppDose, setSuppDose] = useState("");
@@ -281,16 +282,18 @@ export default function FuelCard({
           to be logged — a missing Sunday would bias the TDEE estimate low — but
           it doesn't need to be nagged about. */}
       {restMode ? (
-        <div style={{ ...S.macroMini, marginTop: 0, marginBottom: 8, fontSize: 13 }}>
-          <span><b style={{ color: "var(--text)" }}>{Math.round(totals.kcal).toLocaleString()}</b> kcal</span>
-          <span><b style={{ color: PROTEIN_COLOR }}>{Math.round(totals.protein)}</b> g protein</span>
-          {totals.sodium > 0 && (
-            <span><b style={{ color: totals.sodium > SODIUM_DV_MG ? OVER_COLOR : "var(--text)" }}>{Math.round(totals.sodium).toLocaleString()}</b> mg sodium</span>
-          )}
-          {!meals?.length && <span style={{ color: "var(--text-faint)" }}>nothing logged yet</span>}
+        <div style={S.fuelSection}>
+          <div style={{ ...S.macroMini, marginTop: 0, fontSize: 13 }}>
+            <span><b style={{ color: "var(--text)" }}>{Math.round(totals.kcal).toLocaleString()}</b> kcal</span>
+            <span><b style={{ color: PROTEIN_COLOR }}>{Math.round(totals.protein)}</b> g protein</span>
+            {totals.sodium > 0 && (
+              <span><b style={{ color: totals.sodium > SODIUM_DV_MG ? OVER_COLOR : "var(--text)" }}>{Math.round(totals.sodium).toLocaleString()}</b> mg sodium</span>
+            )}
+            {!meals?.length && <span style={{ color: "var(--text-faint)" }}>nothing logged yet</span>}
+          </div>
         </div>
       ) : (
-        <div style={{ position: "relative", overflow: "hidden", borderRadius: 12 }}>
+        <div style={{ ...S.fuelSection, position: "relative", overflow: "hidden" }}>
           <FuelArt kind="protein" />
           <div style={{ position: "relative", zIndex: 1 }}>
           <Bar label="Protein" value={totals.protein} target={targets.protein} color={PROTEIN_COLOR} />
@@ -365,9 +368,8 @@ export default function FuelCard({
         </div>
       )}
 
-      {/* ---- trackers: water + supplements, each an enclosed inset panel so
+      {/* ---- trackers: water + supplements, each an enclosed bordered panel so
               they read as distinct widgets rather than blurring together ---- */}
-      {(onAddWater || onToggleSupp) && <div style={S.fuelDivider} />}
 
       {/* water — a daily hydration tally against a bodyweight-based rec */}
       {onAddWater && (
@@ -469,11 +471,13 @@ export default function FuelCard({
       )}
 
       {/* ---- meal log ---- */}
-      <div style={S.fuelDivider} />
-      <div style={{ position: "relative", overflow: "hidden" }}>
+      <div style={{ ...S.fuelSection, position: "relative", overflow: "hidden" }}>
         <FuelArt kind="food" />
         <div style={{ position: "relative", zIndex: 1 }}>
-        <div style={S.fuelGroupLabel}>Meals</div>
+        <div style={S.fuelSectionHead}>
+          Meals
+          {meals?.length > 0 && <span style={S.fuelSectionCount}>{meals.length} meal{meals.length === 1 ? "" : "s"}</span>}
+        </div>
 
       {meals?.length > 0 && (
         <div>
@@ -524,10 +528,28 @@ export default function FuelCard({
         </div>
       )}
 
-      {/* quick add — the meals you eat on repeat, one tap to re-log */}
+      {/* quick add — the meals you eat on repeat, one tap to re-log. Collapsed
+          by default so a long list of saved meals doesn't crowd the section. */}
       {favorites.length > 0 && mode === null && !busy && (
         <div style={{ marginTop: meals?.length ? 12 : 14 }}>
-          <div style={{ ...S.label, marginBottom: 7 }}>Quick add</div>
+          <button
+            onClick={() => setQuickOpen((o) => !o)}
+            style={{
+              display: "flex", alignItems: "center", gap: 6, width: "100%", background: "transparent",
+              border: "none", padding: "2px 0", cursor: "pointer", fontFamily: "inherit",
+              ...S.label, marginBottom: quickOpen ? 8 : 0,
+            }}
+            aria-expanded={quickOpen}
+          >
+            Quick add
+            <span style={{ color: "var(--text-faint)", fontWeight: 400 }}>{favorites.length}</span>
+            <Icon
+              name="chevron"
+              size={14}
+              style={{ marginLeft: "auto", color: "var(--text-dim)", transform: quickOpen ? "rotate(180deg)" : "none", transition: "transform .2s ease" }}
+            />
+          </button>
+          {quickOpen && (
           <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
             {favorites.map((f) => (
               <div key={f.id} style={{ display: "inline-flex", alignItems: "center", background: "var(--surface-2)", border: "1px solid var(--border-hi)", borderRadius: 99, overflow: "hidden" }}>
@@ -549,6 +571,7 @@ export default function FuelCard({
               </div>
             ))}
           </div>
+          )}
         </div>
       )}
 
@@ -713,9 +736,9 @@ export default function FuelCard({
       </div>
 
       {/* ---- body weight — the other half of the TDEE math ---- */}
-      <div style={S.fuelDivider} />
-      <div style={S.fuelGroupLabel}>Body weight</div>
-      <div style={S.weighRow}>
+      <div style={S.fuelSection}>
+        <div style={S.fuelSectionHead}>Body weight</div>
+        <div style={S.weighRow}>
         <span style={{ color: "var(--text-mute)", display: "grid", placeItems: "center" }}><Icon name="scale" size={15} /></span>
         {weight ? (
           <>
@@ -746,6 +769,7 @@ export default function FuelCard({
             <span style={{ ...S.weighDone, marginLeft: "auto" }}>daily · same time</span>
           </>
         )}
+        </div>
       </div>
 
       {showHistory && (
