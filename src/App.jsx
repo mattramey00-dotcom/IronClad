@@ -1149,6 +1149,8 @@ function Trainer({
             onOpenPhotos={() => setShowPhotos(true)}
             onOpenWeekly={() => setShowWeekly(true)}
             onWeigh={setWeight}
+            water={water}
+            waterTarget={waterTarget}
           />
         </Suspense>
       )}

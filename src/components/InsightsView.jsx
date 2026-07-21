@@ -21,13 +21,14 @@ import Hint from "./Hint.jsx";
 import CoachModal from "./CoachModal.jsx";
 import {
   buildInsights, weeklySeries, bodyweightSeries, projectGoal, tdeeAdaptation, formulaTDEE, shiftKey,
-  bmi, bmiBand, loggingStreak, GOALS, MIN_DAYS, MIN_INTAKE_DAYS, MIN_WEIGH_INS,
+  bmi, bmiBand, loggingStreak, mealTotals, SODIUM_DV_MG, GOALS, MIN_DAYS, MIN_INTAKE_DAYS, MIN_WEIGH_INS,
 } from "../lib/nutrition.js";
 
 const TONE = { good: S.insightGood, warn: S.insightWarn, info: {} };
 
 export default function InsightsView({
   meals, weights, logs, targets, today, who, apiKey, model, theme, onSetTargets, onOpenPhotos, onOpenWeekly, onWeigh,
+  water = {}, waterTarget = 0,
 }) {
   // Chart colours can't use CSS variables (Recharts writes them as SVG
   // attributes, where var() doesn't resolve), so derive concrete values here.
@@ -72,6 +73,14 @@ export default function InsightsView({
   const hasChart = series.some((p) => p.weight !== null) || series.some((p) => p.strength !== null);
 
   const streak = useMemo(() => loggingStreak(meals, weights, today), [meals, weights, today]);
+  const trend14 = useMemo(() => {
+    const days = [];
+    for (let i = 13; i >= 0; i--) days.push(shiftKey(today, -i));
+    return {
+      water: days.map((k) => ({ k, v: Number(water?.[k]) || 0 })),
+      sodium: days.map((k) => ({ k, v: mealTotals(meals?.[k]).sodium })),
+    };
+  }, [water, meals, today]);
   const bw = useMemo(() => bodyweightSeries(weights, today), [weights, today]);
   const adapt = useMemo(
     () => tdeeAdaptation(meals, weights, today, resolved.goal.id),
@@ -98,6 +107,37 @@ export default function InsightsView({
 
   const setT = (patch) => onSetTargets({ ...(targets || {}), ...patch });
   const fmtDate = (key) => new Date(`${key}T00:00:00`).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+
+  // A tiny 14-day bar strip — a lightweight trend for water & sodium that needs
+  // no chart library and no second axis. Each bar is a day, scaled to its target;
+  // days with nothing logged are gaps. Bars that top out are at/over the target.
+  const MiniBars = ({ series, target, color, unit }) => {
+    const logged = series.filter((d) => d.v > 0);
+    if (!logged.length) return null;
+    const avg = Math.round(logged.reduce((a, d) => a + d.v, 0) / logged.length);
+    return (
+      <div>
+        <div style={{ display: "flex", alignItems: "flex-end", gap: 3, height: 40, borderTop: "1px dashed var(--border-hi)", paddingTop: 1 }}>
+          {series.map((d, i) => {
+            const pct = target ? Math.min(100, (d.v / target) * 100) : 0;
+            const over = target && d.v > target;
+            return (
+              <div
+                key={i}
+                title={`${fmtDate(d.k)}: ${d.v ? `${Math.round(d.v).toLocaleString()} ${unit}` : "—"}`}
+                style={{ flex: 1, minWidth: 0, alignSelf: "flex-end", borderRadius: 2, height: `${d.v > 0 ? Math.max(6, pct) : 0}%`, background: over ? "#e08a6a" : color }}
+              />
+            );
+          })}
+        </div>
+        <div style={{ fontSize: 11, color: "var(--text-mute)", marginTop: 6, display: "flex" }}>
+          <span>avg <b style={{ color: "var(--text-2)" }}>{avg.toLocaleString()} {unit}</b> · {logged.length}/14 days</span>
+          <span style={{ marginLeft: "auto", color: "var(--text-faint)" }}>target {Math.round(target).toLocaleString()} {unit}</span>
+        </div>
+      </div>
+    );
+  };
+
   const curFt = targets?.heightIn ? Math.floor(targets.heightIn / 12) : "";
   const curIn = targets?.heightIn ? targets.heightIn % 12 : "";
   const setHeight = (ft, inch) => {
@@ -385,6 +425,30 @@ export default function InsightsView({
             </div>
           )}
         </div>
+
+        {/* hydration & sodium — a light 14-day strip so these two get a trend of
+            their own, matching the bodyweight/strength charts below. */}
+        {(trend14.water.some((d) => d.v > 0) || trend14.sodium.some((d) => d.v > 0)) && (
+          <>
+            <label style={{ ...S.label, marginTop: 20 }}>Hydration &amp; sodium · 14 days</label>
+            <div style={S.insightCard}>
+              {trend14.water.some((d) => d.v > 0) && (
+                <div style={{ marginBottom: trend14.sodium.some((d) => d.v > 0) ? 16 : 0 }}>
+                  <div style={{ fontSize: 12, color: "var(--text-mute)", marginBottom: 7, display: "flex", alignItems: "center", gap: 5 }}>
+                    <Icon name="drop" size={12} style={{ color: "#56b6d9" }} /> Water
+                  </div>
+                  <MiniBars series={trend14.water} target={waterTarget || 80} color="#56b6d9" unit="oz" />
+                </div>
+              )}
+              {trend14.sodium.some((d) => d.v > 0) && (
+                <div>
+                  <div style={{ fontSize: 12, color: "var(--text-mute)", marginBottom: 7 }}>Sodium</div>
+                  <MiniBars series={trend14.sodium} target={SODIUM_DV_MG} color="#8f9bb3" unit="mg" />
+                </div>
+              )}
+            </div>
+          </>
+        )}
 
         {/* BMI — reference only, with the muscle caveat spelled out */}
         {(() => {
