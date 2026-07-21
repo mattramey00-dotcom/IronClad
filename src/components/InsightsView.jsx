@@ -74,6 +74,8 @@ export default function InsightsView({
   const streak = useMemo(() => loggingStreak(meals, weights, today), [meals, weights, today]);
   const lifts = useMemo(() => trackedLifts(logs, today), [logs, today]);
   const [liftPick, setLiftPick] = useState("");
+  // "About you" starts open only if it's still missing a fact it needs.
+  const [showAbout, setShowAbout] = useState(() => !(targets?.sex && targets?.heightIn > 0 && targets?.age > 0));
   const activeLift = lifts.some((l) => l.name === liftPick) ? liftPick : (lifts[0]?.name || "");
   const liftSeries = useMemo(
     () => (activeLift ? liftE1rmSeries(logs, activeLift, today) : []),
@@ -181,6 +183,10 @@ export default function InsightsView({
     return [Math.max(0, Math.floor((Math.min(...vals) - 150) / 100) * 100), Math.ceil((Math.max(...vals) + 150) / 100) * 100];
   })();
   const volShow = series.some((p) => p.volume > 0);
+  const hasAnyChart =
+    trend14.water.some((d) => d.v > 0) || trend14.sodium.some((d) => d.v > 0) ||
+    calShow || bw.n >= 2 || hasChart || lifts.length > 0 || volShow ||
+    grid.some((wk) => wk.some((d) => d.level > 0));
 
   const heatColor = (day) => {
     if (day.future) return "transparent";
@@ -209,6 +215,28 @@ export default function InsightsView({
           each morning and your meals on the Fuel tab, and over a couple of weeks the estimates
           sharpen into your real numbers.
         </Hint>
+
+        {/* ---- goal — at the top: it's the context everything else is measured
+            against. Changing it recalibrates the plan (confirmed below). */}
+        <label style={{ ...S.label, marginTop: 14 }}>Goal</label>
+        <div style={S.segRow}>
+          {Object.values(GOALS).map((g) => (
+            <button
+              key={g.id}
+              style={{ ...S.seg, ...(resolved.goal.id === g.id ? S.segActive : {}), fontSize: 12, padding: "9px 4px" }}
+              onClick={() => { if (g.id !== resolved.goal.id) setPendingGoal(g); }}
+            >
+              {g.label}
+            </button>
+          ))}
+        </div>
+        <div style={S.note}>
+          {resolved.kcal
+            ? `Targets: ${resolved.kcal.toLocaleString()} kcal and ${resolved.protein} g protein a day${
+                resolved.derived ? " — derived from your measured TDEE, not a calculator." : "."
+              }`
+            : "Calorie target appears once there's enough data to measure your TDEE. Protein target needs a weigh-in."}
+        </div>
 
         {/* daily weigh-in — the second of the two TDEE inputs, kept next to the
             bodyweight trend and TDEE it feeds. Defaults to today; step back to
@@ -309,8 +337,31 @@ export default function InsightsView({
               </div>
             </div>
 
-            {/* About you — the three facts the logs can't supply, for the estimate. */}
-            <label style={{ ...S.label, marginTop: 14 }}>About you {formula ? "" : "· unlocks a starting estimate"}</label>
+          </>
+        )}
+
+        {/* ---- about you (collapsible): sex / height / age — the three facts the
+            logs can't supply. They feed the formula TDEE before it's measured,
+            and height drives BMI. Collapsed once they're filled in. ---- */}
+        <button
+          onClick={() => setShowAbout((o) => !o)}
+          style={{ display: "flex", alignItems: "center", gap: 6, width: "100%", background: "transparent", border: "none", padding: 0, cursor: "pointer", fontFamily: "inherit", ...S.label, marginTop: 16, marginBottom: showAbout ? 8 : 0 }}
+          aria-expanded={showAbout}
+        >
+          About you
+          {!showAbout && (
+            <span style={{ color: "var(--text-faint)", fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>
+              {[
+                targets?.sex === "male" ? "Male" : targets?.sex === "female" ? "Female" : null,
+                targets?.heightIn > 0 ? `${Math.floor(targets.heightIn / 12)}′${targets.heightIn % 12}″` : null,
+                targets?.age > 0 ? `${targets.age} yr` : null,
+              ].filter(Boolean).join(" · ") || "not set"}
+            </span>
+          )}
+          <Icon name="chevron" size={14} style={{ marginLeft: "auto", color: "var(--text-dim)", transform: showAbout ? "rotate(180deg)" : "none", transition: "transform .2s ease" }} />
+        </button>
+        {showAbout && (
+          <>
             <div style={S.segRow}>
               {["male", "female"].map((s) => (
                 <button
@@ -330,6 +381,7 @@ export default function InsightsView({
               <input type="number" inputMode="numeric" style={{ ...S.textInput, width: 64, marginLeft: "auto" }} placeholder="age" value={targets?.age || ""} onChange={(e) => setT({ age: Number(e.target.value) || null })} />
               <span style={{ fontSize: 12, color: "var(--text-mute)" }}>yrs</span>
             </div>
+            <div style={S.note}>Sex, height and age let the app estimate your TDEE before there's enough logged data to measure it — and height drives BMI.</div>
           </>
         )}
 
@@ -403,6 +455,39 @@ export default function InsightsView({
           )}
         </div>
 
+        {/* BMI — reference only, with the muscle caveat spelled out */}
+        {(() => {
+          const bmiVal = bmi(bodyweight, targets?.heightIn);
+          if (bmiVal == null) return null;
+          return (
+            <div style={{ ...S.insightCard, marginTop: 12 }}>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+                <span style={{ fontFamily: "'Inter', sans-serif", fontWeight: 800, fontSize: 22, letterSpacing: -0.3 }}>{bmiVal}</span>
+                <span style={{ fontSize: 12.5, color: "var(--text-mute)" }}>BMI · {bmiBand(bmiVal)}</span>
+              </div>
+              <div style={{ ...S.insightBody, marginTop: 5 }}>
+                A rough height-to-weight ratio — it can't tell muscle from fat, so it reads high for
+                people who lift. Trust your bodyweight trend and the weight-vs-strength chart over this.
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* progress photos — the check the scale can't give you */}
+        {onOpenPhotos && (
+          <button
+            style={{ ...S.btnGhost, width: "100%", marginTop: 14, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+            onClick={onOpenPhotos}
+          >
+            <Icon name="camera" size={15} /> Progress photos
+          </button>
+        )}
+
+        {/* ================= CHARTS ================= */}
+        {hasAnyChart && (
+          <div style={{ ...S.label, marginTop: 24, marginBottom: 2, paddingTop: 16, borderTop: "1px solid var(--border)", fontSize: 12.5, color: "var(--text-mute)" }}>Charts</div>
+        )}
+
         {/* hydration & sodium — a light 14-day strip so these two get a trend of
             their own, matching the bodyweight/strength charts below. */}
         {(trend14.water.some((d) => d.v > 0) || trend14.sodium.some((d) => d.v > 0)) && (
@@ -458,34 +543,6 @@ export default function InsightsView({
               Weekly average intake against maintenance ({Math.round(tdeeRef).toLocaleString()} kcal{tdee.ready ? "" : ", still an estimate"}). The gap is the deficit or surplus that's actually moving your weight.
             </div>
           </>
-        )}
-
-        {/* BMI — reference only, with the muscle caveat spelled out */}
-        {(() => {
-          const bmiVal = bmi(bodyweight, targets?.heightIn);
-          if (bmiVal == null) return null;
-          return (
-            <div style={{ ...S.insightCard, marginTop: 12 }}>
-              <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-                <span style={{ fontFamily: "'Inter', sans-serif", fontWeight: 800, fontSize: 22, letterSpacing: -0.3 }}>{bmiVal}</span>
-                <span style={{ fontSize: 12.5, color: "var(--text-mute)" }}>BMI · {bmiBand(bmiVal)}</span>
-              </div>
-              <div style={{ ...S.insightBody, marginTop: 5 }}>
-                A rough height-to-weight ratio — it can't tell muscle from fat, so it reads high for
-                people who lift. Trust your bodyweight trend and the weight-vs-strength chart over this.
-              </div>
-            </div>
-          );
-        })()}
-
-        {/* progress photos — the check the scale can't give you */}
-        {onOpenPhotos && (
-          <button
-            style={{ ...S.btnGhost, width: "100%", marginTop: 14, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8 }}
-            onClick={onOpenPhotos}
-          >
-            <Icon name="camera" size={15} /> Progress photos
-          </button>
         )}
 
         {/* ---- bodyweight trend (raw dots + regression line) ---- */}
@@ -715,33 +772,6 @@ export default function InsightsView({
             ))}
           </>
         )}
-
-        {/* ---- goal ---- */}
-        {/* Chosen at setup; changing it here recalibrates the calorie/protein
-            plan, so it's gated behind a confirmation. */}
-        <label style={{ ...S.label, marginTop: 18 }}>Goal</label>
-        <div style={S.segRow}>
-          {Object.values(GOALS).map((g) => (
-            <button
-              key={g.id}
-              style={{
-                ...S.seg,
-                ...(resolved.goal.id === g.id ? S.segActive : {}),
-                fontSize: 12, padding: "9px 4px",
-              }}
-              onClick={() => { if (g.id !== resolved.goal.id) setPendingGoal(g); }}
-            >
-              {g.label}
-            </button>
-          ))}
-        </div>
-        <div style={S.note}>
-          {resolved.kcal
-            ? `Targets: ${resolved.kcal.toLocaleString()} kcal and ${resolved.protein} g protein a day${
-                resolved.derived ? " — derived from your measured TDEE, not a calculator." : "."
-              }`
-            : "Calorie target appears once there's enough data to measure your TDEE. Protein target needs a weigh-in."}
-        </div>
 
         {/* Changing the goal is a deliberate act — it resets the nutrition plan,
             so confirm it rather than firing on the first tap. */}
