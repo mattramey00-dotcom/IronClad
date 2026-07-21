@@ -32,7 +32,6 @@ export default function CoachModal({ apiKey, model, snapshot, planCtx, who, onCl
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const scrollRef = useRef(null);
-  const startedRef = useRef(false);
 
   const send = async (text, { hidden = false } = {}) => {
     const trimmed = text.trim();
@@ -58,12 +57,8 @@ export default function CoachModal({ apiKey, model, snapshot, planCtx, who, onCl
     }
   };
 
-  // Kick off the opening read once, on mount, if there's a key to do it with.
-  useEffect(() => {
-    if (startedRef.current) return;
-    startedRef.current = true;
-    if (apiKey) send(OPENER, { hidden: true });
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  // No API call on open — opening the coach is free. The opening read only
+  // fires when you tap "Get a read" below, so every request is a deliberate tap.
 
   // Keep the newest message in view as the conversation grows.
   useEffect(() => {
@@ -111,8 +106,20 @@ export default function CoachModal({ apiKey, model, snapshot, planCtx, who, onCl
           )}
 
           {apiKey && shown.length === 0 && !busy && (
-            <div style={{ fontSize: 13, color: "var(--text-mute)", lineHeight: 1.6, padding: "8px 2px" }}>
-              Reading your numbers…
+            <div style={{ padding: "8px 2px" }}>
+              <div style={{ fontSize: 13.5, color: "var(--text-2)", lineHeight: 1.65, marginBottom: 13 }}>
+                I read your measured numbers — bodyweight trend, intake, TDEE and your lifts — and talk them
+                through. Ask me anything below, or start with a quick read.
+              </div>
+              <button
+                style={{ ...S.btnAccent, display: "inline-flex", alignItems: "center", gap: 7 }}
+                onClick={() => send(OPENER, { hidden: true })}
+              >
+                <Icon name="sparkle" size={15} /> Get a read on where I'm at
+              </button>
+              <div style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 8 }}>
+                Uses one Claude request on your own API key — opening the coach itself is free.
+              </div>
             </div>
           )}
 
