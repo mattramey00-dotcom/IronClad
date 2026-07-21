@@ -713,6 +713,17 @@ function Trainer({
   const pct = total ? (complete / total) * 100 : 0;
   const allDone = total > 0 && complete === total;
 
+  // Confetti the moment the day flips from unfinished to fully done — however the
+  // last exercise got checked (its sets in the modal, or its checkmark on the
+  // list). Guarded on `selected` so navigating onto (or off) an already-finished
+  // day never sets it off — only a real completion of the day you're looking at.
+  const dayDoneRef = useRef({ done: allDone, day: selected });
+  useEffect(() => {
+    const prev = dayDoneRef.current;
+    if (allDone && !prev.done && prev.day === selected) fireConfetti();
+    dayDoneRef.current = { done: allDone, day: selected };
+  }, [allDone, selected]);
+
   const resetDay = () => {
     const next = { ...progress };
     flatExercises.forEach((f) => delete next[doneKey(f.blockName, f.ex.n)]);

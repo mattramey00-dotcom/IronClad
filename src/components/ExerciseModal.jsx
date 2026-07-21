@@ -72,13 +72,13 @@ export default function ExerciseModal({
   const allSetsDone = nSets > 0 && doneCount === nSets;
 
   // The last tick finishes the exercise: mark it done now (so the row turns
-  // green and survives a close) and fire the confetti — but leave the modal open
-  // on its Complete button so you move on when you're ready, not on a timer.
+  // green and survives a close), but leave the modal open on its Complete button
+  // so you move on when you're ready, not on a timer. The confetti waits for the
+  // whole day to be done — fired from the day card, not per exercise.
   useEffect(() => {
     if (initiallyComplete || !allSetsDone) return;
     setFinishing(true);
     onMarkDone?.(blockName, ex.n);
-    onCelebrate?.();
   }, [allSetsDone]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Ticks are one-way (you finished the set) so a mis-log can't double-post.
@@ -236,7 +236,7 @@ export default function ExerciseModal({
                 <Icon name="timer" size={15} /> Start {clock(ex.timer)} timer
               </button>
             )}
-            <button style={{ ...S.btnAccent, width: "100%", marginTop: 4 }} onClick={() => { onCelebrate?.(); onComplete(blockName, ex.n); }}>
+            <button style={{ ...S.btnAccent, width: "100%", marginTop: 4 }} onClick={() => onComplete(blockName, ex.n)}>
               Mark complete
             </button>
           </>
