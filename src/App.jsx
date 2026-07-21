@@ -569,10 +569,12 @@ function Trainer({
     if (move) setSelected(targetKey);
   };
 
+  // The weigh-in lives on Insights now, which has no day selector — so it always
+  // logs for today (the morning weigh-in it's meant for), not the selected day.
   const setWeight = (lb) => {
     const next = { ...weights };
-    if (lb == null) delete next[selected];
-    else next[selected] = lb;
+    if (lb == null) delete next[today];
+    else next[today] = lb;
     persistWeights(next);
   };
 
@@ -1086,7 +1088,6 @@ function Trainer({
           meals={meals[selected]}
           allMeals={meals}
           today={today}
-          weight={weights[selected]}
           targets={resolvedTargets}
           apiKey={apiKey}
           model={model}
@@ -1109,7 +1110,6 @@ function Trainer({
           onLogFavorite={logFavorite}
           onSaveFavorite={saveFavorite}
           onRemoveFavorite={removeFavorite}
-          onWeigh={setWeight}
           onOpenInsights={() => setTab("insights")}
           onCopyDay={() => setShowCopyMeals(true)}
         />
@@ -1141,6 +1141,7 @@ function Trainer({
           onSetTargets={persistTargets}
           onOpenPhotos={() => setShowPhotos(true)}
           onOpenWeekly={() => setShowWeekly(true)}
+          onWeigh={setWeight}
         />
       )}
 

@@ -60,11 +60,11 @@ function Bar({ label, value, target, color, over }) {
 }
 
 export default function FuelCard({
-  meals, allMeals, today, weight, targets, apiKey, model, restMode, favorites = [],
+  meals, allMeals, today, targets, apiKey, model, restMode, favorites = [],
   water = 0, waterTarget = 80, onAddWater,
   supps = [], suppTaken = [], onAddSupp, onRemoveSupp, onToggleSupp,
   compose, setCompose,
-  onAddMeal, onRemoveMeal, onEditMeal, onRelogMeal, onLogFavorite, onSaveFavorite, onRemoveFavorite, onWeigh, onOpenInsights, onCopyDay,
+  onAddMeal, onRemoveMeal, onEditMeal, onRelogMeal, onLogFavorite, onSaveFavorite, onRemoveFavorite, onOpenInsights, onCopyDay,
 }) {
   // The whole in-progress compose lifecycle — which panel is open, the editable
   // draft a web lookup / photo / description produced, the text box, AND the
@@ -82,7 +82,6 @@ export default function FuelCard({
   const setBusy = (v) => apply({ busy: typeof v === "function" ? v(busy) : v });
   const setBusyLabel = (v) => apply({ busyLabel: typeof v === "function" ? v(busyLabel) : v });
   const setError = (v) => apply({ error: typeof v === "function" ? v(error) : v });
-  const [weighing, setWeighing] = useState("");
   const [showHistory, setShowHistory] = useState(false);
   const [showSaved, setShowSaved] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
@@ -252,14 +251,6 @@ export default function FuelCard({
     reset();
   };
 
-  const submitWeight = () => {
-    const lb = parseFloat(weighing);
-    if (Number.isFinite(lb) && lb > 0 && lb < 1000) {
-      onWeigh(lb);
-      setWeighing("");
-    }
-  };
-
   // One row of the "+ Meal" popup — an icon tile, a label and a one-line hint.
   // Picking one closes the sheet and runs the chosen add flow.
   const addItem = (icon, label, sub, fn) => (
@@ -293,8 +284,8 @@ export default function FuelCard({
       </div>
 
       <Hint id="fuel">
-        Add meals by photo, a sentence, or by hand — and tap <b>Log weight</b> at the bottom once a
-        day, same time each morning. Both feed the numbers on Insights.
+        Add meals by photo, a sentence, or by hand — tap <b>+ Meal</b> for every way in. Your intake
+        here and your morning weigh-in on <b>Insights</b> both feed the numbers there.
       </Hint>
 
       {/* On Sunday this is a record, not a scoreboard. No bars, no targets, no
@@ -682,42 +673,6 @@ export default function FuelCard({
         </div>
       </div>
 
-      {/* ---- body weight — the other half of the TDEE math ---- */}
-      <div style={S.fuelSection}>
-        <div style={S.fuelSectionHead}>Body weight</div>
-        <div style={S.weighRow}>
-        <span style={{ color: "var(--text-mute)", display: "grid", placeItems: "center" }}><Icon name="scale" size={15} /></span>
-        {weight ? (
-          <>
-            <span style={{ ...S.mealKcal, fontSize: 15 }}>{weight} lb</span>
-            <button
-              style={{ ...S.resetBtn, marginLeft: 0 }}
-              onClick={() => { setWeighing(String(weight)); onWeigh(null); }}
-            >
-              change
-            </button>
-            <span style={S.weighDone}>logged today</span>
-          </>
-        ) : (
-          <>
-            <input
-              type="number"
-              inputMode="decimal"
-              step="0.1"
-              style={S.weighInput}
-              placeholder="lb"
-              value={weighing}
-              onChange={(e) => setWeighing(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && submitWeight()}
-            />
-            <button style={{ ...S.addBtn, flex: "0 0 auto", padding: "9px 14px" }} onClick={submitWeight}>
-              Log weight
-            </button>
-            <span style={{ ...S.weighDone, marginLeft: "auto" }}>daily · same time</span>
-          </>
-        )}
-        </div>
-      </div>
 
       {showHistory && (
         <MealHistoryModal

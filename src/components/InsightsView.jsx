@@ -27,7 +27,7 @@ import {
 const TONE = { good: S.insightGood, warn: S.insightWarn, info: {} };
 
 export default function InsightsView({
-  meals, weights, logs, targets, today, who, apiKey, model, theme, onSetTargets, onOpenPhotos, onOpenWeekly,
+  meals, weights, logs, targets, today, who, apiKey, model, theme, onSetTargets, onOpenPhotos, onOpenWeekly, onWeigh,
 }) {
   // Chart colours can't use CSS variables (Recharts writes them as SVG
   // attributes, where var() doesn't resolve), so derive concrete values here.
@@ -36,6 +36,18 @@ export default function InsightsView({
     : { grid: "#1c1d28", axis: "#6a6a80", dot: "#9a9ab0", ref: "#2c2e3d" };
   const [showCoach, setShowCoach] = useState(false);
   const [pendingGoal, setPendingGoal] = useState(null); // goal awaiting confirmation
+  const [weighing, setWeighing] = useState(""); // the in-progress weigh-in entry
+
+  // The daily weigh-in lives here now — it's the other half of the TDEE math, so
+  // it belongs next to the bodyweight trend and TDEE it feeds, not in Fuel.
+  const todayWeight = weights?.[today];
+  const submitWeight = () => {
+    const lb = parseFloat(weighing);
+    if (Number.isFinite(lb) && lb > 0 && lb < 1000) {
+      onWeigh?.(lb);
+      setWeighing("");
+    }
+  };
 
   const ins = useMemo(
     () => buildInsights({ meals, weights, logs, targets, endKey: today }),
@@ -156,10 +168,50 @@ export default function InsightsView({
         <div style={{ fontSize: 12, color: "var(--text-dim)", marginBottom: 18 }}>{who} · measured from your own logs</div>
 
         <Hint id="insights">
-          Every number here is measured from what you log — no calculators. Log your weight on the
-          Fuel tab and your meals over a couple of weeks, and the estimates sharpen into your real
-          numbers.
+          Every number here is measured from what you log — no calculators. Log your weight below
+          each morning and your meals on the Fuel tab, and over a couple of weeks the estimates
+          sharpen into your real numbers.
         </Hint>
+
+        {/* daily weigh-in — the second of the two TDEE inputs, kept next to the
+            bodyweight trend and TDEE it feeds. Always logs for today. */}
+        {onWeigh && (
+          <div style={{ ...S.insightCard, marginBottom: 10 }}>
+            <div style={{ ...S.label, marginBottom: 8 }}>Today's weigh-in</div>
+            <div style={S.weighRow}>
+              <span style={{ color: "var(--text-mute)", display: "grid", placeItems: "center" }}><Icon name="scale" size={15} /></span>
+              {todayWeight ? (
+                <>
+                  <span style={{ ...S.statValue, fontSize: 17 }}>{todayWeight} lb</span>
+                  <button
+                    style={{ ...S.resetBtn, marginLeft: 0 }}
+                    onClick={() => { setWeighing(String(todayWeight)); onWeigh(null); }}
+                  >
+                    change
+                  </button>
+                  <span style={S.weighDone}>logged today</span>
+                </>
+              ) : (
+                <>
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    step="0.1"
+                    style={S.weighInput}
+                    placeholder="lb"
+                    value={weighing}
+                    onChange={(e) => setWeighing(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && submitWeight()}
+                  />
+                  <button style={{ ...S.btnGhost, flex: "0 0 auto", padding: "9px 14px" }} onClick={submitWeight}>
+                    Log weight
+                  </button>
+                  <span style={{ ...S.weighDone, marginLeft: "auto" }}>daily · same time</span>
+                </>
+              )}
+            </div>
+          </div>
+        )}
 
         {onOpenWeekly && (
           <button
