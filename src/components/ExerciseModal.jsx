@@ -29,8 +29,9 @@ const clock = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 // standard set (down to 2.5s) can't make up.
 const PLATE_SIZES = [45, 35, 25, 10, 5, 2.5];
 const BAR_LB = 45;
-function platesPerSide(total) {
-  let per = (total - BAR_LB) / 2;
+const BAR_OPTIONS = [45, 25]; // standard Olympic bar, or a 25 lb training bar
+function platesPerSide(total, bar = BAR_LB) {
+  let per = (total - bar) / 2;
   if (per < 0) return null;
   const plates = [];
   for (const p of PLATE_SIZES) {
@@ -43,44 +44,65 @@ function platesPerSide(total) {
 // A gym-plate look for each denomination — colour, on-plate text colour, and a
 // relative height so the loaded bar reads like a real stack (big plates tall).
 const PLATE_STYLE = {
-  45:  { c: "#3B6FE0", t: "#ffffff", h: 50 },
-  35:  { c: "#E0B44A", t: "#2a2410", h: 44 },
-  25:  { c: "#3FAE6A", t: "#07130c", h: 39 },
-  10:  { c: "#9AA0B4", t: "#20232e", h: 31 },
-  5:   { c: "#E0685A", t: "#ffffff", h: 25 },
-  2.5: { c: "#9B7BE0", t: "#ffffff", h: 20 },
+  45:  { c: "#3B6FE0", t: "#ffffff", h: 42 },
+  35:  { c: "#E0B44A", t: "#2a2410", h: 37 },
+  25:  { c: "#3FAE6A", t: "#07130c", h: 33 },
+  10:  { c: "#9AA0B4", t: "#20232e", h: 26 },
+  5:   { c: "#E0685A", t: "#ffffff", h: 21 },
+  2.5: { c: "#9B7BE0", t: "#ffffff", h: 17 },
 };
 const roundW = (x) => Math.round(x * 100) / 100;
 
 // Expand the greedy per-side loadout into one disc per plate, biggest first —
 // so 225 renders as two 45s a side, exactly what you'd slide onto the sleeve.
-function expandPlates(total) {
-  const pb = platesPerSide(total);
+function expandPlates(total, bar) {
+  const pb = platesPerSide(total, bar);
   if (!pb) return { discs: [], leftover: 0 };
   const discs = [];
   for (const { p, n } of pb.plates) for (let i = 0; i < n; i++) discs.push(p);
   return { discs, leftover: pb.leftover };
 }
 
-// Visual bar loader: tap a plate disc to add a pair (total += 2×plate) and the
-// weight box fills in automatically; tap a plate already on the bar to pull it
-// off. The picture is derived from the weight, so typing a number and loading
-// plates stay perfectly in sync.
+// Visual bar loader: pick the bar (45 or 25 lb), then tap a plate disc to add a
+// pair (total += 2×plate) and the weight box fills in automatically; tap a plate
+// already on the bar to pull it off. The picture is derived from the weight, so
+// typing a number and loading plates stay in sync.
 function BarLoader({ w, setW }) {
+  const [bar, setBar] = useState(BAR_LB);
   const wv = parseFloat(w);
-  const loaded = Number.isFinite(wv) && wv >= BAR_LB;
-  const base = loaded ? wv : BAR_LB;
-  const { discs, leftover } = expandPlates(base);
+  const loaded = Number.isFinite(wv) && wv >= bar;
+  const base = loaded ? wv : bar;
+  const { discs, leftover } = expandPlates(base, bar);
   const add = (p) => setW(String(roundW(base + 2 * p)));
   const removeOne = (p) => {
     const next = roundW(base - 2 * p);
-    setW(next > BAR_LB ? String(next) : "");
+    setW(next > bar ? String(next) : "");
+  };
+  // Switching bars keeps the loaded total, but a weight the new bar can't even
+  // reach (e.g. 30 lb on a 45 bar) resets to bar-only so the picture stays true.
+  const switchBar = (b) => {
+    setBar(b);
+    if (!(Number.isFinite(wv) && wv >= b)) setW("");
   };
   return (
     <div style={ST.loader}>
       <div style={ST.loaderHead}>
-        <span style={S.label}>Load the bar</span>
-        <span style={ST.loaderTotal}>{loaded ? `${roundW(base)} lb` : "45 lb bar"}</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+          <span style={S.label}>Load the bar</span>
+          <div style={ST.barSeg}>
+            {BAR_OPTIONS.map((b) => (
+              <button
+                key={b}
+                onClick={() => switchBar(b)}
+                style={{ ...ST.barSegBtn, ...(bar === b ? ST.barSegOn : {}) }}
+                title={`${b} lb bar`}
+              >
+                {b}
+              </button>
+            ))}
+          </div>
+        </div>
+        <span style={ST.loaderTotal}>{loaded ? `${roundW(base)} lb` : `${bar} lb bar`}</span>
       </div>
       <div style={ST.barTrack}>
         <div style={ST.shaft} />
@@ -107,7 +129,7 @@ function BarLoader({ w, setW }) {
         )}
       </div>
       {leftover > 0 && (
-        <div style={ST.leftoverNote}>{leftover} lb short of standard plates — nearest loadable shown</div>
+        <div style={ST.leftoverNote}>{leftover} lb short — nearest loadable shown</div>
       )}
       <div style={ST.plateBtnRow}>
         {PLATE_SIZES.map((p) => {
@@ -124,9 +146,6 @@ function BarLoader({ w, setW }) {
             </button>
           );
         })}
-      </div>
-      <div style={ST.loaderHint}>
-        <span>Tap a plate to add one to <b>each side</b> — the weight fills in for you.</span>
         {loaded && (
           <button onClick={() => setW("")} style={ST.barReset}>Bar only</button>
         )}
@@ -501,31 +520,37 @@ const ST = {
   },
   unit: { position: "absolute", right: 9, fontSize: 11, color: "var(--text-dim)" },
   optional: { fontSize: 11, color: "var(--text-faint)", marginLeft: "auto" },
-  loader: { marginTop: 12, marginBottom: 4, padding: 12, background: "var(--sunken)", border: "1px solid var(--border)", borderRadius: 14 },
-  loaderHead: { display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 10 },
-  loaderTotal: { fontSize: 15, fontWeight: 800, color: "var(--text)", fontVariantNumeric: "tabular-nums" },
-  barTrack: { display: "flex", alignItems: "center", minHeight: 56, overflowX: "auto", padding: "2px 0" },
-  shaft: { flex: "0 0 34px", height: 7, borderRadius: 4, background: "linear-gradient(180deg,#d9dce6,#969cad)", boxShadow: "inset 0 1px 0 rgba(255,255,255,.5)" },
-  plateStack: { display: "flex", alignItems: "center", gap: 3 },
-  plateOnBar: {
-    width: 26, minWidth: 26, borderRadius: 5, border: "none", cursor: "pointer", padding: 0,
-    display: "grid", placeItems: "center", fontSize: 9, fontWeight: 800, fontFamily: "inherit",
+  loader: { marginTop: 10, marginBottom: 2, padding: "9px 10px", background: "var(--sunken)", border: "1px solid var(--border)", borderRadius: 12 },
+  loaderHead: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 7 },
+  loaderTotal: { fontSize: 13.5, fontWeight: 800, color: "var(--text)", fontVariantNumeric: "tabular-nums", flex: "0 0 auto" },
+  barSeg: { display: "inline-flex", background: "var(--surface-2)", border: "1px solid var(--border-hi)", borderRadius: 7, padding: 2, gap: 2 },
+  barSegBtn: {
+    minWidth: 26, padding: "2px 7px", borderRadius: 5, border: "none", background: "transparent",
+    color: "var(--text-mute)", fontSize: 11, fontWeight: 800, cursor: "pointer", fontFamily: "inherit",
     fontVariantNumeric: "tabular-nums",
-    boxShadow: "0 1px 3px rgba(0,0,0,.35), inset 0 0 0 1.5px rgba(255,255,255,.22)",
   },
-  collar: { flex: "0 0 9px", height: 17, borderRadius: 3, background: "linear-gradient(180deg,#c4c8d4,#82889a)", marginLeft: 3 },
-  barEmpty: { fontSize: 12, color: "var(--text-faint)", marginLeft: 10 },
-  leftoverNote: { fontSize: 11, color: "var(--text-faint)", marginTop: 6 },
-  plateBtnRow: { display: "flex", flexWrap: "wrap", gap: 8, marginTop: 12 },
+  barSegOn: { background: ACCENT, color: "#0B1020" },
+  barTrack: { display: "flex", alignItems: "center", minHeight: 44, overflowX: "auto", padding: "1px 0" },
+  shaft: { flex: "0 0 26px", height: 6, borderRadius: 3, background: "linear-gradient(180deg,#d9dce6,#969cad)", boxShadow: "inset 0 1px 0 rgba(255,255,255,.5)" },
+  plateStack: { display: "flex", alignItems: "center", gap: 2.5 },
+  plateOnBar: {
+    width: 22, minWidth: 22, borderRadius: 4, border: "none", cursor: "pointer", padding: 0,
+    display: "grid", placeItems: "center", fontSize: 8.5, fontWeight: 800, fontFamily: "inherit",
+    fontVariantNumeric: "tabular-nums",
+    boxShadow: "0 1px 2px rgba(0,0,0,.35), inset 0 0 0 1.5px rgba(255,255,255,.22)",
+  },
+  collar: { flex: "0 0 7px", height: 14, borderRadius: 2.5, background: "linear-gradient(180deg,#c4c8d4,#82889a)", marginLeft: 2.5 },
+  barEmpty: { fontSize: 11.5, color: "var(--text-faint)", marginLeft: 9 },
+  leftoverNote: { fontSize: 10.5, color: "var(--text-faint)", marginTop: 5 },
+  plateBtnRow: { display: "flex", alignItems: "center", flexWrap: "wrap", gap: 7, marginTop: 9 },
   plateBtn: {
-    width: 44, height: 44, borderRadius: "50%", borderStyle: "solid", borderWidth: 2, cursor: "pointer",
-    fontSize: 13, fontWeight: 800, fontFamily: "inherit", fontVariantNumeric: "tabular-nums",
+    width: 36, height: 36, borderRadius: "50%", borderStyle: "solid", borderWidth: 2, cursor: "pointer",
+    fontSize: 11.5, fontWeight: 800, fontFamily: "inherit", fontVariantNumeric: "tabular-nums",
     display: "grid", placeItems: "center",
   },
-  loaderHint: { fontSize: 11.5, color: "var(--text-dim)", lineHeight: 1.5, marginTop: 11, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" },
   barReset: {
     marginLeft: "auto", background: "var(--surface-2)", border: "1px solid var(--border-hi)",
-    color: "var(--text-2)", borderRadius: 999, padding: "4px 11px", fontSize: 11, fontWeight: 700,
+    color: "var(--text-2)", borderRadius: 999, padding: "4px 10px", fontSize: 10.5, fontWeight: 700,
     cursor: "pointer", fontFamily: "inherit",
   },
   setRow: { display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 8 },
