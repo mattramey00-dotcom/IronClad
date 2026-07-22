@@ -280,26 +280,28 @@ export default function InsightsView({
           </div>
         )}
 
-        {/* ---- goal — below the weigh-in: the context the targets derive from.
-            Changing it recalibrates the plan (confirmed below). */}
-        <label style={{ ...S.label, marginTop: 16 }}>Goal</label>
-        <div style={S.segRow}>
-          {Object.values(GOALS).map((g) => (
-            <button
-              key={g.id}
-              style={{ ...S.seg, ...(resolved.goal.id === g.id ? S.segActive : {}), fontSize: 12, padding: "9px 4px" }}
-              onClick={() => { if (g.id !== resolved.goal.id) setPendingGoal(g); }}
-            >
-              {g.label}
-            </button>
-          ))}
-        </div>
-        <div style={S.note}>
-          {resolved.kcal
-            ? `Targets: ${resolved.kcal.toLocaleString()} kcal and ${resolved.protein} g protein a day${
-                resolved.derived ? " — derived from your measured TDEE, not a calculator." : "."
-              }`
-            : "Calorie target appears once there's enough data to measure your TDEE. Protein target needs a weigh-in."}
+        {/* ---- goal — in its own box, below the weigh-in: the context the
+            targets derive from. Changing it recalibrates the plan (confirmed below). */}
+        <div style={{ ...S.insightCard, marginBottom: 10 }}>
+          <label style={{ ...S.label, marginTop: 0, marginBottom: 8, display: "block" }}>Goal</label>
+          <div style={S.segRow}>
+            {Object.values(GOALS).map((g) => (
+              <button
+                key={g.id}
+                style={{ ...S.seg, ...(resolved.goal.id === g.id ? S.segActive : {}), fontSize: 12, padding: "9px 4px" }}
+                onClick={() => { if (g.id !== resolved.goal.id) setPendingGoal(g); }}
+              >
+                {g.label}
+              </button>
+            ))}
+          </div>
+          <div style={{ ...S.note, marginTop: 8 }}>
+            {resolved.kcal
+              ? `Targets: ${resolved.kcal.toLocaleString()} kcal and ${resolved.protein} g protein a day${
+                  resolved.derived ? " — derived from your measured TDEE, not a calculator." : "."
+                }`
+              : "Calorie target appears once there's enough data to measure your TDEE. Protein target needs a weigh-in."}
+          </div>
         </div>
 
         {/* ---- TDEE ---- */}
