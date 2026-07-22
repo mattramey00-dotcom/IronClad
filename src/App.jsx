@@ -28,7 +28,7 @@ import {
   loadTheme, saveTheme, loadWeeklySeen, saveWeeklySeen, loadWeighNudge, saveWeighNudge,
 } from "./lib/storage.js";
 import { downloadBackup, backupReminderDue, monthKeyOf } from "./lib/backup.js";
-import { estimateTDEE, resolveTargets, weightTrend, bestE1RM, shiftKey, daysBetween, mealTotals, weeklySummary, waterTargetOz, coachContext, DEFAULT_TARGETS } from "./lib/nutrition.js";
+import { estimateTDEE, resolveTargets, weightTrend, bestE1RM, e1rm, shiftKey, daysBetween, mealTotals, weeklySummary, waterTargetOz, coachContext, DEFAULT_TARGETS } from "./lib/nutrition.js";
 import { MODELS, DEFAULT_MODEL } from "./lib/claude.js";
 import { S } from "./styles.js";
 import Demo from "./components/Demo.jsx";
@@ -258,9 +258,15 @@ function Trainer({
   const [rest, setRest] = useState(null); // { id, secs, label } — the sticky rest timer
   const [restPref, setRestPref] = useState(null); // last rest length you set — remembered across sets
   const [celebrate, setCelebrate] = useState(0); // bump to fire a confetti burst
+  const [prFlash, setPrFlash] = useState(null); // { ex, e1rm, w, r } — a just-hit PR toast
   const [showMuscleTarget, setShowMuscleTarget] = useState(false); // the tap-a-muscle picker
   const [openEx, setOpenEx] = useState(null); // { blockName, ex } — the focused exercise modal
   const fireConfetti = () => setCelebrate((c) => c + 1);
+  useEffect(() => {
+    if (!prFlash) return undefined;
+    const t = setTimeout(() => setPrFlash(null), 4500);
+    return () => clearTimeout(t);
+  }, [prFlash]);
   const [lastBackup, setLastBackup] = useState(() => loadLastBackup());
   const [backupNudge, setBackupNudge] = useState(() => loadBackupNudge());
   const [backupBusy, setBackupBusy] = useState(false);
@@ -458,6 +464,12 @@ function Trainer({
   };
 
   const logSet = (exName, weight, reps, restSecs) => {
+    // Did this set just beat your all-time best estimated 1RM on this lift?
+    // Compare against everything logged before it (needs prior history to count).
+    const priorBest = (logs[exName] || []).reduce((m, e) => Math.max(m, bestE1RM(e)), 0);
+    const setE1RM = e1rm(weight, reps);
+    const isNewPR = priorBest > 0 && setE1RM > priorBest + 0.01;
+
     const next = { ...logs };
     const entries = next[exName] ? [...next[exName]] : [];
     let entry = entries.find((e) => e.date === selected);
@@ -470,6 +482,13 @@ function Trainer({
     entries.unshift(entry);
     next[exName] = entries;
     persistLogs(next);
+
+    // Celebrate a new PR the instant it's logged (today only — no confetti for
+    // back-filling an old session).
+    if (isNewPR && selected === today) {
+      fireConfetti();
+      setPrFlash({ ex: exName, e1rm: Math.round(setE1RM), w: weight, r: reps });
+    }
 
     // Start the rest clock. Only for real strength sets logged on today — a
     // rest countdown for a workout you're back-filling from Tuesday is noise.
@@ -1347,6 +1366,27 @@ function Trainer({
             onClose={() => setShowCoach(false)}
           />
         </Suspense>
+      )}
+
+      {/* new-PR toast — fires with the confetti when a set beats your best 1RM */}
+      {prFlash && (
+        <div
+          onClick={() => setPrFlash(null)}
+          style={{
+            position: "fixed", left: "50%", transform: "translateX(-50%)", zIndex: 90,
+            bottom: "calc(150px + env(safe-area-inset-bottom))", maxWidth: "calc(100% - 32px)",
+            display: "inline-flex", alignItems: "center", gap: 9,
+            background: "rgba(224,180,74,.16)", border: "1px solid rgba(224,180,74,.6)", color: "#E0B44A",
+            borderRadius: 999, padding: "10px 16px", fontSize: 13.5, fontWeight: 700, cursor: "pointer",
+            boxShadow: "0 10px 28px -8px rgba(224,180,74,.55)", backdropFilter: "blur(10px)",
+            WebkitBackdropFilter: "blur(10px)", animation: "pop .3s ease",
+          }}
+        >
+          <Icon name="star" size={16} filled />
+          <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            New PR · {prFlash.ex} — {prFlash.e1rm} lb 1RM
+          </span>
+        </div>
       )}
 
       <TabBar tab={tab} setTab={setTab} />

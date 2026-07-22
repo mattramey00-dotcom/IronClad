@@ -24,6 +24,22 @@ import HoldTimer from "./HoldTimer.jsx";
 
 const clock = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 
+// Plate calculator — how to load a target total onto a standard 45 lb bar, per
+// side, biggest plates first. Returns the plates that fit and any weight that a
+// standard set (down to 2.5s) can't make up.
+const PLATE_SIZES = [45, 35, 25, 10, 5, 2.5];
+const BAR_LB = 45;
+function platesPerSide(total) {
+  let per = (total - BAR_LB) / 2;
+  if (per < 0) return null;
+  const plates = [];
+  for (const p of PLATE_SIZES) {
+    const n = Math.floor(per / p + 1e-9);
+    if (n > 0) { plates.push({ p, n }); per -= n * p; }
+  }
+  return { plates, leftover: Math.round(per * 10) / 10 };
+}
+
 export default function ExerciseModal({
   ex, blockName, isDone, todaySession, lastSession, pr, origName, subbed, onSwap, muscles = [], video,
   rest, restPref, onSetRestPref, onCloseRest, wxKey,
@@ -200,6 +216,27 @@ export default function ExerciseModal({
                 <span style={ST.optional}>optional · logs to history</span>
               </div>
             )}
+
+            {/* plate calculator — how to load the entered weight onto a 45 lb bar */}
+            {ex.eq === "barbell" && Number.isFinite(parseFloat(w)) && parseFloat(w) >= BAR_LB && (() => {
+              const pb = platesPerSide(parseFloat(w));
+              if (!pb) return null;
+              return (
+                <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginTop: 10, fontSize: 12, color: "var(--text-mute)" }}>
+                  <span style={{ color: "var(--text-dim)" }}>Per side</span>
+                  {pb.plates.length === 0 ? (
+                    <span>just the 45 lb bar</span>
+                  ) : (
+                    pb.plates.map(({ p, n }) => (
+                      <span key={p} style={{ display: "inline-flex", background: "var(--surface-2)", border: "1px solid var(--border-hi)", borderRadius: 6, padding: "2px 7px", fontWeight: 600, color: "var(--text-2)", fontVariantNumeric: "tabular-nums" }}>
+                        {p}{n > 1 ? ` ×${n}` : ""}
+                      </span>
+                    ))
+                  )}
+                  {pb.leftover > 0 && <span style={{ color: "var(--text-faint)" }}>· {pb.leftover} lb short of standard plates</span>}
+                </div>
+              );
+            })()}
 
             <div style={ST.setRow}>
               {checked.map((c, i) => (
