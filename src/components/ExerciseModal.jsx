@@ -43,7 +43,7 @@ function platesPerSide(total) {
 export default function ExerciseModal({
   ex, blockName, isDone, todaySession, lastSession, pr, origName, subbed, onSwap, muscles = [], video,
   rest, restPref, onSetRestPref, onCloseRest, wxKey,
-  onLogSet, onStartRest, onStartTimer, onOpenVideo, onMarkDone, onCelebrate, onComplete, onClose,
+  onLogSet, onStartRest, onStartTimer, onOpenVideo, onMarkDone, onRemoveLastSet, onUnmarkDone, onCelebrate, onComplete, onClose,
 }) {
   const [swapping, setSwapping] = useState(false);
   const [swapName, setSwapName] = useState("");
@@ -97,9 +97,23 @@ export default function ExerciseModal({
     onMarkDone?.(blockName, ex.n);
   }, [allSetsDone]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Ticks are one-way (you finished the set) so a mis-log can't double-post.
+  // Tapping a set toggles it. Ticking logs it (and rests); un-ticking undoes an
+  // accidental check — it drops the set's log and clears the exercise's "done"
+  // mark if that check had completed it.
   const tickSet = (i) => {
-    if (checked[i]) return;
+    if (checked[i]) {
+      const remaining = doneCount - 1;
+      setChecked((prev) => {
+        const next = [...prev];
+        next[i] = false;
+        return next;
+      });
+      setFinishing(false);
+      onUnmarkDone?.(blockName, ex.n);
+      // If this check had logged a set, remove the most recent one to match.
+      if (!timed && loggedCount > remaining) onRemoveLastSet?.(ex.n);
+      return;
+    }
     setChecked((prev) => {
       const next = [...prev];
       next[i] = true;
@@ -244,7 +258,8 @@ export default function ExerciseModal({
                   key={i}
                   onClick={() => tickSet(i)}
                   style={{ ...ST.setCircle, ...(c ? ST.setCircleDone : {}) }}
-                  aria-label={`Set ${i + 1}${c ? " done" : ""}`}
+                  title={c ? "Tap to undo this set" : "Tap when you finish this set"}
+                  aria-label={`Set ${i + 1}${c ? " done — tap to undo" : ""}`}
                 >
                   {c ? <span style={{ animation: "pop .3s ease" }}><Icon name="check" size={20} strokeWidth={2.6} /></span> : i + 1}
                 </button>
@@ -262,7 +277,7 @@ export default function ExerciseModal({
               <div style={ST.hint}>
                 {timed
                   ? "Start the stopwatch for each hold — it buzzes when you hit the target. Stopping it checks the set off; the last one finishes the exercise."
-                  : "Tap each set as you finish it. The last one checks off the exercise."}
+                  : "Tap each set as you finish it — the last one checks off the exercise. Tapped one by mistake? Tap it again to undo."}
               </div>
             )}
           </>

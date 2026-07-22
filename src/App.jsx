@@ -521,6 +521,20 @@ function Trainer({
     persistLogs(next);
   };
 
+  // Undo an accidental set-tick: drop today's most recent logged set for the
+  // lift, so unchecking a set also un-logs it.
+  const removeLastSet = (exName) => {
+    const entry = (logs[exName] || []).find((e) => e.date === selected);
+    if (entry?.sets?.length) removeSet(exName, entry.sets.length - 1);
+  };
+
+  // Clear an exercise's "done" mark — used when unchecking a set drops it below
+  // complete, so the day card stops showing it as finished.
+  const unmarkDone = (block, name) => {
+    const k = doneKey(block, name);
+    if (progress[k]) { const p = { ...progress }; delete p[k]; persistProgress(p); }
+  };
+
   // ---- nutrition ----
   const persistMeals = (next) => { setMeals(next); saveMeals(me, next); };
   const persistWeights = (next) => { setWeights(next); saveWeights(me, next); };
@@ -1280,6 +1294,8 @@ function Trainer({
           onStartTimer={(seconds, label) => setTimer({ seconds, label })}
           onOpenVideo={(e) => setVideo({ video: EX_VIDEO[e.n], name: e.n })}
           onMarkDone={markDone}
+          onRemoveLastSet={removeLastSet}
+          onUnmarkDone={unmarkDone}
           onCelebrate={fireConfetti}
           onComplete={completeAndAdvance}
           onClose={() => setOpenEx(null)}
