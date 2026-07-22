@@ -63,6 +63,38 @@ function expandPlates(total, bar) {
   return { discs, leftover: pb.leftover };
 }
 
+// Fixed-dumbbell picker: tap a size and it fills the weight box (per hand). No
+// loading math — for whole dumbbells you grab off the rack. Typing still works
+// for any size not on the row.
+const DB_SIZES = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60];
+function DumbbellPicker({ w, setW }) {
+  const wv = parseFloat(w);
+  const sel = Number.isFinite(wv) ? wv : null;
+  return (
+    <div style={ST.loader}>
+      <div style={ST.loaderHead}>
+        <span style={S.label}>Dumbbell</span>
+        <span style={ST.loaderTotal}>{sel != null ? `${roundW(sel)} lb each` : "pick a size"}</span>
+      </div>
+      <div style={ST.dbRow}>
+        {DB_SIZES.map((d) => {
+          const on = sel === d;
+          return (
+            <button
+              key={d}
+              onClick={() => setW(on ? "" : String(d))}
+              style={{ ...ST.dbBtn, ...(on ? ST.dbBtnOn : {}) }}
+              aria-label={`${d} pound dumbbell${on ? ", selected" : ""}`}
+            >
+              {d}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // Visual bar loader: pick the bar (45 or 25 lb), then tap a plate disc to add a
 // pair (total += 2×plate) and the weight box fills in automatically; tap a plate
 // already on the bar to pull it off. The picture is derived from the weight, so
@@ -345,8 +377,9 @@ export default function ExerciseModal({
               </div>
             )}
 
-            {/* plate loader — tap plates to build the weight, only on the bar */}
+            {/* plate loader for the bar; a size picker for dumbbell moves */}
             {ex.eq === "barbell" && <BarLoader w={w} setW={setW} />}
+            {(ex.eq === "dumbbell" || ex.eq === "bench") && <DumbbellPicker w={w} setW={setW} />}
 
             <div style={ST.setRow}>
               {checked.map((c, i) => (
@@ -553,6 +586,14 @@ const ST = {
     color: "var(--text-2)", borderRadius: 999, padding: "4px 10px", fontSize: 10.5, fontWeight: 700,
     cursor: "pointer", fontFamily: "inherit",
   },
+  dbRow: { display: "flex", flexWrap: "wrap", gap: 7 },
+  dbBtn: {
+    minWidth: 40, height: 34, padding: "0 7px", borderRadius: 9, borderStyle: "solid", borderWidth: 1,
+    borderColor: "var(--border-hi)", background: "var(--surface-2)", color: "var(--text-2)",
+    fontSize: 12.5, fontWeight: 800, cursor: "pointer", fontFamily: "inherit",
+    fontVariantNumeric: "tabular-nums", display: "grid", placeItems: "center",
+  },
+  dbBtnOn: { background: ACCENT, borderColor: ACCENT, color: "#0B1020" },
   setRow: { display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 8 },
   setCircle: {
     width: 46, height: 46, borderRadius: "50%", border: "2px solid var(--border-hi)",

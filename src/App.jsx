@@ -26,6 +26,7 @@ import {
   loadWxKey, saveWxKey,
   loadLastBackup, saveLastBackup, loadBackupNudge, saveBackupNudge,
   loadTheme, saveTheme, loadWeeklySeen, saveWeeklySeen, loadWeighNudge, saveWeighNudge,
+  loadPhotoNudge, savePhotoNudge,
 } from "./lib/storage.js";
 import { downloadBackup, backupReminderDue, monthKeyOf } from "./lib/backup.js";
 import { estimateTDEE, resolveTargets, weightTrend, bestE1RM, e1rm, shiftKey, daysBetween, mealTotals, weeklySummary, waterTargetOz, coachContext, DEFAULT_TARGETS } from "./lib/nutrition.js";
@@ -337,6 +338,19 @@ function Trainer({
     const lb = parseFloat(reminderWeight);
     if (Number.isFinite(lb) && lb > 0 && lb < 1000) { setWeight(today, lb); setReminderWeight(""); }
   };
+
+  // Weekly progress-photo reminder: once per calendar week (keyed by the week's
+  // Sunday), nudge an established logger to snap a progress photo — unless they
+  // already added one this week or dismissed the nudge. A photo a week turns
+  // into a time-lapse the scale can't show.
+  const weekStartKey = shiftKey(today, -new Date(`${today}T00:00:00`).getDay());
+  const weekOf = (k) => shiftKey(k, -new Date(`${k}T00:00:00`).getDay());
+  const photoThisWeek = photos?.length ? weekOf(photos[0].date) === weekStartKey : false;
+  const [photoNudgeWeek, setPhotoNudgeWeek] = useState(() => loadPhotoNudge(me));
+  useEffect(() => { setPhotoNudgeWeek(loadPhotoNudge(me)); }, [me]);
+  const photoDue = hasData && !photoThisWeek && photoNudgeWeek !== weekStartKey;
+  const dismissPhotoReminder = () => { savePhotoNudge(me, weekStartKey); setPhotoNudgeWeek(weekStartKey); };
+  const openPhotosFromReminder = () => { dismissPhotoReminder(); setShowPhotos(true); };
 
   const agenda = useMemo(() => agendaFor(plan, me, selected), [plan, me, selected]);
   const week = useMemo(() => weekAgenda(plan, me, selected), [plan, me, selected]);
@@ -886,6 +900,30 @@ function Trainer({
                 Later
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Weekly progress-photo reminder — once a week, nudge a photo so the
+          months add up to a time-lapse. Opens the photo capture right here. */}
+      {photoDue && (
+        <div style={S.backupBanner}>
+          <span style={{ color: ACCENT, display: "grid", placeItems: "center", flex: "0 0 auto" }}>
+            <Icon name="camera" size={18} />
+          </span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 13.5, fontWeight: 700, color: "var(--text)" }}>Weekly progress photo</div>
+            <div style={{ fontSize: 12, color: "var(--text-mute)", lineHeight: 1.45, marginTop: 1 }}>
+              Same pose, same light — a shot a week becomes a time-lapse the scale can't show.
+            </div>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6, flex: "0 0 auto" }}>
+            <button style={{ ...S.btnAccent, padding: "7px 12px", fontSize: 12.5 }} onClick={openPhotosFromReminder}>
+              Take photo
+            </button>
+            <button style={{ ...S.btnGhost, padding: "5px 12px", fontSize: 11.5 }} onClick={dismissPhotoReminder}>
+              Later
+            </button>
           </div>
         </div>
       )}
