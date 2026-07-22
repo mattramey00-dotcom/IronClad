@@ -304,50 +304,51 @@ export default function InsightsView({
           </div>
         </div>
 
-        {/* ---- TDEE ---- */}
-        <label style={{ ...S.label, marginTop: 14 }}>Your measured TDEE</label>
-        {tdee.ready ? (
-          <>
-            <div style={S.bigStat}>
-              <span style={S.bigNum}>{tdee.tdee.toLocaleString()}</span>
-              <span style={S.bigUnit}>kcal/day · likely {tdee.lo.toLocaleString()}–{tdee.hi.toLocaleString()}</span>
-            </div>
-            <div style={S.note}>
-              Not a formula — this is what your body actually did. You averaged{" "}
-              {Math.round(tdee.intake.avgKcal).toLocaleString()} kcal a day while your weight moved{" "}
-              {tdee.trend.slopePerWeek >= 0 ? "+" : ""}
-              {tdee.trend.slopePerWeek.toFixed(2)} lb a week, and the gap between those two things is
-              your metabolism. It's only as honest as your logging: under-report by 300 a day and this
-              reads 300 low, with total confidence.
-            </div>
-          </>
-        ) : (
-          <>
-            {formula && (
-              <>
-                <div style={S.bigStat}>
-                  <span style={S.bigNum}>~{formula.tdee.toLocaleString()}</span>
-                  <span style={S.bigUnit}>kcal/day · formula estimate</span>
-                </div>
-                <div style={S.note}>
-                  A <b>population guess</b> (Mifflin–St Jeor × activity), not a measurement — a
-                  starting point so your targets aren't blank on day one. It's replaced by your
-                  <b> measured</b> TDEE, below, as soon as there's enough logged data.
-                </div>
-              </>
-            )}
-            <div style={{ ...S.insightCard, ...S.insightWarn }}>
-              <div style={S.insightTitle}>{formula ? "Measuring your real TDEE" : "Not enough data yet"}</div>
-              <div style={S.insightBody}>
-                Still short on: {tdee.reasons.join(", ")}. It takes about {MIN_DAYS} days —{" "}
-                {MIN_INTAKE_DAYS} of them with meals logged and {MIN_WEIGH_INS} weigh-ins — before a
-                bodyweight trend can be separated from water weight.{" "}
-                {formula ? "Until then, the estimate above stands in." : "Anything sooner would be a number made up to fill the space."}
+        {/* ---- TDEE — in its own box, the headline number centered ---- */}
+        <div style={{ ...S.insightCard, marginBottom: 10 }}>
+          <div style={{ ...S.label, marginTop: 0, marginBottom: 10, textAlign: "center" }}>Your measured TDEE</div>
+          {tdee.ready ? (
+            <>
+              <div style={{ textAlign: "center" }}>
+                <div style={{ ...S.bigNum, fontSize: 40, lineHeight: 1.05 }}>{tdee.tdee.toLocaleString()}</div>
+                <div style={{ ...S.bigUnit, marginTop: 4 }}>kcal/day · likely {tdee.lo.toLocaleString()}–{tdee.hi.toLocaleString()}</div>
               </div>
-            </div>
-
-          </>
-        )}
+              <div style={{ ...S.note, marginTop: 12 }}>
+                Not a formula — this is what your body actually did. You averaged{" "}
+                {Math.round(tdee.intake.avgKcal).toLocaleString()} kcal a day while your weight moved{" "}
+                {tdee.trend.slopePerWeek >= 0 ? "+" : ""}
+                {tdee.trend.slopePerWeek.toFixed(2)} lb a week, and the gap between those two things is
+                your metabolism. It's only as honest as your logging: under-report by 300 a day and this
+                reads 300 low, with total confidence.
+              </div>
+            </>
+          ) : (
+            <>
+              {formula && (
+                <>
+                  <div style={{ textAlign: "center" }}>
+                    <div style={{ ...S.bigNum, fontSize: 40, lineHeight: 1.05 }}>~{formula.tdee.toLocaleString()}</div>
+                    <div style={{ ...S.bigUnit, marginTop: 4 }}>kcal/day · formula estimate</div>
+                  </div>
+                  <div style={{ ...S.note, marginTop: 12 }}>
+                    A <b>population guess</b> (Mifflin–St Jeor × activity), not a measurement — a
+                    starting point so your targets aren't blank on day one. It's replaced by your
+                    <b> measured</b> TDEE, below, as soon as there's enough logged data.
+                  </div>
+                </>
+              )}
+              <div style={{ ...S.insightCard, ...S.insightWarn, marginTop: formula ? 12 : 0 }}>
+                <div style={S.insightTitle}>{formula ? "Measuring your real TDEE" : "Not enough data yet"}</div>
+                <div style={S.insightBody}>
+                  Still short on: {tdee.reasons.join(", ")}. It takes about {MIN_DAYS} days —{" "}
+                  {MIN_INTAKE_DAYS} of them with meals logged and {MIN_WEIGH_INS} weigh-ins — before a
+                  bodyweight trend can be separated from water weight.{" "}
+                  {formula ? "Until then, the estimate above stands in." : "Anything sooner would be a number made up to fill the space."}
+                </div>
+              </div>
+            </>
+          )}
+        </div>
 
         {/* ---- metabolic adaptation (right under the TDEE it's about) ---- */}
         {adapt.ready && adapt.adapting && (
