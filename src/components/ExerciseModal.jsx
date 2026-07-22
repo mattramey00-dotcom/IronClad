@@ -40,6 +40,101 @@ function platesPerSide(total) {
   return { plates, leftover: Math.round(per * 10) / 10 };
 }
 
+// A gym-plate look for each denomination — colour, on-plate text colour, and a
+// relative height so the loaded bar reads like a real stack (big plates tall).
+const PLATE_STYLE = {
+  45:  { c: "#3B6FE0", t: "#ffffff", h: 50 },
+  35:  { c: "#E0B44A", t: "#2a2410", h: 44 },
+  25:  { c: "#3FAE6A", t: "#07130c", h: 39 },
+  10:  { c: "#9AA0B4", t: "#20232e", h: 31 },
+  5:   { c: "#E0685A", t: "#ffffff", h: 25 },
+  2.5: { c: "#9B7BE0", t: "#ffffff", h: 20 },
+};
+const roundW = (x) => Math.round(x * 100) / 100;
+
+// Expand the greedy per-side loadout into one disc per plate, biggest first —
+// so 225 renders as two 45s a side, exactly what you'd slide onto the sleeve.
+function expandPlates(total) {
+  const pb = platesPerSide(total);
+  if (!pb) return { discs: [], leftover: 0 };
+  const discs = [];
+  for (const { p, n } of pb.plates) for (let i = 0; i < n; i++) discs.push(p);
+  return { discs, leftover: pb.leftover };
+}
+
+// Visual bar loader: tap a plate disc to add a pair (total += 2×plate) and the
+// weight box fills in automatically; tap a plate already on the bar to pull it
+// off. The picture is derived from the weight, so typing a number and loading
+// plates stay perfectly in sync.
+function BarLoader({ w, setW }) {
+  const wv = parseFloat(w);
+  const loaded = Number.isFinite(wv) && wv >= BAR_LB;
+  const base = loaded ? wv : BAR_LB;
+  const { discs, leftover } = expandPlates(base);
+  const add = (p) => setW(String(roundW(base + 2 * p)));
+  const removeOne = (p) => {
+    const next = roundW(base - 2 * p);
+    setW(next > BAR_LB ? String(next) : "");
+  };
+  return (
+    <div style={ST.loader}>
+      <div style={ST.loaderHead}>
+        <span style={S.label}>Load the bar</span>
+        <span style={ST.loaderTotal}>{loaded ? `${roundW(base)} lb` : "45 lb bar"}</span>
+      </div>
+      <div style={ST.barTrack}>
+        <div style={ST.shaft} />
+        {discs.length === 0 ? (
+          <span style={ST.barEmpty}>tap a plate to load →</span>
+        ) : (
+          <div style={ST.plateStack}>
+            {discs.map((p, i) => {
+              const st = PLATE_STYLE[p];
+              return (
+                <button
+                  key={i}
+                  onClick={() => removeOne(p)}
+                  title={`Remove a ${p} lb plate from each side`}
+                  aria-label={`Remove a ${p} pound plate`}
+                  style={{ ...ST.plateOnBar, height: st.h, background: st.c, color: st.t }}
+                >
+                  {p}
+                </button>
+              );
+            })}
+            <div style={ST.collar} />
+          </div>
+        )}
+      </div>
+      {leftover > 0 && (
+        <div style={ST.leftoverNote}>{leftover} lb short of standard plates — nearest loadable shown</div>
+      )}
+      <div style={ST.plateBtnRow}>
+        {PLATE_SIZES.map((p) => {
+          const st = PLATE_STYLE[p];
+          return (
+            <button
+              key={p}
+              onClick={() => add(p)}
+              title={`Add a ${p} lb plate to each side`}
+              aria-label={`Add a ${p} pound plate to each side`}
+              style={{ ...ST.plateBtn, borderColor: st.c, color: st.c, background: `${st.c}1f` }}
+            >
+              {p}
+            </button>
+          );
+        })}
+      </div>
+      <div style={ST.loaderHint}>
+        <span>Tap a plate to add one to <b>each side</b> — the weight fills in for you.</span>
+        {loaded && (
+          <button onClick={() => setW("")} style={ST.barReset}>Bar only</button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function ExerciseModal({
   ex, blockName, isDone, todaySession, lastSession, pr, origName, subbed, onSwap, muscles = [], video,
   rest, restPref, onSetRestPref, onCloseRest, wxKey,
@@ -231,26 +326,8 @@ export default function ExerciseModal({
               </div>
             )}
 
-            {/* plate calculator — how to load the entered weight onto a 45 lb bar */}
-            {ex.eq === "barbell" && Number.isFinite(parseFloat(w)) && parseFloat(w) >= BAR_LB && (() => {
-              const pb = platesPerSide(parseFloat(w));
-              if (!pb) return null;
-              return (
-                <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginTop: 10, fontSize: 12, color: "var(--text-mute)" }}>
-                  <span style={{ color: "var(--text-dim)" }}>Per side</span>
-                  {pb.plates.length === 0 ? (
-                    <span>just the 45 lb bar</span>
-                  ) : (
-                    pb.plates.map(({ p, n }) => (
-                      <span key={p} style={{ display: "inline-flex", background: "var(--surface-2)", border: "1px solid var(--border-hi)", borderRadius: 6, padding: "2px 7px", fontWeight: 600, color: "var(--text-2)", fontVariantNumeric: "tabular-nums" }}>
-                        {p}{n > 1 ? ` ×${n}` : ""}
-                      </span>
-                    ))
-                  )}
-                  {pb.leftover > 0 && <span style={{ color: "var(--text-faint)" }}>· {pb.leftover} lb short of standard plates</span>}
-                </div>
-              );
-            })()}
+            {/* plate loader — tap plates to build the weight, only on the bar */}
+            {ex.eq === "barbell" && <BarLoader w={w} setW={setW} />}
 
             <div style={ST.setRow}>
               {checked.map((c, i) => (
@@ -424,6 +501,33 @@ const ST = {
   },
   unit: { position: "absolute", right: 9, fontSize: 11, color: "var(--text-dim)" },
   optional: { fontSize: 11, color: "var(--text-faint)", marginLeft: "auto" },
+  loader: { marginTop: 12, marginBottom: 4, padding: 12, background: "var(--sunken)", border: "1px solid var(--border)", borderRadius: 14 },
+  loaderHead: { display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 10 },
+  loaderTotal: { fontSize: 15, fontWeight: 800, color: "var(--text)", fontVariantNumeric: "tabular-nums" },
+  barTrack: { display: "flex", alignItems: "center", minHeight: 56, overflowX: "auto", padding: "2px 0" },
+  shaft: { flex: "0 0 34px", height: 7, borderRadius: 4, background: "linear-gradient(180deg,#d9dce6,#969cad)", boxShadow: "inset 0 1px 0 rgba(255,255,255,.5)" },
+  plateStack: { display: "flex", alignItems: "center", gap: 3 },
+  plateOnBar: {
+    width: 26, minWidth: 26, borderRadius: 5, border: "none", cursor: "pointer", padding: 0,
+    display: "grid", placeItems: "center", fontSize: 9, fontWeight: 800, fontFamily: "inherit",
+    fontVariantNumeric: "tabular-nums",
+    boxShadow: "0 1px 3px rgba(0,0,0,.35), inset 0 0 0 1.5px rgba(255,255,255,.22)",
+  },
+  collar: { flex: "0 0 9px", height: 17, borderRadius: 3, background: "linear-gradient(180deg,#c4c8d4,#82889a)", marginLeft: 3 },
+  barEmpty: { fontSize: 12, color: "var(--text-faint)", marginLeft: 10 },
+  leftoverNote: { fontSize: 11, color: "var(--text-faint)", marginTop: 6 },
+  plateBtnRow: { display: "flex", flexWrap: "wrap", gap: 8, marginTop: 12 },
+  plateBtn: {
+    width: 44, height: 44, borderRadius: "50%", borderStyle: "solid", borderWidth: 2, cursor: "pointer",
+    fontSize: 13, fontWeight: 800, fontFamily: "inherit", fontVariantNumeric: "tabular-nums",
+    display: "grid", placeItems: "center",
+  },
+  loaderHint: { fontSize: 11.5, color: "var(--text-dim)", lineHeight: 1.5, marginTop: 11, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" },
+  barReset: {
+    marginLeft: "auto", background: "var(--surface-2)", border: "1px solid var(--border-hi)",
+    color: "var(--text-2)", borderRadius: 999, padding: "4px 11px", fontSize: 11, fontWeight: 700,
+    cursor: "pointer", fontFamily: "inherit",
+  },
   setRow: { display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 8 },
   setCircle: {
     width: 46, height: 46, borderRadius: "50%", border: "2px solid var(--border-hi)",
