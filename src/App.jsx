@@ -332,6 +332,11 @@ function Trainer({
   useEffect(() => { setWeighNudgeDay(loadWeighNudge(me)); }, [me]);
   const weighDue = hasData && !weights?.[today] && weighNudgeDay !== today;
   const dismissWeighReminder = () => { saveWeighNudge(me, today); setWeighNudgeDay(today); };
+  const [reminderWeight, setReminderWeight] = useState("");
+  const logReminderWeight = () => {
+    const lb = parseFloat(reminderWeight);
+    if (Number.isFinite(lb) && lb > 0 && lb < 1000) { setWeight(today, lb); setReminderWeight(""); }
+  };
 
   const agenda = useMemo(() => agendaFor(plan, me, selected), [plan, me, selected]);
   const week = useMemo(() => weekAgenda(plan, me, selected), [plan, me, selected]);
@@ -836,7 +841,7 @@ function Trainer({
       )}
 
       {/* Morning weigh-in reminder — first open of a new day, if you haven't
-          logged today's weight yet. Weight is the other half of the TDEE math. */}
+          logged today's weight yet. Type it right here to log it on the spot. */}
       {weighDue && (
         <div style={S.backupBanner}>
           <span style={{ color: ACCENT, display: "grid", placeItems: "center", flex: "0 0 auto" }}>
@@ -844,17 +849,29 @@ function Trainer({
           </span>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 13.5, fontWeight: 700, color: "var(--text)" }}>Morning weigh-in</div>
-            <div style={{ fontSize: 12, color: "var(--text-mute)", lineHeight: 1.45, marginTop: 1 }}>
-              Log today's weight — same time each morning keeps your trend honest.
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 7, flexWrap: "wrap" }}>
+              <input
+                type="number"
+                inputMode="decimal"
+                step="0.1"
+                autoFocus={false}
+                placeholder="lb"
+                value={reminderWeight}
+                onChange={(e) => setReminderWeight(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && logReminderWeight()}
+                style={{ ...S.weighInput, width: 78, padding: "8px 10px" }}
+              />
+              <button
+                style={{ ...S.btnAccent, padding: "9px 16px", fontSize: 13, opacity: parseFloat(reminderWeight) > 0 ? 1 : 0.5 }}
+                disabled={!(parseFloat(reminderWeight) > 0)}
+                onClick={logReminderWeight}
+              >
+                Log
+              </button>
+              <button style={{ ...S.btnGhost, padding: "8px 12px", fontSize: 12, marginLeft: "auto" }} onClick={dismissWeighReminder}>
+                Later
+              </button>
             </div>
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 6, flex: "0 0 auto" }}>
-            <button style={{ ...S.btnAccent, padding: "7px 12px", fontSize: 12.5 }} onClick={() => setTab("insights")}>
-              Log it
-            </button>
-            <button style={{ ...S.btnGhost, padding: "5px 12px", fontSize: 11.5 }} onClick={dismissWeighReminder}>
-              Later
-            </button>
           </div>
         </div>
       )}
