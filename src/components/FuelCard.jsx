@@ -11,7 +11,7 @@
 //  downstream worth anything.
 // ============================================================
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { ACCENT } from "../data/program.js";
 import { S } from "../styles.js";
 import Icon from "./Icon.jsx";
@@ -121,6 +121,16 @@ export default function FuelCard({
   const [suppName, setSuppName] = useState("");
   const [suppDose, setSuppDose] = useState("");
   const fileRef = useRef(null);
+  const composerRef = useRef(null);
+
+  // The add/edit form lives at the top of the meals section — so tapping a
+  // logged meal to fix it never buries the editor below a long list. Bring it
+  // into view whenever it opens (or you switch to editing a different meal).
+  useEffect(() => {
+    if ((mode === "draft" || mode === "text") && composerRef.current) {
+      composerRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [mode, editingId]);
 
   const hasHistory = Object.values(allMeals || {}).some((l) => l?.length);
 
@@ -536,15 +546,130 @@ export default function FuelCard({
           {meals?.length > 0 && <span style={S.fuelSectionCount}>{meals.length} meal{meals.length === 1 ? "" : "s"}</span>}
         </div>
 
+      {/* Active add/edit composer — kept at the TOP of the section, right under
+          the header, so editing a logged meal (or adding a new one) never means
+          scrolling past the whole list to reach the form. */}
+      <div ref={composerRef}>
+        {busy && (
+          <div style={{ ...S.addRow, marginTop: 4, marginBottom: 4, alignItems: "center", gap: 10, color: "#8a9a8a", fontSize: 13 }}>
+            <span style={S.spinner} />
+            {busyLabel}
+          </div>
+        )}
+
+        {mode === "text" && !busy && (
+          <div style={{ marginBottom: 12 }}>
+            <input
+              autoFocus
+              style={S.textInput}
+              placeholder="two eggs, toast with butter — or 'Chipotle chicken bowl'"
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && onDescribe()}
+            />
+            <div style={{ ...S.addRow, marginTop: 8 }}>
+              <button style={{ ...S.addBtn, ...S.addBtnPrimary }} onClick={onDescribe}>Estimate</button>
+              <button style={S.addBtn} onClick={reset}>Cancel</button>
+            </div>
+            <button
+              style={{ ...S.addBtn, width: "100%", marginTop: 8, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 7 }}
+              onClick={onLookup}
+            >
+              <Icon name="search" size={14} /> Look it up online — for chains &amp; packaged foods
+            </button>
+            <div style={S.note}>
+              Describe home cooking for a quick estimate. For a named restaurant or packaged item, <b>Look
+              it up online</b> pulls the brand's published nutrition instead of guessing.
+            </div>
+          </div>
+        )}
+
+        {/* the draft — always editable, always confirmed */}
+        {mode === "draft" && draft && !busy && (
+          <div style={{ ...S.draftCard, marginTop: 0, marginBottom: 12 }}>
+            {editingId && <div style={{ ...S.label, marginBottom: 8 }}>Editing meal</div>}
+            <input
+              style={{ ...S.textInput, marginBottom: 2 }}
+              placeholder="What was it?"
+              value={draft.name}
+              onChange={(e) => setDraft({ ...draft, name: e.target.value })}
+            />
+
+            {draft.items?.length > 0 && (
+              <div style={{ marginTop: 10 }}>
+                {draft.items.map((it, i) => (
+                  <div key={i} style={S.draftItem}>
+                    {it.food} · <span style={{ color: "var(--text-dim)" }}>{it.portion}</span> ·{" "}
+                    {Math.round(num(it.kcal))} kcal, {Math.round(num(it.protein_g))}g protein
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div style={S.macroGrid}>
+              {[
+                ["Kcal", "kcal"],
+                ["Protein", "protein"],
+                ["Carbs", "carbs"],
+                ["Fat", "fat"],
+              ].map(([label, key]) => (
+                <div key={key} style={S.macroCell}>
+                  <span style={S.macroCellLabel}>{label}</span>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    style={S.macroCellInput}
+                    value={draft[key]}
+                    onChange={(e) => setDraft({ ...draft, [key]: e.target.value })}
+                  />
+                </div>
+              ))}
+            </div>
+
+            {/* sodium — its own row so the four energy macros keep their tidy grid */}
+            <div style={{ ...S.macroCell, marginTop: 8, maxWidth: 150 }}>
+              <span style={S.macroCellLabel}>Sodium (mg)</span>
+              <input
+                type="number"
+                inputMode="numeric"
+                placeholder="—"
+                style={S.macroCellInput}
+                value={draft.sodium}
+                onChange={(e) => setDraft({ ...draft, sodium: e.target.value })}
+              />
+            </div>
+
+            {draft.caveat && (
+              <div style={S.caveat}>
+                <b>{draft.confidence === "low" ? "Low confidence" : "Worth knowing"}</b> — {draft.caveat}
+                {" "}Correct anything that's off before you save it.
+              </div>
+            )}
+
+            <div style={{ ...S.addRow, marginTop: 12 }}>
+              <button style={{ ...S.addBtn, ...S.addBtnPrimary }} onClick={save}>{editingId ? "Save changes" : "Save meal"}</button>
+              <button style={S.addBtn} onClick={reset}>{editingId ? "Cancel" : "Discard"}</button>
+            </div>
+          </div>
+        )}
+
+        {error && <div style={{ ...S.err, marginTop: 0, marginBottom: 10 }}>{error}</div>}
+      </div>
+
       {meals?.length > 0 && (
         <div>
           {meals.map((m) => {
             const savedFav = favorites.find((f) => (f.name || "").trim().toLowerCase() === (m.name || "").trim().toLowerCase());
             const saved = !!savedFav;
             const rgb = MEAL_TINT[m.source];
-            const rowStyle = rgb
-              ? { ...S.mealRow, background: `rgba(${rgb},.08)`, border: `1px solid rgba(${rgb},.35)` }
-              : S.mealRow;
+            const editing = editingId === m.id;
+            const rowStyle = {
+              ...(rgb
+                ? { ...S.mealRow, background: `rgba(${rgb},.08)`, border: `1px solid rgba(${rgb},.35)` }
+                : S.mealRow),
+              // the meal currently loaded in the top editor gets an accent ring
+              ...(editing ? { border: `1px solid ${ACCENT}`, boxShadow: `0 0 0 1px ${ACCENT} inset` } : {}),
+            };
             return (
             <div key={m.id} style={rowStyle}>
               {/* tap the meal itself to edit it */}
@@ -626,109 +751,6 @@ export default function FuelCard({
         style={{ display: "none" }}
       />
 
-      {busy && (
-        <div style={{ ...S.addRow, marginTop: 13, alignItems: "center", gap: 10, color: "#8a9a8a", fontSize: 13 }}>
-          <span style={S.spinner} />
-          {busyLabel}
-        </div>
-      )}
-
-      {mode === "text" && !busy && (
-        <div style={{ marginTop: 12 }}>
-          <input
-            autoFocus
-            style={S.textInput}
-            placeholder="two eggs, toast with butter — or 'Chipotle chicken bowl'"
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && onDescribe()}
-          />
-          <div style={{ ...S.addRow, marginTop: 8 }}>
-            <button style={{ ...S.addBtn, ...S.addBtnPrimary }} onClick={onDescribe}>Estimate</button>
-            <button style={S.addBtn} onClick={reset}>Cancel</button>
-          </div>
-          <button
-            style={{ ...S.addBtn, width: "100%", marginTop: 8, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 7 }}
-            onClick={onLookup}
-          >
-            <Icon name="search" size={14} /> Look it up online — for chains &amp; packaged foods
-          </button>
-          <div style={S.note}>
-            Describe home cooking for a quick estimate. For a named restaurant or packaged item, <b>Look
-            it up online</b> pulls the brand's published nutrition instead of guessing.
-          </div>
-        </div>
-      )}
-
-      {/* the draft — always editable, always confirmed */}
-      {mode === "draft" && draft && !busy && (
-        <div style={S.draftCard}>
-          <input
-            style={{ ...S.textInput, marginBottom: 2 }}
-            placeholder="What was it?"
-            value={draft.name}
-            onChange={(e) => setDraft({ ...draft, name: e.target.value })}
-          />
-
-          {draft.items?.length > 0 && (
-            <div style={{ marginTop: 10 }}>
-              {draft.items.map((it, i) => (
-                <div key={i} style={S.draftItem}>
-                  {it.food} · <span style={{ color: "var(--text-dim)" }}>{it.portion}</span> ·{" "}
-                  {Math.round(num(it.kcal))} kcal, {Math.round(num(it.protein_g))}g protein
-                </div>
-              ))}
-            </div>
-          )}
-
-          <div style={S.macroGrid}>
-            {[
-              ["Kcal", "kcal"],
-              ["Protein", "protein"],
-              ["Carbs", "carbs"],
-              ["Fat", "fat"],
-            ].map(([label, key]) => (
-              <div key={key} style={S.macroCell}>
-                <span style={S.macroCellLabel}>{label}</span>
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  style={S.macroCellInput}
-                  value={draft[key]}
-                  onChange={(e) => setDraft({ ...draft, [key]: e.target.value })}
-                />
-              </div>
-            ))}
-          </div>
-
-          {/* sodium — its own row so the four energy macros keep their tidy grid */}
-          <div style={{ ...S.macroCell, marginTop: 8, maxWidth: 150 }}>
-            <span style={S.macroCellLabel}>Sodium (mg)</span>
-            <input
-              type="number"
-              inputMode="numeric"
-              placeholder="—"
-              style={S.macroCellInput}
-              value={draft.sodium}
-              onChange={(e) => setDraft({ ...draft, sodium: e.target.value })}
-            />
-          </div>
-
-          {draft.caveat && (
-            <div style={S.caveat}>
-              <b>{draft.confidence === "low" ? "Low confidence" : "Worth knowing"}</b> — {draft.caveat}
-              {" "}Correct anything that's off before you save it.
-            </div>
-          )}
-
-          <div style={{ ...S.addRow, marginTop: 12 }}>
-            <button style={{ ...S.addBtn, ...S.addBtnPrimary }} onClick={save}>{editingId ? "Save changes" : "Save meal"}</button>
-            <button style={S.addBtn} onClick={reset}>{editingId ? "Cancel" : "Discard"}</button>
-          </div>
-        </div>
-      )}
-
-      {error && <div style={S.err}>{error}</div>}
         </div>
       </div>
 
