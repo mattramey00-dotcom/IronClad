@@ -27,7 +27,7 @@ import {
 const TONE = { good: S.insightGood, warn: S.insightWarn, info: {} };
 
 export default function InsightsView({
-  meals, weights, logs, targets, today, who, apiKey, model, theme, onSetTargets, onOpenPhotos, onOpenWeekly, onWeigh,
+  meals, weights, logs, targets, today, who, apiKey, model, theme, onSetTargets, onOpenPhotos, onOpenWeekly, onWeigh, weighDue = false,
   water = {}, waterTarget = 0,
 }) {
   // Chart colours can't use CSS variables (Recharts writes them as SVG
@@ -232,10 +232,22 @@ export default function InsightsView({
           sharpen into your real numbers.
         </Hint>
 
+        {/* When the morning weigh-in reminder is up top, this section would be a
+            second box asking for the same number — so we replace it with a slim
+            pointer to the reminder rather than showing two inputs for one thing. */}
+        {onWeigh && weighDue && (
+          <div style={{ ...S.insightCard, marginBottom: 10, background: "rgba(129,140,248,.07)", border: "1px solid rgba(129,140,248,.4)", display: "flex", alignItems: "center", gap: 9 }}>
+            <span style={{ color: ACCENT, display: "grid", placeItems: "center", flex: "0 0 auto" }}><Icon name="scale" size={15} /></span>
+            <span style={{ fontSize: 12.5, color: "var(--text-mute)", lineHeight: 1.45 }}>
+              Log today's weigh-in in the <b style={{ color: "var(--text-2)" }}>reminder at the top</b> — it feeds the same trend and TDEE.
+            </span>
+          </div>
+        )}
+
         {/* daily weigh-in — the second of the two TDEE inputs, kept next to the
             bodyweight trend and TDEE it feeds. Defaults to today; step back to
-            backfill a missed morning. */}
-        {onWeigh && (
+            backfill a missed morning. Hidden while the reminder covers today. */}
+        {onWeigh && !weighDue && (
           <div style={{ ...S.insightCard, marginBottom: 10, background: "rgba(129,140,248,.07)", border: "1px solid rgba(129,140,248,.4)" }}>
             <div style={{ display: "flex", alignItems: "center", marginBottom: 8 }}>
               <div style={{ ...S.label, color: ACCENT }}>Weigh-in</div>

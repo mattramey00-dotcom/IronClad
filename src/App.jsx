@@ -232,7 +232,9 @@ function Shell({ children }) {
         @keyframes fuelbob{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
         .fa-wave{animation:fuelwave linear infinite;will-change:transform}
         .fa-bob{animation:fuelbob 8s ease-in-out infinite;will-change:transform}
-        @media (prefers-reduced-motion: reduce){.fa-wave,.fa-bob{animation:none}}
+        @keyframes weighGlow{0%,100%{box-shadow:0 0 0 1px rgba(129,140,248,.22),0 6px 20px -6px rgba(129,140,248,.35)}50%{box-shadow:0 0 0 1px rgba(129,140,248,.5),0 12px 34px -6px rgba(129,140,248,.75)}}
+        .weigh-glow{animation:weighGlow 2.6s ease-in-out infinite;will-change:box-shadow}
+        @media (prefers-reduced-motion: reduce){.fa-wave,.fa-bob{animation:none}.weigh-glow{animation:none;box-shadow:0 0 0 1px rgba(129,140,248,.45),0 8px 26px -6px rgba(129,140,248,.55)}}
       `}</style>
       {children}
     </div>
@@ -871,7 +873,14 @@ function Trainer({
       {/* Morning weigh-in reminder — first open of a new day, if you haven't
           logged today's weight yet. Type it right here to log it on the spot. */}
       {weighDue && (
-        <div style={S.backupBanner}>
+        <div
+          className="weigh-glow"
+          style={{
+            ...S.backupBanner,
+            border: "1px solid rgba(129,140,248,.5)",
+            background: "rgba(129,140,248,.09)",
+          }}
+        >
           <span style={{ color: ACCENT, display: "grid", placeItems: "center", flex: "0 0 auto" }}>
             <Icon name="scale" size={18} />
           </span>
@@ -1302,6 +1311,7 @@ function Trainer({
             onOpenPhotos={() => setShowPhotos(true)}
             onOpenWeekly={() => setShowWeekly(true)}
             onWeigh={setWeight}
+            weighDue={weighDue}
             water={water}
             waterTarget={waterTarget}
           />
