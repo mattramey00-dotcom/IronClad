@@ -642,6 +642,91 @@ export function proteinDistribution(dayMeals, target) {
   };
 }
 
+// ---- protein cadence — when's the next dose? ---------------------------
+//  Muscle protein synthesis responds best to ~25–40 g doses spaced a couple of
+//  hours apart rather than one big hit. This reads the day's protein-bearing
+//  meals and, against the current clock, says when the next dose is due — pure
+//  timing guidance, never a medical prescription.
+export const PROTEIN_DOSE_LO = 25;   // g — the low end of an effective dose
+export const PROTEIN_DOSE_HI = 40;   // g — the high end
+const PROTEIN_GAP_LO_MIN = 120;      // 2 hr — soonest a next dose is worthwhile
+const PROTEIN_GAP_HI_MIN = 180;      // 3 hr — by here you're due
+const PROTEIN_DOSE_QUALIFY = 15;     // g — below this a meal doesn't reset the clock
+
+const hhmmToMin = (s) => {
+  const m = /^(\d{1,2}):(\d{2})/.exec(s || "");
+  if (!m) return null;
+  return Number(m[1]) * 60 + Number(m[2]);
+};
+const clock12 = (min) => {
+  const t = (((Math.round(min) % 1440) + 1440) % 1440);
+  let h = Math.floor(t / 60);
+  const mm = t % 60;
+  const ap = h < 12 ? "AM" : "PM";
+  h = h % 12 || 12;
+  return `${h}:${String(mm).padStart(2, "0")} ${ap}`;
+};
+const durText = (min) => {
+  const t = Math.max(0, Math.round(min));
+  const h = Math.floor(t / 60);
+  const m = t % 60;
+  if (h === 0) return `${m} min`;
+  if (m === 0) return `${h} hr`;
+  return `${h} hr ${m} min`;
+};
+
+// dayMeals: the selected day's meals · nowMin: minutes since midnight (local) ·
+// target: today's protein goal (0/undefined if none yet).
+// Returns { status, text } with status: done | start | waiting | due | overdue.
+export function proteinCadence(dayMeals, nowMin, target) {
+  const rounded = (dayMeals || []).map((m) => Math.round(Number(m.protein) || 0));
+  const totalProtein = sum(rounded);
+  const remaining = Number(target) > 0 ? Math.max(0, Math.round(Number(target) - totalProtein)) : null;
+
+  // Target already met — stop chasing doses for the day.
+  if (remaining === 0 && Number(target) > 0) {
+    return { status: "done", text: "Protein target hit for today — no need to time more doses." };
+  }
+
+  // Suggested dose stays in the 25–40 g band, but never more than what's left.
+  const doseText = remaining != null && remaining < PROTEIN_DOSE_LO
+    ? `about ${remaining} g`
+    : `${PROTEIN_DOSE_LO}–${PROTEIN_DOSE_HI} g`;
+
+  const doses = (dayMeals || [])
+    .map((m) => ({ t: hhmmToMin(m.time), protein: Math.round(Number(m.protein) || 0) }))
+    .filter((m) => m.t != null && m.protein >= PROTEIN_DOSE_QUALIFY)
+    .sort((a, b) => a.t - b.t);
+
+  if (!doses.length) {
+    return {
+      status: "start",
+      text: `No protein dose logged yet — start with ${doseText}, then repeat every 2–3 hrs to keep an even cadence.`,
+    };
+  }
+
+  const last = doses[doses.length - 1].t;
+  const nextStart = last + PROTEIN_GAP_LO_MIN;
+  const nextEnd = last + PROTEIN_GAP_HI_MIN;
+
+  if (nowMin < nextStart) {
+    return {
+      status: "waiting",
+      text: `Next dose (${doseText}) around ${clock12(nextStart)} — about ${durText(nextStart - nowMin)} away. Last was ${durText(nowMin - last)} ago.`,
+    };
+  }
+  if (nowMin <= nextEnd) {
+    return {
+      status: "due",
+      text: `Time for your next dose — aim for ${doseText}. It's been ${durText(nowMin - last)} since your last.`,
+    };
+  }
+  return {
+    status: "overdue",
+    text: `Due for protein — ${durText(nowMin - last)} since your last dose. A ${doseText} hit gets you back on a 2–3 hr cadence.`,
+  };
+}
+
 // ---- "how long will it take?" — answered in code, never by the model ----
 //  The coach (lib/claude.js) can ask any weight question the user throws at it —
 //  "lose 10 lb", "get to 175", "in time for the wedding" — and this is what does

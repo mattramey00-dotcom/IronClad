@@ -1256,6 +1256,7 @@ function Trainer({
           meals={meals[selected]}
           allMeals={meals}
           today={today}
+          isToday={selected === today}
           targets={resolvedTargets}
           apiKey={apiKey}
           model={model}

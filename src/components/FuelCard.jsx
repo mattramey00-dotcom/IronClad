@@ -20,7 +20,7 @@ import MealHistoryModal from "./MealHistoryModal.jsx";
 import SavedMealsModal from "./SavedMealsModal.jsx";
 import BarcodeScanner from "./BarcodeScanner.jsx";
 import FuelArt from "./FuelArt.jsx";
-import { mealTotals, proteinDistribution, SODIUM_DV_MG } from "../lib/nutrition.js";
+import { mealTotals, proteinDistribution, proteinCadence, SODIUM_DV_MG } from "../lib/nutrition.js";
 import { lookupBarcode } from "../lib/food.js";
 import {
   compressImage, estimateMealFromPhoto, estimateMealFromText, lookupChainMeal, explainError, DEFAULT_MODEL,
@@ -91,7 +91,7 @@ function Bar({ label, value, target, color, over, unit, hint }) {
 }
 
 export default function FuelCard({
-  meals, allMeals, today, targets, apiKey, model, restMode, favorites = [],
+  meals, allMeals, today, isToday = true, targets, apiKey, model, restMode, favorites = [],
   water = 0, waterTarget = 80, onAddWater,
   supps = [], suppTaken = [], onAddSupp, onRemoveSupp, onToggleSupp,
   compose, setCompose,
@@ -136,6 +136,11 @@ export default function FuelCard({
 
   const totals = mealTotals(meals);
   const pd = proteinDistribution(meals, targets.protein);
+  // Cadence guidance — when the next protein dose is due — only for today, where
+  // "now" is meaningful. Recomputes on each render (a logged meal, added water).
+  const nowDate = new Date();
+  const cadence = isToday ? proteinCadence(meals, nowDate.getHours() * 60 + nowDate.getMinutes(), targets.protein) : null;
+  const cadenceHot = cadence && (cadence.status === "due" || cadence.status === "overdue");
 
   const reset = () => {
     apply({ mode: null, draft: null, editingId: null, text: "", busy: false, error: "" });
@@ -390,6 +395,24 @@ export default function FuelCard({
                 </div>
               )}
             </>
+          )}
+
+          {/* protein cadence — a nudge on when the next dose is due, so protein
+              is spread ~25–40 g every 2–3 hrs rather than crammed into one meal */}
+          {cadence && (
+            <div
+              style={{
+                display: "flex", alignItems: "center", gap: 8, marginTop: targets.protein > 0 ? 7 : 6, marginBottom: 3,
+                padding: "7px 10px", borderRadius: 9,
+                background: cadenceHot ? "rgba(224,180,74,.12)" : "var(--surface-2)",
+                border: `1px solid ${cadenceHot ? "rgba(224,180,74,.45)" : "var(--border-hi)"}`,
+              }}
+            >
+              <span style={{ color: PROTEIN_COLOR, display: "grid", placeItems: "center", flex: "0 0 auto" }}>
+                <Icon name="clock" size={14} />
+              </span>
+              <span style={{ fontSize: 11.5, lineHeight: 1.45, color: cadenceHot ? "#d8b976" : "var(--text-mute)" }}>{cadence.text}</span>
+            </div>
           )}
 
           <Bar

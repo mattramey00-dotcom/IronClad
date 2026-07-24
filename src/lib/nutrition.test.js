@@ -13,7 +13,7 @@
 import { describe, it, expect } from "vitest";
 import {
   mealTotals, loggingStreak, weightTrend, estimateTDEE, resolveTargets,
-  bmi, waterTargetOz, intakeStats, shiftKey,
+  bmi, waterTargetOz, intakeStats, shiftKey, proteinCadence,
 } from "./nutrition.js";
 
 const TODAY = "2026-01-21";
@@ -167,5 +167,45 @@ describe("intakeStats", () => {
     expect(s.daysLogged).toBe(2);
     expect(s.avgKcal).toBe(1500);
     expect(s.avgProtein).toBe(125);
+  });
+});
+
+describe("proteinCadence", () => {
+  const at = (h, m = 0) => h * 60 + m;
+
+  it("prompts a first dose when nothing is logged", () => {
+    const c = proteinCadence([], at(9), 160);
+    expect(c.status).toBe("start");
+  });
+
+  it("waits when the last dose was under 2 hrs ago", () => {
+    const meals = [{ time: "08:00", protein: 35 }];
+    const c = proteinCadence(meals, at(9), 160); // 1 hr later
+    expect(c.status).toBe("waiting");
+  });
+
+  it("is due between 2 and 3 hrs after the last dose", () => {
+    const meals = [{ time: "08:00", protein: 35 }];
+    const c = proteinCadence(meals, at(10, 30), 160); // 2.5 hr later
+    expect(c.status).toBe("due");
+  });
+
+  it("is overdue past 3 hrs", () => {
+    const meals = [{ time: "08:00", protein: 35 }];
+    const c = proteinCadence(meals, at(12), 160); // 4 hr later
+    expect(c.status).toBe("overdue");
+  });
+
+  it("ignores tiny protein hits that don't reset the clock", () => {
+    // an 8 g snack at 11:00 shouldn't count; the 35 g at 08:00 is the last dose
+    const meals = [{ time: "08:00", protein: 35 }, { time: "11:00", protein: 8 }];
+    const c = proteinCadence(meals, at(12), 160); // 4 hr after the real dose
+    expect(c.status).toBe("overdue");
+  });
+
+  it("stops once the target is met", () => {
+    const meals = [{ time: "08:00", protein: 90 }, { time: "12:00", protein: 90 }];
+    const c = proteinCadence(meals, at(13), 160);
+    expect(c.status).toBe("done");
   });
 });
