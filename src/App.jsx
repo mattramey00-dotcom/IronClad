@@ -235,7 +235,9 @@ function Shell({ children }) {
         .fa-bob{animation:fuelbob 8s ease-in-out infinite;will-change:transform}
         @keyframes weighGlow{0%,100%{box-shadow:0 0 0 1px rgba(129,140,248,.22),0 6px 20px -6px rgba(129,140,248,.35)}50%{box-shadow:0 0 0 1px rgba(129,140,248,.5),0 12px 34px -6px rgba(129,140,248,.75)}}
         .weigh-glow{animation:weighGlow 2.6s ease-in-out infinite;will-change:box-shadow}
-        @media (prefers-reduced-motion: reduce){.fa-wave,.fa-bob{animation:none}.weigh-glow{animation:none;box-shadow:0 0 0 1px rgba(129,140,248,.45),0 8px 26px -6px rgba(129,140,248,.55)}}
+        @keyframes proteinGlow{0%,100%{box-shadow:0 0 0 1px rgba(224,180,74,.22),0 6px 20px -6px rgba(224,180,74,.35)}50%{box-shadow:0 0 0 1px rgba(224,180,74,.55),0 12px 34px -6px rgba(224,180,74,.8)}}
+        .protein-glow{animation:proteinGlow 2.6s ease-in-out infinite;will-change:box-shadow}
+        @media (prefers-reduced-motion: reduce){.fa-wave,.fa-bob{animation:none}.weigh-glow{animation:none;box-shadow:0 0 0 1px rgba(129,140,248,.45),0 8px 26px -6px rgba(129,140,248,.55)}.protein-glow{animation:none;box-shadow:0 0 0 1px rgba(224,180,74,.5),0 8px 26px -6px rgba(224,180,74,.6)}}
       `}</style>
       {children}
     </div>
@@ -749,6 +751,17 @@ function Trainer({
     }, Math.min(ms, 2147483647));
     return () => clearTimeout(id);
   }, [proteinAlerts, meals, today, resolvedTargets?.protein, me]);
+
+  // A due/overdue protein dose surfaces as a glowing banner on every tab (not
+  // just Fuel) so the cadence is impossible to miss. Dismissable per dose window.
+  const proteinCad = hasData
+    ? proteinCadence(meals?.[today] || [], now.getHours() * 60 + now.getMinutes(), resolvedTargets?.protein)
+    : null;
+  const proteinDoseKey = proteinCad?.lastDoseMin != null ? `${today}:${proteinCad.lastDoseMin}` : "";
+  const [proteinBannerHidden, setProteinBannerHidden] = useState("");
+  const proteinDue =
+    proteinCad && (proteinCad.status === "due" || proteinCad.status === "overdue") && proteinBannerHidden !== proteinDoseKey;
+  const dismissProteinBanner = () => setProteinBannerHidden(proteinDoseKey);
   // Everything the coach sees, built once here so it's the same from any tab.
   const coach = useMemo(
     () => coachContext({ meals, weights, logs, targets, today }),
@@ -976,6 +989,35 @@ function Trainer({
               Take photo
             </button>
             <button style={{ ...S.btnGhost, padding: "5px 12px", fontSize: 11.5 }} onClick={dismissPhotoReminder}>
+              Later
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Protein-due alert — a glowing banner on every tab except Fuel (where the
+          inline cadence tip already covers it), so a due dose is impossible to
+          miss wherever you are in the app. */}
+      {proteinDue && tab !== "fuel" && (
+        <div
+          className="protein-glow"
+          style={{ ...S.backupBanner, border: "1px solid rgba(224,180,74,.5)", background: "rgba(224,180,74,.1)" }}
+        >
+          <span style={{ color: "#E0B44A", display: "grid", placeItems: "center", flex: "0 0 auto" }}>
+            <Icon name="clock" size={18} />
+          </span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 13.5, fontWeight: 700, color: "var(--text)" }}>Protein due</div>
+            <div style={{ fontSize: 12, color: "var(--text-mute)", lineHeight: 1.45, marginTop: 1 }}>{proteinCad.text}</div>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6, flex: "0 0 auto" }}>
+            <button
+              style={{ background: "#E0B44A", border: "none", color: "#2a2410", borderRadius: 10, padding: "7px 14px", fontSize: 12.5, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}
+              onClick={() => { dismissProteinBanner(); setTab("fuel"); }}
+            >
+              Log
+            </button>
+            <button style={{ ...S.btnGhost, padding: "5px 12px", fontSize: 11.5 }} onClick={dismissProteinBanner}>
               Later
             </button>
           </div>
