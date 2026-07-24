@@ -804,6 +804,30 @@ export function exercisesForMuscle(token) {
   return list;
 }
 
+// Every strength movement the app knows — the program's own lifts plus the
+// accessory library, deduped and alphabetised. Powers the swap field's
+// autocomplete so a manual replacement is picked from real, mapped movements
+// (each carries a scheme, animation and muscle map) rather than typed blind.
+export const EXERCISE_CATALOG = (() => {
+  const pool = [];
+  const seen = new Set();
+  [...Object.values(ALL_EX), ...LIBRARY].forEach((c) => {
+    if (seen.has(c.n)) return;
+    seen.add(c.n);
+    pool.push({ n: c.n, s: c.s, d: c.d });
+  });
+  pool.sort((a, b) => a.n.localeCompare(b.n));
+  return pool;
+})();
+
+// Resolve a typed name to a known movement (case-insensitive), so a swap picks
+// up the library entry's scheme + demo kind when the name matches one.
+export function findExercise(name) {
+  const q = (name || "").trim().toLowerCase();
+  if (!q) return null;
+  return EXERCISE_CATALOG.find((c) => c.n.toLowerCase() === q) || null;
+}
+
 export function swapSuggestions(exName) {
   const base = ALL_EX[exName];
   const primary = (MUSCLES_BY_NAME[exName] || [])[0];

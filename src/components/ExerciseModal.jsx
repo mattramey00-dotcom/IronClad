@@ -13,7 +13,7 @@
 // ============================================================
 
 import React, { useState, useEffect, useMemo } from "react";
-import { ACCENT, DEMOS, MUSCLE_LABELS, prescription, swapSuggestions, programScheme } from "../data/program.js";
+import { ACCENT, DEMOS, MUSCLE_LABELS, prescription, swapSuggestions, programScheme, EXERCISE_CATALOG, findExercise } from "../data/program.js";
 import { S } from "../styles.js";
 import Demo from "./Demo.jsx";
 import ExerciseGif from "./ExerciseGif.jsx";
@@ -217,6 +217,13 @@ export default function ExerciseModal({
   // same-muscle swap keeps the day's volume identical.
   const suggest = useMemo(() => swapSuggestions(origName), [origName]);
   const baseScheme = programScheme(origName) || ex.s;
+  // Does the typed replacement match a known library/program movement? If so the
+  // swap can carry that movement's demo + muscle map instead of guessing.
+  const swapMatch = findExercise(swapName);
+  // Names already offered as suggestion chips above, so the free-type list can
+  // skip them and surface the rest of the library.
+  const suggestedNames = new Set([...suggest.keep, ...suggest.shift].map((c) => c.n));
+  const catalogOptions = EXERCISE_CATALOG.filter((c) => c.n !== ex.n && !suggestedNames.has(c.n));
   // A rest belongs to this modal only when the running clock is for this
   // exercise — a stale rest from a set you logged elsewhere shouldn't surface.
   const restHere = rest && rest.label === ex.n ? rest : null;
@@ -497,12 +504,33 @@ export default function ExerciseModal({
                   </>
                 )}
 
-                <div style={{ ...ST.swapLabel, marginTop: 10 }}>Or your own</div>
+                <div style={{ ...ST.swapLabel, marginTop: 10 }}>Or pick from the library</div>
                 <input
-                  style={{ ...S.textInput, marginBottom: 6 }}
-                  placeholder="Replacement, e.g. Landmine Press"
-                  value={swapName} onChange={(e) => setSwapName(e.target.value)}
+                  list="swap-ex-list"
+                  style={{ ...S.textInput, marginBottom: 4 }}
+                  placeholder="Start typing — e.g. Leg Press, Face Pull…"
+                  value={swapName}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setSwapName(v);
+                    // Picking a library movement fills in its default scheme so
+                    // you're not left guessing the sets.
+                    const m = findExercise(v);
+                    if (m) setSwapScheme(m.s || baseScheme);
+                  }}
                 />
+                <datalist id="swap-ex-list">
+                  {catalogOptions.map((c) => (
+                    <option key={c.n} value={c.n}>{c.s}</option>
+                  ))}
+                </datalist>
+                {swapName.trim() && (
+                  <div style={{ fontSize: 11.5, marginBottom: 6, color: swapMatch ? "#54b37e" : "var(--text-faint)", lineHeight: 1.4 }}>
+                    {swapMatch
+                      ? "In your library — animation and muscle map included."
+                      : "Not in the library — it'll still log fine under this name."}
+                  </div>
+                )}
                 <input
                   style={{ ...S.textInput, marginBottom: 8 }}
                   placeholder="Sets, e.g. 3 × 8–10"
@@ -512,7 +540,12 @@ export default function ExerciseModal({
                   <button
                     style={{ ...S.btnAccent, flex: 1, padding: "9px", opacity: swapName.trim() ? 1 : 0.5 }}
                     disabled={!swapName.trim()}
-                    onClick={() => onSwap({ n: swapName.trim(), s: swapScheme.trim() || baseScheme, d: ex.d, timer: ex.timer })}
+                    onClick={() => onSwap({
+                      n: swapMatch?.n || swapName.trim(),
+                      s: swapScheme.trim() || swapMatch?.s || baseScheme,
+                      d: swapMatch?.d || ex.d,
+                      timer: ex.timer,
+                    })}
                   >
                     Use this instead
                   </button>
