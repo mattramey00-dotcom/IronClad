@@ -683,15 +683,15 @@ export function proteinCadence(dayMeals, nowMin, target) {
   const totalProtein = sum(rounded);
   const remaining = Number(target) > 0 ? Math.max(0, Math.round(Number(target) - totalProtein)) : null;
 
-  // Target already met — stop chasing doses for the day.
-  if (remaining === 0 && Number(target) > 0) {
-    return { status: "done", text: "Protein target hit for today — no need to time more doses." };
-  }
-
   // Suggested dose stays in the 25–40 g band, but never more than what's left.
   const doseText = remaining != null && remaining < PROTEIN_DOSE_LO
     ? `about ${remaining} g`
     : `${PROTEIN_DOSE_LO}–${PROTEIN_DOSE_HI} g`;
+
+  // Target already met — stop chasing doses for the day.
+  if (remaining === 0 && Number(target) > 0) {
+    return { status: "done", text: "Protein target hit for today — no need to time more doses.", doseText, lastDoseMin: null, nextDueMin: null };
+  }
 
   const doses = (dayMeals || [])
     .map((m) => ({ t: hhmmToMin(m.time), protein: Math.round(Number(m.protein) || 0) }))
@@ -702,28 +702,33 @@ export function proteinCadence(dayMeals, nowMin, target) {
     return {
       status: "start",
       text: `No protein dose logged yet — start with ${doseText}, then repeat every 2–3 hrs to keep an even cadence.`,
+      doseText, lastDoseMin: null, nextDueMin: null,
     };
   }
 
   const last = doses[doses.length - 1].t;
   const nextStart = last + PROTEIN_GAP_LO_MIN;
   const nextEnd = last + PROTEIN_GAP_HI_MIN;
+  const timing = { doseText, lastDoseMin: last, nextDueMin: nextStart };
 
   if (nowMin < nextStart) {
     return {
       status: "waiting",
       text: `Next dose (${doseText}) around ${clock12(nextStart)} — about ${durText(nextStart - nowMin)} away. Last was ${durText(nowMin - last)} ago.`,
+      ...timing,
     };
   }
   if (nowMin <= nextEnd) {
     return {
       status: "due",
       text: `Time for your next dose — aim for ${doseText}. It's been ${durText(nowMin - last)} since your last.`,
+      ...timing,
     };
   }
   return {
     status: "overdue",
     text: `Due for protein — ${durText(nowMin - last)} since your last dose. A ${doseText} hit gets you back on a 2–3 hr cadence.`,
+    ...timing,
   };
 }
 

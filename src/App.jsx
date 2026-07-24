@@ -27,9 +27,10 @@ import {
   loadLastBackup, saveLastBackup, loadBackupNudge, saveBackupNudge,
   loadTheme, saveTheme, loadWeeklySeen, saveWeeklySeen, loadWeighNudge, saveWeighNudge,
   loadPhotoNudge, savePhotoNudge,
+  loadProteinAlerts, saveProteinAlerts, loadProteinNotified, saveProteinNotified,
 } from "./lib/storage.js";
 import { downloadBackup, backupReminderDue, monthKeyOf } from "./lib/backup.js";
-import { estimateTDEE, resolveTargets, weightTrend, bestE1RM, e1rm, shiftKey, daysBetween, mealTotals, weeklySummary, waterTargetOz, coachContext, DEFAULT_TARGETS } from "./lib/nutrition.js";
+import { estimateTDEE, resolveTargets, weightTrend, bestE1RM, e1rm, shiftKey, daysBetween, mealTotals, weeklySummary, waterTargetOz, coachContext, proteinCadence, DEFAULT_TARGETS } from "./lib/nutrition.js";
 import { MODELS, DEFAULT_MODEL } from "./lib/claude.js";
 import { S } from "./styles.js";
 import Demo from "./components/Demo.jsx";
@@ -241,6 +242,24 @@ function Shell({ children }) {
   );
 }
 
+// A local "protein's due" notification — same service-worker-first path the rest
+// timer uses. Only fires while IronClad is running (the app can't wake itself in
+// the background without a push server, which a no-backend PWA doesn't have).
+function notifyProtein(doseText) {
+  if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
+  const body = `Aim for ${doseText || "25–40 g"} — keeps you on a 2–3 hr cadence.`;
+  try {
+    navigator.serviceWorker?.ready
+      ?.then((reg) => reg.showNotification("Protein time", {
+        body, tag: "ironclad-protein", renotify: true,
+        icon: "./icon-192.png", badge: "./icon-192.png",
+      }))
+      .catch(() => { try { new Notification("Protein time", { body }); } catch (e) { /* ignore */ } });
+  } catch (e) {
+    /* notifications unavailable */
+  }
+}
+
 function Trainer({
   plan, me, selected, setSelected, progress, setProgress, logs, setLogs,
   meals, setMeals, favMeals, setFavMeals, subs, setSubs, extras, setExtras, water, setWater,
@@ -340,6 +359,12 @@ function Trainer({
     const lb = parseFloat(reminderWeight);
     if (Number.isFinite(lb) && lb > 0 && lb < 1000) { setWeight(today, lb); setReminderWeight(""); }
   };
+
+  // Opt-in protein-dose reminders (state here; the scheduling effect lives below,
+  // after resolvedTargets is defined).
+  const [proteinAlerts, setProteinAlertsState] = useState(() => loadProteinAlerts(me));
+  useEffect(() => { setProteinAlertsState(loadProteinAlerts(me)); }, [me]);
+  const setProteinAlerts = (on) => { setProteinAlertsState(on); saveProteinAlerts(me, on); };
 
   // Weekly progress-photo reminder: once per calendar week (keyed by the week's
   // Sunday), nudge an established logger to snap a progress photo — unless they
@@ -704,6 +729,26 @@ function Trainer({
     () => resolveTargets(targets, tdee, bodyweight),
     [targets, tdee, bodyweight],
   );
+
+  // Protein reminder scheduling — when on, arm a one-shot notification for the
+  // moment the next dose comes due (last dose + 2 hrs), re-armed whenever today's
+  // meals or the protein target change. Fires only while the app is running.
+  useEffect(() => {
+    if (!proteinAlerts) return;
+    if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
+    const nowMin = () => { const d = new Date(); return d.getHours() * 60 + d.getMinutes(); };
+    const c = proteinCadence(meals?.[today] || [], nowMin(), resolvedTargets?.protein);
+    if (c.status !== "waiting" || c.nextDueMin == null) return; // only a future due time schedules
+    const ms = (c.nextDueMin - nowMin()) * 60000;
+    if (ms <= 0) return;
+    const doseKey = `${today}:${c.lastDoseMin}`;
+    const id = setTimeout(() => {
+      if (loadProteinNotified(me) === doseKey) return; // this window already alerted
+      saveProteinNotified(me, doseKey);
+      notifyProtein(c.doseText);
+    }, Math.min(ms, 2147483647));
+    return () => clearTimeout(id);
+  }, [proteinAlerts, meals, today, resolvedTargets?.protein, me]);
   // Everything the coach sees, built once here so it's the same from any tab.
   const coach = useMemo(
     () => coachContext({ meals, weights, logs, targets, today }),
@@ -1258,6 +1303,8 @@ function Trainer({
           today={today}
           isToday={selected === today}
           targets={resolvedTargets}
+          proteinAlerts={proteinAlerts}
+          onSetProteinAlerts={setProteinAlerts}
           apiKey={apiKey}
           model={model}
           restMode={agenda.isRest}

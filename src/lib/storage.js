@@ -185,6 +185,14 @@ export const saveWeighNudge = (personId, dateKey) => write(`weighnudge:${personI
 export const loadPhotoNudge = (personId) => read(`photonudge:${personId}`) || "";
 export const savePhotoNudge = (personId, weekKey) => write(`photonudge:${personId}`, weekKey);
 
+// Opt-in protein-dose reminders (this profile). And the dose window we've
+// already fired a notification for — keyed date:lastDoseMin — so a given
+// window only alerts once even across reloads.
+export const loadProteinAlerts = (personId) => read(`proteinalerts:${personId}`) === "1";
+export const saveProteinAlerts = (personId, on) => write(`proteinalerts:${personId}`, on ? "1" : "0");
+export const loadProteinNotified = (personId) => read(`proteinnotified:${personId}`) || "";
+export const saveProteinNotified = (personId, key) => write(`proteinnotified:${personId}`, key);
+
 // ---- added / accessory exercises (per profile) ----------------------
 //  Extra movements a person tacks onto a day from the "Target a muscle" picker,
 //  keyed by date → [{ n, s, d }]. They show up in that day's exercise list on
@@ -300,6 +308,6 @@ export function migrateLegacy(personId) {
 export function resetEverything() {
   ["plan", "me", "apikey", "model", "travel", "wxkey", "lastbackup", "backupnudge", "restnotify", "theme"].forEach(remove);
   ["p1", "p2"].forEach((id) => {
-    ["progress", "logs", "meals", "weights", "targets", "favmeals", "subs", "extras", "weeklyseen", "water", "supps", "supplog", "weighnudge", "photonudge"].forEach((k) => remove(`${k}:${id}`));
+    ["progress", "logs", "meals", "weights", "targets", "favmeals", "subs", "extras", "weeklyseen", "water", "supps", "supplog", "weighnudge", "photonudge", "proteinalerts", "proteinnotified"].forEach((k) => remove(`${k}:${id}`));
   });
 }

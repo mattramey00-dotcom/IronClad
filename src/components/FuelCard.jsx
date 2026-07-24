@@ -92,6 +92,7 @@ function Bar({ label, value, target, color, over, unit, hint }) {
 
 export default function FuelCard({
   meals, allMeals, today, isToday = true, targets, apiKey, model, restMode, favorites = [],
+  proteinAlerts = false, onSetProteinAlerts,
   water = 0, waterTarget = 80, onAddWater,
   supps = [], suppTaken = [], onAddSupp, onRemoveSupp, onToggleSupp,
   compose, setCompose,
@@ -141,6 +142,23 @@ export default function FuelCard({
   const nowDate = new Date();
   const cadence = isToday ? proteinCadence(meals, nowDate.getHours() * 60 + nowDate.getMinutes(), targets.protein) : null;
   const cadenceHot = cadence && (cadence.status === "due" || cadence.status === "overdue");
+  // Notifications need a real Notification API (absent on e.g. iOS Safari outside
+  // an installed PWA) — hide the bell where it can't work.
+  const canNotify = typeof window !== "undefined" && "Notification" in window && !!onSetProteinAlerts;
+  // The permission prompt must run inside the tap, so it lives here, not in a
+  // background effect.
+  const toggleProteinAlerts = async () => {
+    if (proteinAlerts) { onSetProteinAlerts(false); return; }
+    if (Notification.permission !== "granted") {
+      try {
+        const perm = await Notification.requestPermission();
+        if (perm !== "granted") return;
+      } catch (e) {
+        return;
+      }
+    }
+    onSetProteinAlerts(true);
+  };
 
   const reset = () => {
     apply({ mode: null, draft: null, editingId: null, text: "", busy: false, error: "" });
@@ -411,7 +429,28 @@ export default function FuelCard({
               <span style={{ color: PROTEIN_COLOR, display: "grid", placeItems: "center", flex: "0 0 auto" }}>
                 <Icon name="clock" size={14} />
               </span>
-              <span style={{ fontSize: 11.5, lineHeight: 1.45, color: cadenceHot ? "#d8b976" : "var(--text-mute)" }}>{cadence.text}</span>
+              <span style={{ flex: 1, minWidth: 0, fontSize: 11.5, lineHeight: 1.45, color: cadenceHot ? "#d8b976" : "var(--text-mute)" }}>{cadence.text}</span>
+              {canNotify && (
+                <button
+                  onClick={toggleProteinAlerts}
+                  title={proteinAlerts ? "Protein reminders on — tap to turn off" : "Remind me when the next dose is due"}
+                  aria-label={proteinAlerts ? "Turn off protein reminders" : "Turn on protein reminders"}
+                  style={{
+                    flex: "0 0 auto", width: 30, height: 30, borderRadius: 8, cursor: "pointer", fontFamily: "inherit",
+                    display: "grid", placeItems: "center",
+                    background: proteinAlerts ? "rgba(224,180,74,.16)" : "transparent",
+                    border: `1px solid ${proteinAlerts ? "rgba(224,180,74,.5)" : "var(--border-hi)"}`,
+                    color: proteinAlerts ? PROTEIN_COLOR : "var(--text-dim)",
+                  }}
+                >
+                  <Icon name={proteinAlerts ? "bell" : "bellOff"} size={15} />
+                </button>
+              )}
+            </div>
+          )}
+          {cadence && proteinAlerts && (
+            <div style={{ fontSize: 10.5, color: "var(--text-faint)", marginTop: 2, marginBottom: 3, lineHeight: 1.4 }}>
+              Reminders alert you while IronClad is open — keep it running in the background.
             </div>
           )}
 
