@@ -101,10 +101,15 @@ function DumbbellPicker({ w, setW }) {
 // typing a number and loading plates stay in sync.
 function BarLoader({ w, setW }) {
   const [bar, setBar] = useState(BAR_LB);
+  const [open, setOpen] = useState(false); // collapsed by default so the modal stays short
   const wv = parseFloat(w);
   const loaded = Number.isFinite(wv) && wv >= bar;
   const base = loaded ? wv : bar;
   const { discs, leftover } = expandPlates(base, bar);
+  const grouped = platesPerSide(base, bar);
+  const perSide = grouped && grouped.plates.length
+    ? grouped.plates.map((x) => (x.n > 1 ? `${x.p}×${x.n}` : `${x.p}`)).join(" ")
+    : "";
   const add = (p) => setW(String(roundW(base + 2 * p)));
   const removeOne = (p) => {
     const next = roundW(base - 2 * p);
@@ -118,70 +123,84 @@ function BarLoader({ w, setW }) {
   };
   return (
     <div style={ST.loader}>
-      <div style={ST.loaderHead}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
-          <span style={S.label}>Load the bar</span>
-          <div style={ST.barSeg}>
-            {BAR_OPTIONS.map((b) => (
-              <button
-                key={b}
-                onClick={() => switchBar(b)}
-                style={{ ...ST.barSegBtn, ...(bar === b ? ST.barSegOn : {}) }}
-                title={`${b} lb bar`}
-              >
-                {b}
-              </button>
-            ))}
+      {/* Collapsed: one compact line — label, per-side answer, total, chevron.
+          Tap to expand the interactive plate loader only when you need it. */}
+      <button style={ST.loaderToggle} onClick={() => setOpen((o) => !o)} aria-expanded={open}>
+        <span style={S.label}>Load the bar</span>
+        <span style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+          {!open && loaded && perSide && <span style={ST.loaderPerSide} title="per side">{perSide}/side</span>}
+          <span style={ST.loaderTotal}>{loaded ? `${roundW(base)} lb` : `${bar} lb bar`}</span>
+          <span style={{ color: "var(--text-dim)", display: "grid", placeItems: "center", transform: open ? "rotate(180deg)" : "none", transition: "transform .15s ease" }}>
+            <Icon name="chevron" size={15} />
+          </span>
+        </span>
+      </button>
+
+      {open && (
+        <div style={{ marginTop: 9 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+            <span style={{ fontSize: 11, color: "var(--text-dim)" }}>Bar</span>
+            <div style={ST.barSeg}>
+              {BAR_OPTIONS.map((b) => (
+                <button
+                  key={b}
+                  onClick={() => switchBar(b)}
+                  style={{ ...ST.barSegBtn, ...(bar === b ? ST.barSegOn : {}) }}
+                  title={`${b} lb bar`}
+                >
+                  {b}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
-        <span style={ST.loaderTotal}>{loaded ? `${roundW(base)} lb` : `${bar} lb bar`}</span>
-      </div>
-      <div style={ST.barTrack}>
-        <div style={ST.shaft} />
-        {discs.length === 0 ? (
-          <span style={ST.barEmpty}>tap a plate to load →</span>
-        ) : (
-          <div style={ST.plateStack}>
-            {discs.map((p, i) => {
+          <div style={ST.barTrack}>
+            <div style={ST.shaft} />
+            {discs.length === 0 ? (
+              <span style={ST.barEmpty}>tap a plate to load →</span>
+            ) : (
+              <div style={ST.plateStack}>
+                {discs.map((p, i) => {
+                  const st = PLATE_STYLE[p];
+                  return (
+                    <button
+                      key={i}
+                      onClick={() => removeOne(p)}
+                      title={`Remove a ${p} lb plate from each side`}
+                      aria-label={`Remove a ${p} pound plate`}
+                      style={{ ...ST.plateOnBar, height: st.h, background: st.c, color: st.t }}
+                    >
+                      {p}
+                    </button>
+                  );
+                })}
+                <div style={ST.collar} />
+              </div>
+            )}
+          </div>
+          {leftover > 0 && (
+            <div style={ST.leftoverNote}>{leftover} lb short — nearest loadable shown</div>
+          )}
+          <div style={ST.plateBtnRow}>
+            {PLATE_SIZES.map((p) => {
               const st = PLATE_STYLE[p];
               return (
                 <button
-                  key={i}
-                  onClick={() => removeOne(p)}
-                  title={`Remove a ${p} lb plate from each side`}
-                  aria-label={`Remove a ${p} pound plate`}
-                  style={{ ...ST.plateOnBar, height: st.h, background: st.c, color: st.t }}
+                  key={p}
+                  onClick={() => add(p)}
+                  title={`Add a ${p} lb plate to each side`}
+                  aria-label={`Add a ${p} pound plate to each side`}
+                  style={{ ...ST.plateBtn, borderColor: st.c, color: st.c, background: `${st.c}1f` }}
                 >
                   {p}
                 </button>
               );
             })}
-            <div style={ST.collar} />
+            {loaded && (
+              <button onClick={() => setW("")} style={ST.barReset}>Bar only</button>
+            )}
           </div>
-        )}
-      </div>
-      {leftover > 0 && (
-        <div style={ST.leftoverNote}>{leftover} lb short — nearest loadable shown</div>
+        </div>
       )}
-      <div style={ST.plateBtnRow}>
-        {PLATE_SIZES.map((p) => {
-          const st = PLATE_STYLE[p];
-          return (
-            <button
-              key={p}
-              onClick={() => add(p)}
-              title={`Add a ${p} lb plate to each side`}
-              aria-label={`Add a ${p} pound plate to each side`}
-              style={{ ...ST.plateBtn, borderColor: st.c, color: st.c, background: `${st.c}1f` }}
-            >
-              {p}
-            </button>
-          );
-        })}
-        {loaded && (
-          <button onClick={() => setW("")} style={ST.barReset}>Bar only</button>
-        )}
-      </div>
     </div>
   );
 }
@@ -554,6 +573,8 @@ const ST = {
   unit: { position: "absolute", right: 9, fontSize: 11, color: "var(--text-dim)" },
   optional: { fontSize: 11, color: "var(--text-faint)", marginLeft: "auto" },
   loader: { marginTop: 10, marginBottom: 2, padding: "9px 10px", background: "var(--sunken)", border: "1px solid var(--border)", borderRadius: 12 },
+  loaderToggle: { display: "flex", alignItems: "center", gap: 8, width: "100%", background: "transparent", border: "none", padding: 0, cursor: "pointer", fontFamily: "inherit", textAlign: "left" },
+  loaderPerSide: { fontSize: 11, color: "var(--text-dim)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 130, fontVariantNumeric: "tabular-nums" },
   loaderHead: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 7 },
   loaderTotal: { fontSize: 13.5, fontWeight: 800, color: "var(--text)", fontVariantNumeric: "tabular-nums", flex: "0 0 auto" },
   barSeg: { display: "inline-flex", background: "var(--surface-2)", border: "1px solid var(--border-hi)", borderRadius: 7, padding: 2, gap: 2 },
