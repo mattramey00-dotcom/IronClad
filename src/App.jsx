@@ -1157,13 +1157,10 @@ function Trainer({
           )}
 
           {machine && (
+            // Just your machine here — clearly yours. What your partner's on
+            // lives in their own card below, so it isn't said twice.
             <div style={S.machineChip}>
-              <Icon name={MACHINE_ICON[machine]} size={14} /> {MACHINE_NAME[machine]}
-              {agenda.partner.machine && (
-                <span style={{ color: "#5a6a5a" }}>
-                  · {other.name} on the {agenda.partner.machine}
-                </span>
-              )}
+              <Icon name={MACHINE_ICON[machine]} size={14} /> You · {MACHINE_NAME[machine]}
             </div>
           )}
 
