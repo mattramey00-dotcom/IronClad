@@ -46,10 +46,14 @@ export async function lookupBarcode(code) {
   const protein = val("proteins");
   const carbs = val("carbohydrates");
   const fat = val("fat");
+  const sugar = val("sugars");
+  const fiber = val("fiber");
   // Sodium is stored in grams; fall back to salt (salt ÷ 2.5 ≈ sodium). → mg.
   let sodiumG = val("sodium");
   if (!sodiumG) { const salt = val("salt"); if (salt) sodiumG = salt / 2.5; }
   const sodiumMg = Math.round(sodiumG * 1000);
+  // Cholesterol is also stored in grams in Open Food Facts. → mg.
+  const cholesterolMg = Math.round(val("cholesterol") * 1000);
   let kcal = val("energy-kcal");
   if (!kcal) {
     // Some entries only list kilojoules, or nothing — derive a sensible number.
@@ -70,7 +74,10 @@ export async function lookupBarcode(code) {
     protein_g: Math.round(protein),
     carbs_g: Math.round(carbs),
     fat_g: Math.round(fat),
+    sugar_g: Math.round(sugar),
     sodium_mg: sodiumMg,
+    fiber_g: Math.round(fiber),
+    cholesterol_mg: cholesterolMg,
     confidence: "medium",
     caveat,
   };

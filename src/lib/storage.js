@@ -149,6 +149,24 @@ export const saveSupps = (personId, supps) => write(`supps:${personId}`, JSON.st
 export const loadSuppLog = (personId) => readJSON(`supplog:${personId}`, {});
 export const saveSuppLog = (personId, log) => write(`supplog:${personId}`, JSON.stringify(log));
 
+// ---- meal plan (per profile) ----------------------------------------
+//  An OPTIONAL, rigid 7-day eating schedule the person imports or generates —
+//  never part of the shared plan code (that's the workout rotation, texted
+//  between phones; a meal plan is personal and can be large). Dormant until one
+//  exists: with no plan saved, the Fuel tab behaves exactly as before.
+//
+//  Shape:
+//    { name, source, importedAt, anchor,   // anchor = the date "Day 1" maps to
+//      days: [ { meals: [ { id, slot, name, kcal, protein, carbs, fat,
+//                           sugar, sodium, fiber, cholesterol, estimated } ] } ] }
+//
+//  Checking a plan meal off logs it into the normal `meals` store (source
+//  "plan") — the plan is a faster way to log, not a second ledger — so water is
+//  deliberately NOT part of it; that stays the separate manual tracker.
+export const loadMealPlan = (personId) => readJSON(`mealplan:${personId}`, null);
+export const saveMealPlan = (personId, plan) =>
+  plan ? write(`mealplan:${personId}`, JSON.stringify(plan)) : remove(`mealplan:${personId}`);
+
 // ---- favourite meals (per profile) ----------------------------------
 //  The meals you eat on repeat, saved so re-logging them is one tap. Logging
 //  friction is what quietly kills the whole TDEE estimate, so this is really a
@@ -308,6 +326,6 @@ export function migrateLegacy(personId) {
 export function resetEverything() {
   ["plan", "me", "apikey", "model", "travel", "wxkey", "lastbackup", "backupnudge", "restnotify", "theme"].forEach(remove);
   ["p1", "p2"].forEach((id) => {
-    ["progress", "logs", "meals", "weights", "targets", "favmeals", "subs", "extras", "weeklyseen", "water", "supps", "supplog", "weighnudge", "photonudge", "proteinalerts", "proteinnotified"].forEach((k) => remove(`${k}:${id}`));
+    ["progress", "logs", "meals", "weights", "targets", "favmeals", "subs", "extras", "weeklyseen", "water", "supps", "supplog", "weighnudge", "photonudge", "proteinalerts", "proteinnotified", "mealplan"].forEach((k) => remove(`${k}:${id}`));
   });
 }

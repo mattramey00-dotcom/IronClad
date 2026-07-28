@@ -109,7 +109,10 @@ const MEAL_SCHEMA = {
     protein_g: { type: "number" },
     carbs_g: { type: "number" },
     fat_g: { type: "number" },
+    sugar_g: { type: "number", description: "Total sugars for the meal, in grams — a subset of carbs. Fruit, dairy, and anything sweetened carry most of it; plain rice, meat and vegetables carry little." },
     sodium_mg: { type: "number", description: "Total sodium for the meal, in milligrams. A rough estimate — sodium is mostly invisible (salt, cure, brine, sauce)." },
+    fiber_g: { type: "number", description: "Total dietary fiber for the meal, in grams. Whole grains, legumes, vegetables and fruit carry it; refined foods and animal products carry none." },
+    cholesterol_mg: { type: "number", description: "Total dietary cholesterol for the meal, in milligrams. Egg yolks, organ meats, shellfish and fatty animal foods carry most of it; plant foods carry none." },
     confidence: {
       type: "string",
       enum: ["low", "medium", "high"],
@@ -122,7 +125,7 @@ const MEAL_SCHEMA = {
         "The single biggest thing that could make this estimate wrong, in one plain sentence. Always name something real — there is always something.",
     },
   },
-  required: ["name", "items", "kcal", "protein_g", "carbs_g", "fat_g", "sodium_mg", "confidence", "caveat"],
+  required: ["name", "items", "kcal", "protein_g", "carbs_g", "fat_g", "sugar_g", "sodium_mg", "fiber_g", "cholesterol_mg", "confidence", "caveat"],
   additionalProperties: false,
 };
 
@@ -147,6 +150,7 @@ Be a good estimator, not a confident one. Specifically:
 - Protein is the number this app cares about most, and it is also the one you can estimate best — a chicken breast is ~30 g per 4 oz whatever else is going on. Get it right.
 - Prefer round numbers. Returning 487 kcal implies a precision you do not have; 490 is honest.
 - Estimate sodium (mg) too. It is mostly invisible — table salt, cured or brined meats, cheese, bread, soy sauce and other condiments carry most of it, while plain fresh foods carry little. Give a rounded best guess (nearest 50 mg); restaurant and packaged foods run high.
+- Estimate sugars (g), dietary fiber (g) and cholesterol (mg) as well. Sugars are the sweet fraction of the carbs — fruit, dairy and anything sweetened; fiber comes from whole grains, legumes, vegetables and fruit; cholesterol from egg yolks, organ meats, shellfish and fatty animal foods, and is zero in plant foods. Round sugars/fiber to the nearest gram and cholesterol to the nearest 5 mg. When a food plainly has none of one (plain chicken has no fiber or sugar), return 0 rather than guessing a token amount.
 - Set confidence honestly. A mixed curry or a casserole is 'low' and you should say so. Grilled chicken, plain rice and steamed broccoli on a white plate is 'high'.
 - The caveat field must name a real, specific source of error in *this* meal. Never write "estimates may vary".
 
@@ -307,6 +311,157 @@ export async function lookupChainMeal({ apiKey, model = DEFAULT_MODEL, query }) 
   }
 
   throw new Error("Couldn't pull that item's published nutrition — try describing it instead.");
+}
+
+// ---- 2c. a meal plan → structured 7-day schedule ---------------------
+//  The optional Meal Plan feature. A person brings a rigid plan — a coach's PDF,
+//  a spreadsheet, a screenshot, or pasted text — or asks for one to be
+//  generated, and this turns it into the structured shape lib/mealplan.js stores
+//  and the card checks off. Same tool-forcing trick as the meal estimators.
+//
+//  Two honest constraints carried in the schema:
+//    · every meal is pinned to a slot (breakfast/lunch/dinner/snack) so the day
+//      renders in eating order;
+//    · `estimated` names any macro the SOURCE didn't state and the model had to
+//      fill — the review screen flags these, so an imported plan never presents
+//      a guessed number as if it were printed on the original.
+
+const PLAN_MEAL_SCHEMA = {
+  type: "object",
+  properties: {
+    slot: { type: "string", enum: ["breakfast", "lunch", "dinner", "snack"], description: "Which meal of the day. Use 'snack' for anything outside the three main meals." },
+    name: { type: "string", description: "Short label, e.g. 'Egg whites, oats & blueberries'." },
+    kcal: { type: "number" },
+    protein: { type: "number", description: "grams" },
+    carbs: { type: "number", description: "grams" },
+    fat: { type: "number", description: "grams" },
+    sugar: { type: "number", description: "grams" },
+    sodium: { type: "number", description: "milligrams" },
+    fiber: { type: "number", description: "grams" },
+    cholesterol: { type: "number", description: "milligrams" },
+    estimated: {
+      type: "array",
+      items: { type: "string" },
+      description: "Field names whose value the SOURCE did not state and you estimated — e.g. ['sodium','fiber']. Empty if the source gave every number.",
+    },
+  },
+  required: ["slot", "name", "kcal", "protein", "carbs", "fat", "sugar", "sodium", "fiber", "cholesterol", "estimated"],
+  additionalProperties: false,
+};
+
+const PLAN_SCHEMA = {
+  type: "object",
+  properties: {
+    name: { type: "string", description: "A short name for the whole plan, e.g. '12-Week Lean Bulk'. Invent a sensible one if the source has no title." },
+    days: {
+      type: "array",
+      description: "One entry per distinct day in the cycle, in order. Most plans are 7 days; use however many the source actually defines.",
+      items: {
+        type: "object",
+        properties: { meals: { type: "array", items: PLAN_MEAL_SCHEMA } },
+        required: ["meals"],
+        additionalProperties: false,
+      },
+    },
+  },
+  required: ["name", "days"],
+  additionalProperties: false,
+};
+
+const PLAN_TOOL = {
+  name: "save_plan",
+  description: "Record the structured multi-day meal plan.",
+  input_schema: PLAN_SCHEMA,
+};
+
+const PLAN_PARSE_SYSTEM = `You convert a person's own meal plan — from a document, spreadsheet, screenshot or pasted text — into a structured multi-day schedule for a strength-training app.
+
+- Reproduce the plan FAITHFULLY. Keep the person's meals, foods, portions and day structure. Do not substitute foods, "improve" the plan, or merge days.
+- One entry in days[] per distinct day the source defines, in order. If the source clearly repeats (e.g. "every day"), still emit each day it lists; if it defines a single day meant to repeat, emit that one day.
+- Pin every meal to a slot: breakfast, lunch, dinner, or snack. Anything the source calls a snack, shake, pre-workout, etc. is 'snack'.
+- For each meal record kcal, protein, carbs, fat, sugar, sodium, fiber and cholesterol. When the source STATES a number, use it exactly. When it does NOT, estimate from the food and portion, and add that field's name to the meal's estimated[] list. Never leave a macro blank — estimate and flag it.
+- Keep names short and human, e.g. 'Grilled chicken, jasmine rice & broccoli'.
+
+Then call save_plan with the whole structure. Do not omit days or meals.`;
+
+const PLAN_GEN_SYSTEM = `You design a rigid, repeating meal plan for a strength trainee, to their targets and preferences, then record it with save_plan.
+
+- Hit the daily targets you're given (calories and protein especially) reasonably closely on each day.
+- Respect the person's answers absolutely: build around the foods they enjoy, lean HEAVILY on the ingredients they say they already have on hand, and never include anything they said to avoid (allergies, dislikes, or a diet style like vegetarian/halal). An allergy is a hard constraint — do not include it even in trace amounts.
+- If they gave a goal bodyweight above or below where they are now, bias the plan's calories in that direction within the target you were given — a touch leaner for weight loss, a touch more for a gain — but keep protein high either way.
+- Use realistic, ordinary, repeatable meals a lifter would actually cook or buy — not a nutritionist's fantasy. Honor their stated cooking effort (quick and simple vs. happy to cook).
+- Follow the requested meal structure (with or without snacks). Vary days enough to not be monotonous, but keep it practical and reuse staple ingredients across days so the shopping list stays short.
+- Fill kcal, protein, carbs, fat, sugar, sodium, fiber and cholesterol for every meal with sound estimates. Since you are designing these meals, every field is your own estimate — put every field name in each meal's estimated[] list.
+
+Call save_plan with the full cycle.`;
+
+function parsePlan(response) {
+  const call = response.content.find((b) => b.type === "tool_use" && b.name === "save_plan");
+  if (!call || !call.input) throw new Error("The model returned no plan.");
+  return call.input;
+}
+
+// Build the user content block for a parse — pasted text, an image/screenshot,
+// or a PDF document. A PDF rides in as a `document` block; an image as `image`.
+function planSourceContent({ text, image }) {
+  const content = [];
+  if (image) {
+    if (image.mediaType === "application/pdf") {
+      content.push({ type: "document", source: { type: "base64", media_type: "application/pdf", data: image.data } });
+    } else {
+      content.push({ type: "image", source: { type: "base64", media_type: image.mediaType, data: image.data } });
+    }
+  }
+  content.push({
+    type: "text",
+    text: `${image ? "Read the meal plan in the attached file and " : "Here is my meal plan:\n\n" + (text || "") + "\n\n"}Convert it into the structured schedule and call save_plan. Estimate and flag any macro the plan doesn't state.`,
+  });
+  return content;
+}
+
+export async function parseMealPlan({ apiKey, model = DEFAULT_MODEL, text, image }) {
+  if (!text?.trim() && !image) throw new Error("Nothing to read — paste your plan or attach a file.");
+  const anthropic = await client(apiKey);
+  const response = await anthropic.messages.create({
+    model,
+    max_tokens: 8000,
+    system: PLAN_PARSE_SYSTEM,
+    messages: [{ role: "user", content: planSourceContent({ text, image }) }],
+    tools: [PLAN_TOOL],
+    tool_choice: { type: "tool", name: "save_plan" },
+  });
+  return parsePlan(response);
+}
+
+export async function generateMealPlan({
+  apiKey, model = DEFAULT_MODEL,
+  kcal, protein, goal, currentWeight, goalWeight, likes, onHand, avoid, snacks = true, effort, days = 7,
+}) {
+  const anthropic = await client(apiKey);
+  const lines = [
+    kcal ? `Daily calories: about ${Math.round(kcal)} kcal.` : "Choose a sensible daily calorie level for the goal.",
+    protein ? `Daily protein: at least ${Math.round(protein)} g.` : null,
+    goal ? `Goal: ${goal}.` : null,
+    currentWeight && goalWeight
+      ? `They weigh about ${Math.round(currentWeight)} lb now and want to reach ${Math.round(goalWeight)} lb.`
+      : goalWeight ? `Target bodyweight: ${Math.round(goalWeight)} lb.` : null,
+    likes?.trim() ? `Foods they enjoy: ${likes.trim()}` : null,
+    onHand?.trim() ? `Already have on hand — build around these: ${onHand.trim()}` : null,
+    avoid?.trim() ? `Avoid entirely (allergies / dislikes / diet): ${avoid.trim()}` : null,
+    `Meal structure: breakfast, lunch and dinner${snacks ? ", plus one or two snacks" : ", no snacks"}.`,
+    effort === "quick" ? "Keep meals quick and simple." : effort === "cook" ? "They're happy to cook — more involved meals are fine." : null,
+    `Design a ${days}-day repeating cycle with some variety.`,
+  ].filter(Boolean).join("\n");
+
+  const response = await anthropic.messages.create({
+    model,
+    max_tokens: 8000,
+    system: PLAN_GEN_SYSTEM,
+    messages: [{ role: "user", content: `Build me a meal plan.\n\n${lines}\n\nThen call save_plan with the full cycle.` }],
+    tools: [PLAN_TOOL],
+    tool_choice: { type: "tool", name: "save_plan" },
+  });
+  return parsePlan(response);
 }
 
 // ---- 3. the coach -----------------------------------------------------

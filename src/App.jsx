@@ -28,6 +28,7 @@ import {
   loadTheme, saveTheme, loadWeeklySeen, saveWeeklySeen, loadWeighNudge, saveWeighNudge,
   loadPhotoNudge, savePhotoNudge,
   loadProteinAlerts, saveProteinAlerts, loadProteinNotified, saveProteinNotified,
+  loadMealPlan, saveMealPlan,
 } from "./lib/storage.js";
 import { downloadBackup, backupReminderDue, monthKeyOf } from "./lib/backup.js";
 import { estimateTDEE, resolveTargets, weightTrend, bestE1RM, e1rm, shiftKey, daysBetween, mealTotals, weeklySummary, waterTargetOz, coachContext, proteinCadence, DEFAULT_TARGETS } from "./lib/nutrition.js";
@@ -49,6 +50,9 @@ import MuscleMap from "./components/MuscleMap.jsx";
 import MuscleTargetModal from "./components/MuscleTargetModal.jsx";
 import WeeklySummaryModal from "./components/WeeklySummaryModal.jsx";
 import CopyMealsModal from "./components/CopyMealsModal.jsx";
+import MealPlanCard from "./components/MealPlanCard.jsx";
+import MealPlanModal from "./components/MealPlanModal.jsx";
+import { plannedToLogged } from "./lib/mealplan.js";
 import Confetti from "./components/Confetti.jsx";
 import Icon from "./components/Icon.jsx";
 
@@ -82,6 +86,7 @@ export default function App() {
   const [showPhotos, setShowPhotos] = useState(false);
   const [weights, setWeights] = useState({});
   const [targets, setTargets] = useState(DEFAULT_TARGETS);
+  const [mealPlan, setMealPlan] = useState(null);
   const [apiKey, setApiKey] = useState(() => loadApiKey());
   const [model, setModel] = useState(() => loadModel() || DEFAULT_MODEL);
   const [wxKey, setWxKey] = useState(() => loadWxKey());
@@ -129,6 +134,7 @@ export default function App() {
     setPhotos(loadPhotos(me));
     setWeights(loadWeights(me));
     setTargets(loadTargets(me) || DEFAULT_TARGETS);
+    setMealPlan(loadMealPlan(me));
   }, [me]);
 
   const finishSetup = (newPlan, personId, baseline = null) => {
@@ -190,6 +196,8 @@ export default function App() {
       setWeights={setWeights}
       targets={targets}
       setTargets={setTargets}
+      mealPlan={mealPlan}
+      setMealPlan={setMealPlan}
       apiKey={apiKey}
       model={model}
       onSetApiKey={(k) => { saveApiKey(k); setApiKey(k); }}
@@ -267,7 +275,7 @@ function Trainer({
   plan, me, selected, setSelected, progress, setProgress, logs, setLogs,
   meals, setMeals, favMeals, setFavMeals, subs, setSubs, extras, setExtras, water, setWater,
   supps, setSupps, suppLog, setSuppLog, photos, setPhotos, showPhotos, setShowPhotos,
-  weights, setWeights, targets, setTargets,
+  weights, setWeights, targets, setTargets, mealPlan, setMealPlan,
   apiKey, model, onSetApiKey, onSetModel, wxKey, onSetWxKey, travel, onSetTravel,
   openLog, setOpenLog, timer, setTimer, video, setVideo,
   showHistory, setShowHistory,
@@ -275,6 +283,8 @@ function Trainer({
 }) {
   const [tab, setTab] = useState("train");
   const [showCopyMeals, setShowCopyMeals] = useState(false); // the copy/move-a-day's-meals picker
+  const [showPlanModal, setShowPlanModal] = useState(false); // the import/generate flow
+  const [planView, setPlanView] = useState(true); // Plan card vs the normal log, when a plan exists
   const [showCoach, setShowCoach] = useState(false); // the AI coach — reachable from any tab
   // The Fuel compose form — including its in-flight loading state — lives here
   // (not in FuelCard) so a web/API lookup keeps running and stays visible when
@@ -611,6 +621,40 @@ function Trainer({
       [selected]: (meals[selected] || []).map((m) => (m.id === id ? { ...m, ...fields } : m)),
     });
 
+  // ---- meal plan (optional) ----
+  const persistMealPlan = (next) => { setMealPlan(next); saveMealPlan(me, next); };
+
+  // Check a planned meal off (log it) or un-check it (remove the logged copy).
+  // The checkbox reads from the log — a logged meal carrying this planMealId is
+  // "eaten" — so this only has to add or remove that meal. Logs onto the day the
+  // plan card is showing, which is the selected day.
+  const togglePlanMeal = (planned, checked) => {
+    const dayMeals = meals[selected] || [];
+    if (checked) {
+      const logged = plannedToLogged(planned, {
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        time: new Date().toTimeString().slice(0, 5),
+      });
+      persistMeals({ ...meals, [selected]: [...dayMeals, logged] });
+    } else {
+      const rest = dayMeals.filter((m) => m.planMealId !== planned.id);
+      const next = { ...meals };
+      if (rest.length) next[selected] = rest; else delete next[selected];
+      persistMeals(next);
+    }
+  };
+
+  const savePlanFromImport = (planObj) => {
+    persistMealPlan(planObj);
+    setShowPlanModal(false);
+    setPlanView(true);
+  };
+
+  const onManagePlan = (action) => {
+    if (action === "remove") persistMealPlan(null);
+    else if (action === "replace") setShowPlanModal(true);
+  };
+
   // ---- favourite meals ----
   const persistFavs = (next) => { setFavMeals(next); saveFavMeals(me, next); };
 
@@ -621,7 +665,7 @@ function Trainer({
     persistFavs([
       // Keep the itemized breakdown too, so re-logging this later brings the
       // per-food detail back — not just the totals.
-      { id: `fav-${Date.now()}`, name, kcal: meal.kcal, protein: meal.protein, carbs: meal.carbs, fat: meal.fat, sodium: meal.sodium, items: meal.items?.length ? meal.items : undefined },
+      { id: `fav-${Date.now()}`, name, kcal: meal.kcal, protein: meal.protein, carbs: meal.carbs, fat: meal.fat, sugar: meal.sugar, sodium: meal.sodium, fiber: meal.fiber, cholesterol: meal.cholesterol, items: meal.items?.length ? meal.items : undefined },
       ...rest,
     ].slice(0, 24));
   };
@@ -652,7 +696,7 @@ function Trainer({
     addMeal({
       id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       time: new Date().toTimeString().slice(0, 5),
-      name: fav.name, kcal: fav.kcal, protein: fav.protein, carbs: fav.carbs, fat: fav.fat, sodium: fav.sodium,
+      name: fav.name, kcal: fav.kcal, protein: fav.protein, carbs: fav.carbs, fat: fav.fat, sugar: fav.sugar, sodium: fav.sodium, fiber: fav.fiber, cholesterol: fav.cholesterol,
       source: "favorite",
       items: fav.items?.length ? fav.items : undefined,
     });
@@ -663,7 +707,7 @@ function Trainer({
     addMeal({
       id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       time: new Date().toTimeString().slice(0, 5),
-      name: m.name, kcal: m.kcal, protein: m.protein, carbs: m.carbs, fat: m.fat, sodium: m.sodium,
+      name: m.name, kcal: m.kcal, protein: m.protein, carbs: m.carbs, fat: m.fat, sugar: m.sugar, sodium: m.sodium, fiber: m.fiber, cholesterol: m.cholesterol,
       source: m.source && m.source !== "manual" ? m.source : "history",
       items: m.items?.length ? m.items : undefined,
     });
@@ -1367,6 +1411,51 @@ function Trainer({
           <span style={{ color: "var(--text-faint)" }}>· {selected.slice(5).replace("-", "/")}</span>
           {agenda.isRest && <span style={{ color: "var(--text-faint)" }}>· rest day</span>}
         </div>
+
+        {/* meal-plan controls: a Plan/Log toggle when a plan is active, otherwise
+            the (optional) way in. Nothing here changes normal logging — with no
+            plan and the toggle untouched, the Fuel tab is exactly as before. */}
+        {mealPlan ? (
+          <div style={{ display: "flex", gap: 2, background: "var(--surface)", border: "1px solid var(--border-hi)", borderRadius: 12, padding: 4, marginBottom: 14 }}>
+            {[["plan", "Plan"], ["log", "Log"]].map(([id, label]) => {
+              const on = (id === "plan") === planView;
+              return (
+                <button
+                  key={id}
+                  onClick={() => setPlanView(id === "plan")}
+                  style={{ flex: 1, fontFamily: "inherit", fontSize: 13, fontWeight: 600, cursor: "pointer", padding: "8px 10px", borderRadius: 9, border: "none", background: on ? "rgba(129,140,248,.12)" : "transparent", color: on ? ACCENT : "var(--text-dim)", boxShadow: on ? "inset 0 0 0 1px rgba(129,140,248,.4)" : "none" }}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+        ) : !agenda.isRest && (
+          <button
+            onClick={() => setShowPlanModal(true)}
+            style={{ ...S.statsBtn, width: "100%", justifyContent: "center", padding: "11px 12px", marginBottom: 14, fontSize: 13 }}
+          >
+            <Icon name="utensils" size={15} /> Follow a meal plan
+          </button>
+        )}
+
+        {mealPlan && planView ? (
+          <MealPlanCard
+            plan={mealPlan}
+            dayMeals={meals[selected] || []}
+            selected={selected}
+            isToday={selected === today}
+            water={water[selected] || 0}
+            waterTarget={waterTarget}
+            onAddWater={addWater}
+            onToggleMeal={togglePlanMeal}
+            onLogOffPlan={() => setPlanView(false)}
+            onRemoveOffPlan={removeMeal}
+            onOpenLog={() => setPlanView(false)}
+            onManage={onManagePlan}
+            onOpenInsights={() => setTab("insights")}
+          />
+        ) : (
         <FuelCard
           meals={meals[selected]}
           allMeals={meals}
@@ -1399,7 +1488,20 @@ function Trainer({
           onOpenInsights={() => setTab("insights")}
           onCopyDay={() => setShowCopyMeals(true)}
         />
+        )}
       </>
+      )}
+
+      {showPlanModal && (
+        <MealPlanModal
+          apiKey={apiKey}
+          model={model}
+          today={today}
+          targets={resolvedTargets}
+          bodyweight={bodyweight}
+          onSave={savePlanFromImport}
+          onClose={() => setShowPlanModal(false)}
+        />
       )}
 
       {showCopyMeals && (

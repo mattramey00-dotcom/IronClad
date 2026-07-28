@@ -79,13 +79,18 @@ export function windowKeys(endKey, days) {
 
 // ---- meals -----------------------------------------------------------
 
-export const EMPTY_TOTALS = { kcal: 0, protein: 0, carbs: 0, fat: 0, sodium: 0 };
+export const EMPTY_TOTALS = { kcal: 0, protein: 0, carbs: 0, fat: 0, sugar: 0, sodium: 0, fiber: 0, cholesterol: 0 };
 
-// The FDA Daily Value for sodium, in mg. A neutral label reference — the same
-// "2,300 mg" printed on every nutrition panel — not a personal prescription.
-// Active, heavy-sweating people often need more; anyone with a medical reason to
-// limit sodium should follow their clinician, not this number.
+// The FDA Daily Values, in the units each is logged in. Neutral label references
+// — the same numbers printed on every nutrition panel — not personal
+// prescriptions. Active, heavy-sweating people often need more sodium; anyone
+// with a medical reason to limit any of these should follow their clinician, not
+// these numbers. Sodium/sugar/cholesterol are ceilings to stay under; fiber is a
+// floor to reach.
 export const SODIUM_DV_MG = 2300;
+export const SUGAR_DV_G = 50;      // added-sugars Daily Value
+export const FIBER_DV_G = 28;      // dietary-fiber Daily Value — a target, not a cap
+export const CHOLESTEROL_DV_MG = 300;
 
 export function mealTotals(list) {
   return (list || []).reduce(
@@ -94,7 +99,12 @@ export function mealTotals(list) {
       protein: acc.protein + (Number(m.protein) || 0),
       carbs: acc.carbs + (Number(m.carbs) || 0),
       fat: acc.fat + (Number(m.fat) || 0),
+      // Added later than the four above — older logged meals don't carry them, so
+      // a missing value is simply zero and never a silent gap in the day's math.
+      sugar: acc.sugar + (Number(m.sugar) || 0),
       sodium: acc.sodium + (Number(m.sodium) || 0),
+      fiber: acc.fiber + (Number(m.fiber) || 0),
+      cholesterol: acc.cholesterol + (Number(m.cholesterol) || 0),
     }),
     { ...EMPTY_TOTALS },
   );

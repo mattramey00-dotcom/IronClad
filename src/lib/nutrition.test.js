@@ -37,6 +37,19 @@ describe("mealTotals", () => {
     expect(mealTotals(null).kcal).toBe(0);
     expect(mealTotals([]).sodium).toBe(0);
   });
+
+  it("sums sugar, fiber and cholesterol, and treats older meals without them as zero", () => {
+    const t = mealTotals([
+      { kcal: 500, protein: 40, carbs: 50, fat: 10, sugar: 8, sodium: 600, fiber: 6, cholesterol: 120 },
+      { kcal: 300, protein: 20, carbs: 30, fat: 5 }, // an older entry, before these stats existed
+    ]);
+    expect(t.sugar).toBe(8);
+    expect(t.fiber).toBe(6);
+    expect(t.cholesterol).toBe(120);
+    // the four originals still add across both meals
+    expect(t.kcal).toBe(800);
+    expect(t.carbs).toBe(80);
+  });
 });
 
 describe("bmi", () => {
