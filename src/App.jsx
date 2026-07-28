@@ -36,6 +36,7 @@ import { S } from "./styles.js";
 import Demo from "./components/Demo.jsx";
 import { TimerModal, VideoModal } from "./components/Modals.jsx";
 import ExerciseModal from "./components/ExerciseModal.jsx";
+import CircuitBlock from "./components/CircuitBlock.jsx";
 import ExerciseGif, { preloadGifs, allGifIds } from "./components/ExerciseGif.jsx";
 import Hint from "./components/Hint.jsx";
 import PhotosModal from "./components/PhotosModal.jsx";
@@ -405,6 +406,7 @@ function Trainer({
     let have = 0;
     for (const k in progress) {
       if (!progress[k] || !k.startsWith(prefix)) continue;
+      if (k.includes("##r")) continue; // per-round circuit marks — the station's plain key counts
       const blk = k.slice(prefix.length).split("::")[0];
       if (blk === "Added" || blk === "Extra") continue; // accessory work, not the plan
       have++;
@@ -484,6 +486,21 @@ function Trainer({
   const toggle = (block, name) => {
     const k = doneKey(block, name);
     persistProgress({ ...progress, [k]: !progress[k] });
+  };
+
+  // Circuit progress — a station is done per round, so it needs its own keys.
+  // The station's plain doneKey (which the day-completion bar counts) flips true
+  // only once it's been checked in every round.
+  const circuitKey = (block, name, round) => `${selected}::${block}::${name}##r${round}`;
+  const isCircuitDone = (block, name, round) => !!progress[circuitKey(block, name, round)];
+  const toggleCircuit = (block, name, round, rounds) => {
+    const k = circuitKey(block, name, round);
+    const next = { ...progress };
+    if (next[k]) delete next[k]; else next[k] = true;
+    const allRounds = Array.from({ length: rounds }, (_, i) => i + 1).every((r) => next[circuitKey(block, name, r)]);
+    const mk = doneKey(block, name);
+    if (allRounds) next[mk] = true; else delete next[mk];
+    persistProgress(next);
   };
 
   // Finish an exercise from its modal: apply its master check, then open the
@@ -858,6 +875,8 @@ function Trainer({
   const resetDay = () => {
     const next = { ...progress };
     flatExercises.forEach((f) => delete next[doneKey(f.blockName, f.ex.n)]);
+    // also drop any per-round circuit marks for this day
+    Object.keys(next).forEach((k) => { if (k.startsWith(`${selected}::`) && k.includes("##r")) delete next[k]; });
     persistProgress(next);
   };
 
@@ -1223,7 +1242,18 @@ function Trainer({
             <div style={S.blockNote}>{block.note}</div>
           )}
 
-          {block.exercises.map((raw, ei) => {
+          {block.circuit ? (
+            <CircuitBlock
+              rounds={block.circuit.rounds}
+              restSecs={block.circuit.restSecs}
+              stations={block.exercises.map((raw) => { const ex = resolveEx(raw); return { ex }; })}
+              isStationDone={(name, round) => isCircuitDone(block.name, name, round)}
+              onToggleStation={(name, round) => toggleCircuit(block.name, name, round, block.circuit.rounds)}
+              onOpenEx={(ex) => setOpenEx({ blockName: block.name, ex, circuit: true })}
+              onStartTimer={(seconds, label) => setTimer({ seconds, label })}
+            />
+          ) : (
+          block.exercises.map((raw, ei) => {
             const ex = resolveEx(raw);
             const done = isDone(block.name, ex.n);
             const tSession = sessionOn(ex.n, selected);
@@ -1303,7 +1333,8 @@ function Trainer({
                 )}
               </div>
             );
-          })}
+          })
+          )}
         </div>
       ))}
 
@@ -1413,6 +1444,7 @@ function Trainer({
           key={`${openEx.blockName}::${openEx.ex.n}`}
           ex={openEx.ex}
           blockName={openEx.blockName}
+          circuit={!!openEx.circuit}
           isDone={isDone(openEx.blockName, openEx.ex.n)}
           todaySession={sessionOn(openEx.ex.n, selected)}
           lastSession={lastSession(openEx.ex.n)}

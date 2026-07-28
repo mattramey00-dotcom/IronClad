@@ -206,7 +206,7 @@ function BarLoader({ w, setW }) {
 }
 
 export default function ExerciseModal({
-  ex, blockName, isDone, todaySession, lastSession, pr, origName, subbed, onSwap, muscles = [], video,
+  ex, blockName, circuit = false, isDone, todaySession, lastSession, pr, origName, subbed, onSwap, muscles = [], video,
   rest, restPref, onSetRestPref, onCloseRest, wxKey,
   onLogSet, onStartRest, onStartTimer, onOpenVideo, onMarkDone, onRemoveLastSet, onUnmarkDone, onCelebrate, onComplete, onClose,
 }) {
@@ -443,9 +443,15 @@ export default function ExerciseModal({
                 <Icon name="timer" size={15} /> Start {clock(ex.timer)} timer
               </button>
             )}
-            <button style={{ ...S.btnAccent, width: "100%", marginTop: 4 }} onClick={() => onComplete(blockName, ex.n)}>
-              Mark complete
-            </button>
+            {/* Circuit stations are checked off per round in the circuit list, not
+                here — so this view is just the movement, not a completion. */}
+            {circuit ? (
+              <div style={ST.hint}>Check this station off for each round back in the circuit.</div>
+            ) : (
+              <button style={{ ...S.btnAccent, width: "100%", marginTop: 4 }} onClick={() => onComplete(blockName, ex.n)}>
+                Mark complete
+              </button>
+            )}
           </>
         )}
 

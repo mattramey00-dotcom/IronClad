@@ -405,6 +405,10 @@ export const WORKOUTS = [
     blocks: [
       {
         name: "Circuit — 4 rounds (90s rest)",
+        // A circuit, not straight sets: you run all six stations once (a round),
+        // rest, then repeat. The circuit UI tracks the round you're on and rests
+        // between rounds rather than checking each move off just once.
+        circuit: { rounds: 4, restSecs: 90 },
         exercises: [
           { n: "Dumbbell Thrusters", s: "12 reps", d: "press", eq: EQ.DUMBBELL },
           { n: "Barbell Deadlift", s: "8 reps", d: "hinge", eq: EQ.BARBELL },
