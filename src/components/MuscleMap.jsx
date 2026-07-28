@@ -48,21 +48,25 @@ function activeSlugs(muscles, table) {
   return out;
 }
 
-function View({ parts, active }) {
+// Two tiers of highlight so the figure mirrors the text: the primary mover (the
+// blue word) lights bright, the assisting muscles a dimmer accent, everything
+// else the idle musculature.
+function View({ parts, active, primary }) {
   return parts
     .filter((p) => !SKIP.has(p.slug))
     .map((p) => {
+      const isPrimary = primary.has(p.slug);
       const on = active.has(p.slug);
       const ds = [...(p.path.common || []), ...(p.path.left || []), ...(p.path.right || [])];
       return (
-        <g key={p.slug} fill={on ? ACCENT : MUSCLE_IDLE} opacity={on ? 0.95 : 1}>
+        <g key={p.slug} fill={isPrimary || on ? ACCENT : MUSCLE_IDLE} opacity={isPrimary ? 0.98 : on ? 0.5 : 1}>
           {ds.map((d, i) => <path key={i} d={d} />)}
         </g>
       );
     });
 }
 
-function Figure({ viewBox, outline, parts, active, height, label }) {
+function Figure({ viewBox, outline, parts, active, primary, height, label }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
       <svg viewBox={viewBox} height={height} style={{ display: "block" }} role="img" aria-label={`${label} muscles`}>
@@ -74,7 +78,7 @@ function Figure({ viewBox, outline, parts, active, height, label }) {
           strokeLinejoin="round"
           vectorEffect="non-scaling-stroke"
         />
-        <View parts={parts} active={active} />
+        <View parts={parts} active={active} primary={primary} />
       </svg>
       <span style={{ fontSize: 9, letterSpacing: 1, textTransform: "uppercase", color: "var(--text-faint)" }}>{label}</span>
     </div>
@@ -85,6 +89,14 @@ export default function MuscleMap({ muscles = [], height = 92 }) {
   const frontActive = activeSlugs(muscles, FRONT_FOR);
   const backActive = activeSlugs(muscles, BACK_FOR);
 
+  // The primary mover — the first listed muscle, the one shown in blue in the
+  // text — lights brightest. A full-body move has no single primary, so all of
+  // its worked muscles read as primary (bright) rather than dimmed.
+  const isFull = muscles.includes("fullbody");
+  const primaryTok = muscles[0];
+  const frontPrimary = isFull ? frontActive : activeSlugs(primaryTok ? [primaryTok] : [], FRONT_FOR);
+  const backPrimary = isFull ? backActive : activeSlugs(primaryTok ? [primaryTok] : [], BACK_FOR);
+
   // Render only the side that has something lit; if somehow neither does, show
   // both so the row never collapses to nothing.
   let showFront = frontActive.size > 0;
@@ -94,10 +106,10 @@ export default function MuscleMap({ muscles = [], height = 92 }) {
   return (
     <div style={{ display: "flex", gap: 12, flex: "0 0 auto", alignItems: "flex-start" }}>
       {showFront && (
-        <Figure viewBox="0 140 724 1240" outline={OUTLINE_FRONT} parts={bodyFront} active={frontActive} height={height} label="Front" />
+        <Figure viewBox="0 140 724 1240" outline={OUTLINE_FRONT} parts={bodyFront} active={frontActive} primary={frontPrimary} height={height} label="Front" />
       )}
       {showBack && (
-        <Figure viewBox="724 140 724 1240" outline={OUTLINE_BACK} parts={bodyBack} active={backActive} height={height} label="Back" />
+        <Figure viewBox="724 140 724 1240" outline={OUTLINE_BACK} parts={bodyBack} active={backActive} primary={backPrimary} height={height} label="Back" />
       )}
     </div>
   );
