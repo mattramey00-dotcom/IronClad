@@ -28,7 +28,7 @@ import {
   loadTheme, saveTheme, loadWeeklySeen, saveWeeklySeen, loadWeighNudge, saveWeighNudge,
   loadPhotoNudge, savePhotoNudge,
   loadProteinAlerts, saveProteinAlerts, loadProteinNotified, saveProteinNotified,
-  loadMealPlan, saveMealPlan,
+  loadMealPlan, saveMealPlan, loadTuneTraining, saveTuneTraining,
 } from "./lib/storage.js";
 import { downloadBackup, backupReminderDue, monthKeyOf } from "./lib/backup.js";
 import { estimateTDEE, resolveTargets, weightTrend, bestE1RM, e1rm, shiftKey, daysBetween, mealTotals, weeklySummary, waterTargetOz, coachContext, proteinCadence, DEFAULT_TARGETS } from "./lib/nutrition.js";
@@ -54,6 +54,7 @@ import MealPlanCard from "./components/MealPlanCard.jsx";
 import MealPlanModal from "./components/MealPlanModal.jsx";
 import UpdateBanner from "./components/UpdateBanner.jsx";
 import { plannedToLogged } from "./lib/mealplan.js";
+import { adaptExercise, goalTuneNote } from "./lib/training.js";
 import { buildLabel } from "./lib/version.js";
 import Confetti from "./components/Confetti.jsx";
 import Icon from "./components/Icon.jsx";
@@ -290,6 +291,11 @@ function Trainer({
   const [showCopyMeals, setShowCopyMeals] = useState(false); // the copy/move-a-day's-meals picker
   const [showPlanModal, setShowPlanModal] = useState(false); // the import/generate flow
   const [planView, setPlanView] = useState(true); // Plan card vs the normal log, when a plan exists
+  // Whether the nutrition goal also tunes the training prescription (device pref).
+  const [tuneTraining, setTuneTrainingState] = useState(() => loadTuneTraining());
+  const setTuneTraining = (v) => { setTuneTrainingState(v); saveTuneTraining(v); };
+  // The goal id drives the tuning: cut · recomp · maintain · gain (recomp default).
+  const goalId = targets?.goal || "recomp";
   const [showCoach, setShowCoach] = useState(false); // the AI coach — reachable from any tab
   // The Fuel compose form — including its in-flight loading state — lives here
   // (not in FuelCard) so a web/API lookup keeps running and stays visible when
@@ -434,9 +440,12 @@ function Trainer({
   // One place resolves a raw program exercise into what you actually train:
   // your personal substitution first, then the machine you're on, then the
   // weight-free swap. Used everywhere exercises are drawn so they all agree.
+  // ...then the goal tuning (sets/reps only). Last in the chain so it bends the
+  // prescription of whatever movement you actually end up doing — your sub, the
+  // machine swap, the travel version — never which movement that is.
   const resolveEx = useCallback(
-    (raw) => forTravel(forMachine(forSub(raw, subs), machine), travel),
-    [subs, machine, travel],
+    (raw) => adaptExercise(forTravel(forMachine(forSub(raw, subs), machine), travel), goalId, tuneTraining),
+    [subs, machine, travel, goalId, tuneTraining],
   );
   // The exercises in render order. Lets the exercise modal advance to the next
   // one when a set finishes an exercise.
@@ -1276,6 +1285,16 @@ function Trainer({
         </Hint>
       )}
 
+      {/* Goal tuning tag — so the sets/reps differing from the base program is
+          transparent, never a mystery. Only on training days, and only when the
+          goal actually bends the numbers (cut/build with tuning on). */}
+      {blocks.length > 0 && goalTuneNote(goalId, tuneTraining) && (
+        <div style={{ display: "inline-flex", alignItems: "center", gap: 7, margin: "0 0 12px", padding: "6px 11px", borderRadius: 999, background: "var(--surface-2)", border: "1px solid var(--border-hi)", fontSize: 11.5, color: "var(--text-mute)" }}>
+          <Icon name="dumbbell" size={13} style={{ color: ACCENT }} />
+          {goalTuneNote(goalId, tuneTraining)}
+        </div>
+      )}
+
       {/* Blocks — the prescribed plan, plus any accessory work you added */}
       {dayBlocks.map((block, bi) => (
         <div key={bi} style={S.block}>
@@ -1618,6 +1637,9 @@ function Trainer({
           onExportMealsCSV={exportMealsCSV}
           backupBusy={backupBusy}
           lastBackup={lastBackup}
+          tuneTraining={tuneTraining}
+          onSetTuneTraining={setTuneTraining}
+          goalLabel={resolvedTargets.goal.label}
           onClose={() => setShowSettings(false)}
         />
       )}
@@ -1732,7 +1754,7 @@ function PartnerCard({ agenda, other }) {
 }
 
 // ---- settings ---------------------------------------------------------
-function SettingsModal({ plan, me, apiKey, model, wxKey, onSetWxKey, onSetApiKey, onSetModel, onSwitchPerson, onExportBackup, onExportMealsCSV, backupBusy, lastBackup, onClose }) {
+function SettingsModal({ plan, me, apiKey, model, wxKey, onSetWxKey, onSetApiKey, onSetModel, onSwitchPerson, onExportBackup, onExportMealsCSV, backupBusy, lastBackup, tuneTraining, onSetTuneTraining, goalLabel, onClose }) {
   const [copied, setCopied] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
   const [keyDraft, setKeyDraft] = useState(apiKey);
@@ -1917,9 +1939,33 @@ function SettingsModal({ plan, me, apiKey, model, wxKey, onSetWxKey, onSetApiKey
           gives up the most. Given the estimate is already ±20–30%, Opus is the one worth paying for.
         </div>
 
+        {/* Goal-based training tuning — same movements & rotation, goal bends the
+            sets/reps. A device preference, on by default. */}
+        <label style={{ ...S.label, marginTop: 22 }}>Training</label>
+        <button
+          onClick={() => onSetTuneTraining(!tuneTraining)}
+          role="switch"
+          aria-checked={tuneTraining}
+          style={{
+            width: "100%", display: "flex", alignItems: "center", gap: 12, textAlign: "left",
+            background: "var(--surface-2)", border: "1px solid var(--border-hi)", borderRadius: 12,
+            padding: "12px 14px", cursor: "pointer", fontFamily: "inherit", color: "inherit",
+          }}
+        >
+          <span style={{ flex: 1, minWidth: 0 }}>
+            <span style={{ display: "block", fontSize: 14, fontWeight: 600, color: "var(--text)" }}>Match training to my goal</span>
+            <span style={{ display: "block", fontSize: 12, color: "var(--text-dim)", marginTop: 3, lineHeight: 1.45 }}>
+              Same movements and schedule — your {String(goalLabel || "goal").toLowerCase()} goal shifts the sets and reps (rest follows). Off means the goal is nutrition-only.
+            </span>
+          </span>
+          <span style={{ flex: "0 0 auto", width: 44, height: 26, borderRadius: 999, padding: 3, background: tuneTraining ? ACCENT : "var(--border-hi)", transition: "background .2s ease" }}>
+            <span style={{ display: "block", width: 20, height: 20, borderRadius: "50%", background: "#fff", transform: tuneTraining ? "translateX(18px)" : "translateX(0)", transition: "transform .2s ease" }} />
+          </span>
+        </button>
+
         {/* Backup — the only way back from a cleared phone, since nothing is
             stored off-device. Restore lives on the first-run setup screen. */}
-        <label style={{ ...S.label, marginTop: 20 }}>Back up your data</label>
+        <label style={{ ...S.label, marginTop: 22 }}>Back up your data</label>
         <button
           style={{ ...S.btnGhost, width: "100%", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 7 }}
           onClick={onExportBackup}

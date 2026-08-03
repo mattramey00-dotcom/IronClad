@@ -251,6 +251,14 @@ export const saveWxKey = (key) => (key ? write("wxkey", key) : remove("wxkey"));
 export const loadTheme = () => (read("theme") === "light" ? "light" : "dark");
 export const saveTheme = (t) => (t === "light" ? write("theme", "light") : remove("theme"));
 
+// ---- goal-based training tuning (this device only) -------------------
+//  Whether the nutrition goal also bends the training prescription (sets/reps).
+//  A device preference, on by default; never part of the shared plan, and it
+//  only reshapes how the same movements are prescribed — never which movements
+//  or the rotation. Stored as an explicit "0" so turning it off survives.
+export const loadTuneTraining = () => read("tunetraining") !== "0";
+export const saveTuneTraining = (on) => write("tunetraining", on ? "1" : "0");
+
 // ---- rest-timer notifications (this device only) ---------------------
 //  Opt-in: whether to fire a system notification when a rest ends, so you get a
 //  buzz without watching the clock. A device preference, not part of the plan.
@@ -324,7 +332,7 @@ export function migrateLegacy(personId) {
 }
 
 export function resetEverything() {
-  ["plan", "me", "apikey", "model", "travel", "wxkey", "lastbackup", "backupnudge", "restnotify", "theme"].forEach(remove);
+  ["plan", "me", "apikey", "model", "travel", "wxkey", "lastbackup", "backupnudge", "restnotify", "theme", "tunetraining"].forEach(remove);
   ["p1", "p2"].forEach((id) => {
     ["progress", "logs", "meals", "weights", "targets", "favmeals", "subs", "extras", "weeklyseen", "water", "supps", "supplog", "weighnudge", "photonudge", "proteinalerts", "proteinnotified", "mealplan"].forEach((k) => remove(`${k}:${id}`));
   });
