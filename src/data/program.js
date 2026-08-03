@@ -239,6 +239,7 @@ export const WORKOUTS = [
             n: "Incline walk",
             s: "10 minutes",
             d: "cardio",
+            timer: 600,
             eq: EQ.CARDIO,
             bike: { n: "Steady ride", s: "12 minutes, moderate resistance" },
           },
@@ -272,6 +273,7 @@ export const WORKOUTS = [
             n: "Steady jog",
             s: "15 minutes",
             d: "cardio",
+            timer: 900,
             eq: EQ.CARDIO,
             bike: { n: "Steady ride", s: "18 minutes, moderate–hard" },
           },
@@ -313,6 +315,7 @@ export const WORKOUTS = [
             n: "Incline walk",
             s: "10 minutes",
             d: "cardio",
+            timer: 600,
             eq: EQ.CARDIO,
             bike: { n: "Easy spin", s: "12 minutes, light resistance" },
           },
@@ -347,6 +350,7 @@ export const WORKOUTS = [
             n: "Walk/jog",
             s: "15 minutes",
             d: "cardio",
+            timer: 900,
             eq: EQ.CARDIO,
             bike: { n: "Steady ride", s: "15–18 minutes" },
           },
@@ -479,8 +483,8 @@ export const TOGETHER = {
 //  Off-day cardio — the run you do on the day you aren't lifting
 // ============================================================
 export const OFF_DAY_CARDIO = {
-  treadmill: { n: "Easy run", s: "20–30 minutes, conversational pace", d: "cardio", eq: EQ.CARDIO },
-  bike: { n: "Easy ride", s: "25–35 minutes, conversational pace", d: "cardio", eq: EQ.CARDIO },
+  treadmill: { n: "Easy run", s: "20–30 minutes, conversational pace", d: "cardio", timer: 1200, eq: EQ.CARDIO },
+  bike: { n: "Easy ride", s: "25–35 minutes, conversational pace", d: "cardio", timer: 1500, eq: EQ.CARDIO },
 };
 
 // ============================================================
@@ -498,8 +502,8 @@ export const MOBILITY = {
   name: "Mobility",
   note: "Easy on purpose — a leg day follows this one. Move, don't train.",
   exercises: [
-    { n: "Light walk", s: "15–20 minutes, easy", d: "cardio", eq: EQ.BODYWEIGHT },
-    { n: "Mobility work", s: "10 minutes", d: "core", eq: EQ.BODYWEIGHT },
+    { n: "Light walk", s: "15–20 minutes, easy", d: "cardio", timer: 900, eq: EQ.BODYWEIGHT },
+    { n: "Mobility work", s: "10 minutes", d: "core", timer: 600, eq: EQ.BODYWEIGHT },
     { n: "Stretching", s: "10–15 minutes", d: "core", timer: 600, eq: EQ.BODYWEIGHT },
   ],
 };

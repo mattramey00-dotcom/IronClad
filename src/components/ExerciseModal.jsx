@@ -28,8 +28,8 @@ const clock = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 // side, biggest plates first. Returns the plates that fit and any weight that a
 // standard set (down to 2.5s) can't make up.
 const PLATE_SIZES = [45, 35, 25, 10, 5, 2.5];
-const BAR_LB = 45;
-const BAR_OPTIONS = [45, 25]; // standard Olympic bar, or a 25 lb training bar
+const BAR_LB = 25; // the bar the loader starts on — a 25 lb training bar
+const BAR_OPTIONS = [25, 45]; // 25 lb training bar (default), or a 45 lb Olympic bar
 function platesPerSide(total, bar = BAR_LB) {
   let per = (total - bar) / 2;
   if (per < 0) return null;
@@ -95,7 +95,7 @@ function DumbbellPicker({ w, setW }) {
   );
 }
 
-// Visual bar loader: pick the bar (45 or 25 lb), then tap a plate disc to add a
+// Visual bar loader: pick the bar (25 or 45 lb), then tap a plate disc to add a
 // pair (total += 2×plate) and the weight box fills in automatically; tap a plate
 // already on the bar to pull it off. The picture is derived from the weight, so
 // typing a number and loading plates stay in sync.
@@ -208,7 +208,7 @@ function BarLoader({ w, setW }) {
 export default function ExerciseModal({
   ex, blockName, circuit = false, isDone, todaySession, lastSession, pr, origName, subbed, onSwap, muscles = [], video,
   rest, restPref, onSetRestPref, onCloseRest, wxKey,
-  onLogSet, onStartRest, onStartTimer, onOpenVideo, onMarkDone, onRemoveLastSet, onUnmarkDone, onCelebrate, onComplete, onClose,
+  onLogSet, onStartRest, onStartTimer, onOpenVideo, onMarkDone, onRemoveLastSet, onUnmarkDone, onComplete, onClose,
 }) {
   const [swapping, setSwapping] = useState(false);
   const [swapName, setSwapName] = useState("");

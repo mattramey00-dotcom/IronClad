@@ -572,10 +572,11 @@ function Trainer({
     next[exName] = entries;
     persistLogs(next);
 
-    // Celebrate a new PR the instant it's logged (today only — no confetti for
-    // back-filling an old session).
+    // Flag a new PR the instant it's logged (today only — not when back-filling
+    // an old session). This shows the PR toast, but NOT confetti — confetti is
+    // reserved for finishing the whole day (see the day-done effect below), so it
+    // never fires mid-workout on an individual exercise.
     if (isNewPR && selected === today) {
-      fireConfetti();
       setPrFlash({ ex: exName, e1rm: Math.round(setE1RM), w: weight, r: reps });
     }
 
@@ -1589,7 +1590,6 @@ function Trainer({
           onMarkDone={markDone}
           onRemoveLastSet={removeLastSet}
           onUnmarkDone={unmarkDone}
-          onCelebrate={fireConfetti}
           onComplete={completeAndAdvance}
           onClose={() => setOpenEx(null)}
         />
@@ -1697,7 +1697,8 @@ function Trainer({
         </Suspense>
       )}
 
-      {/* new-PR toast — fires with the confetti when a set beats your best 1RM */}
+      {/* new-PR toast — a quiet flag when a set beats your best 1RM (no confetti;
+          confetti is saved for finishing the whole day) */}
       {prFlash && (
         <div
           onClick={() => setPrFlash(null)}
