@@ -2,10 +2,15 @@
 // This is intentionally minimal; a designer/dev can swap in
 // Workbox or vite-plugin-pwa for a production-grade strategy.
 
-const CACHE = "ironclad-v3";
+const CACHE = "ironclad-v4";
 
-self.addEventListener("install", (event) => {
-  self.skipWaiting();
+// NOTE: install no longer calls skipWaiting(). When a new worker is deployed it
+// installs and then WAITS, so the app can show an "update available" prompt and
+// only take over when the user taps Reload (which posts SKIP_WAITING below).
+// First-ever install still activates immediately — there's no old worker to wait
+// for — so a fresh visitor isn't blocked.
+self.addEventListener("message", (event) => {
+  if (event.data && event.data.type === "SKIP_WAITING") self.skipWaiting();
 });
 
 self.addEventListener("activate", (event) => {

@@ -52,7 +52,9 @@ import WeeklySummaryModal from "./components/WeeklySummaryModal.jsx";
 import CopyMealsModal from "./components/CopyMealsModal.jsx";
 import MealPlanCard from "./components/MealPlanCard.jsx";
 import MealPlanModal from "./components/MealPlanModal.jsx";
+import UpdateBanner from "./components/UpdateBanner.jsx";
 import { plannedToLogged } from "./lib/mealplan.js";
+import { buildLabel } from "./lib/version.js";
 import Confetti from "./components/Confetti.jsx";
 import Icon from "./components/Icon.jsx";
 
@@ -162,9 +164,11 @@ export default function App() {
     setMe(personId);
   };
 
-  if (!plan || !me) return <Shell><Setup onReady={finishSetup} /></Shell>;
+  if (!plan || !me) return <><UpdateBanner /><Shell><Setup onReady={finishSetup} /></Shell></>;
 
   return (
+    <>
+    <UpdateBanner />
     <Trainer
       plan={plan}
       me={me}
@@ -221,6 +225,7 @@ export default function App() {
       onToggleTheme={toggleTheme}
       onSwitchPerson={(id) => { saveMe(id); setMe(id); }}
     />
+    </>
   );
 }
 
@@ -1957,6 +1962,12 @@ function SettingsModal({ plan, me, apiKey, model, wxKey, onSetWxKey, onSetApiKey
         <button style={{ ...S.btnAccent, width: "100%", marginTop: 10 }} onClick={onClose}>
           Done
         </button>
+
+        {/* which build this phone is running — so "is my update live?" has an
+            answer you can read at a glance. */}
+        <div style={{ textAlign: "center", marginTop: 16, fontSize: 11, color: "var(--text-faint)", letterSpacing: 0.3 }}>
+          IRONCLAD {buildLabel()}
+        </div>
       </div>
     </div>
   );
