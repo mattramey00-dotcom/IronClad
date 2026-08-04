@@ -14,7 +14,7 @@ import {
 } from "./data/program.js";
 import {
   agendaFor, weekAgenda, blocksFor, exercisesFor, dateKey, mondayOf,
-  personById, partnerOf, WORKOUT_SHORTS,
+  personById, partnerOf, WORKOUT_SHORTS, autoOrderRotation,
 } from "./lib/schedule.js";
 import {
   loadPlan, savePlan, loadMe, saveMe, loadProgress, saveProgress,
@@ -109,6 +109,22 @@ export default function App() {
   useEffect(() => {
     navigator.storage?.persist?.().catch(() => {});
   }, []);
+
+  // Keep the rotation optimal. The order is computed once at plan creation and
+  // frozen in storage, so a change to the program's recovery loads (e.g. adding
+  // the HIIT finisher) wouldn't reach an existing plan. autoOrderRotation() is
+  // deterministic and pinned, so recomputing it here re-optimizes the sequence
+  // and BOTH phones arrive at the identical order — no sync needed. Rotation was
+  // never user-editable, so there's nothing personal to preserve.
+  useEffect(() => {
+    if (!plan?.rotation?.length) return;
+    const optimal = autoOrderRotation();
+    if (optimal.length === plan.rotation.length && optimal.join() !== plan.rotation.join()) {
+      const next = { ...plan, rotation: optimal };
+      savePlan(next);
+      setPlan(next);
+    }
+  }, [plan]);
   const [openLog, setOpenLog] = useState(null);
   const [timer, setTimer] = useState(null);
   const [video, setVideo] = useState(null);

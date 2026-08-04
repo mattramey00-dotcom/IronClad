@@ -329,7 +329,10 @@ export const WORKOUTS = [
     subtitle: "Heavy · Low Rep",
     short: "Upper",
     warmup: { treadmill: "Light pressing & rowing to warm joints", bike: "Light pressing & rowing to warm joints" },
-    load: { leg: 0, run: 1, upper: 3 },
+    // run bumped to 3 for the HIIT finisher: it earns this person the treadmill on
+    // a shared day, and it tells the rotation scorer to keep this session out of
+    // the slot right before a hard leg day.
+    load: { leg: 0, run: 3, upper: 3 },
     blocks: [
       {
         name: "Workout",
@@ -344,15 +347,27 @@ export const WORKOUTS = [
         ],
       },
       {
-        name: "Cardio",
+        // The one all-out piece in the rotation — hosted here because legs are
+        // fresh (no lower-body lifts today), so max-effort sprints don't collide
+        // with heavy leg work in the same session or the next one.
+        name: "HIIT Finisher — 8 rounds",
+        note: "All-out. 30 sec sprint, 30 sec easy, ×8 — about 8 minutes. Keep the effort maximal; that's the whole point.",
         exercises: [
           {
-            n: "Walk/jog",
-            s: "15 minutes",
+            n: "Sprint",
+            s: "30 seconds, all-out",
             d: "cardio",
-            timer: 900,
+            timer: 30,
             eq: EQ.CARDIO,
-            bike: { n: "Steady ride", s: "15–18 minutes" },
+            bike: { n: "Hard sprint", s: "30 seconds, max resistance" },
+          },
+          {
+            n: "Recovery jog",
+            s: "30 seconds, easy",
+            d: "cardio",
+            timer: 30,
+            eq: EQ.CARDIO,
+            bike: { n: "Easy spin", s: "30 seconds, light" },
           },
         ],
       },
