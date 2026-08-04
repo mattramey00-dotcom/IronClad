@@ -57,6 +57,7 @@ import { plannedToLogged } from "./lib/mealplan.js";
 import { adaptExercise, goalTuneNote } from "./lib/training.js";
 import { buildLabel } from "./lib/version.js";
 import Confetti from "./components/Confetti.jsx";
+import FireBorder from "./components/FireBorder.jsx";
 import Icon from "./components/Icon.jsx";
 
 // Lazy-loaded because they're the only two screens that pull in Recharts (~150
@@ -307,7 +308,9 @@ function Trainer({
   const [prFlash, setPrFlash] = useState(null); // { ex, e1rm, w, r } — a just-hit PR toast
   const [showMuscleTarget, setShowMuscleTarget] = useState(false); // the tap-a-muscle picker
   const [openEx, setOpenEx] = useState(null); // { blockName, ex } — the focused exercise modal
+  const [prFire, setPrFire] = useState(0); // bump to set the screen edges alight on a PR
   const fireConfetti = () => setCelebrate((c) => c + 1);
+  const fireBorder = () => setPrFire((c) => c + 1);
   useEffect(() => {
     if (!prFlash) return undefined;
     const t = setTimeout(() => setPrFlash(null), 4500);
@@ -578,6 +581,7 @@ function Trainer({
     // never fires mid-workout on an individual exercise.
     if (isNewPR && selected === today) {
       setPrFlash({ ex: exName, e1rm: Math.round(setE1RM), w: weight, r: reps });
+      fireBorder(); // a PR sets the screen edges on fire
     }
 
     // Start the rest clock. Only for real strength sets logged on today — a
@@ -1751,6 +1755,7 @@ function Trainer({
 
       <TabBar tab={tab} setTab={setTab} />
       <Confetti trigger={celebrate} />
+      <FireBorder trigger={prFire} />
     </Shell>
   );
 }
