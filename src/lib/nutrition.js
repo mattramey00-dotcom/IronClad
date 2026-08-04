@@ -844,18 +844,37 @@ export function weeklySummary({ meals, weights, logs, startKey, endKey }) {
   const keys = windowKeys(endKey, 7); // = startKey .. endKey (Mon..Sun)
 
   const trainDates = new Set();
-  let volume = 0;
+  let volume = 0;   // tonnage this week = Σ weight × reps
+  let sets = 0;     // total working sets logged this week
   const prs = [];
+  const strengthDeltas = []; // per-lift est-1RM % change, week vs all prior history
   Object.entries(logs || {}).forEach(([name, entries]) => {
     const inWeek = (entries || []).filter((e) => e.date >= startKey && e.date <= endKey && (e.sets?.length || 0) > 0);
     inWeek.forEach((e) => {
       trainDates.add(e.date);
-      (e.sets || []).forEach((s) => { volume += (Number(s.w) || 0) * (Number(s.r) || 0); });
+      (e.sets || []).forEach((s) => { volume += (Number(s.w) || 0) * (Number(s.r) || 0); sets++; });
     });
     const weekBest = Math.max(0, ...inWeek.map((e) => bestE1RM(e)));
     const priorBest = Math.max(0, ...(entries || []).filter((e) => e.date < startKey).map((e) => bestE1RM(e)));
     if (weekBest > 0 && priorBest > 0 && weekBest > priorBest + 0.01) prs.push(name);
+    // Every lift with prior history contributes its own e1RM move; averaging them
+    // is the week's strength signal (one lift up is noise, the board up is real).
+    if (weekBest > 0 && priorBest > 0) strengthDeltas.push(((weekBest - priorBest) / priorBest) * 100);
   });
+
+  // Last week's tonnage, so the big (and non-intuitive) volume number can be read
+  // as a trend — progressive overload — rather than a scary absolute.
+  const prevStart = shiftKey(startKey, -7);
+  const prevEnd = shiftKey(startKey, -1);
+  let volumePrev = 0;
+  Object.values(logs || {}).forEach((entries) =>
+    (entries || []).forEach((e) => {
+      if (e.date >= prevStart && e.date <= prevEnd)
+        (e.sets || []).forEach((s) => { volumePrev += (Number(s.w) || 0) * (Number(s.r) || 0); });
+    }),
+  );
+  const volumeDeltaPct = volumePrev > 0 ? round(((volume - volumePrev) / volumePrev) * 100) : null;
+  const strengthPct = strengthDeltas.length ? round(mean(strengthDeltas), 1) : null;
 
   const wKeys = keys.filter((k) => Number(weights?.[k]) > 0);
   const bwStart = wKeys.length ? Number(weights[wKeys[0]]) : null;
@@ -871,6 +890,10 @@ export function weeklySummary({ meals, weights, logs, startKey, endKey }) {
     endKey,
     workouts,
     volume: Math.round(volume),
+    volumePrev: Math.round(volumePrev),
+    volumeDeltaPct,
+    sets,
+    strengthPct,
     prs,
     bwStart: bwStart != null ? round(bwStart, 1) : null,
     bwEnd: bwEnd != null ? round(bwEnd, 1) : null,

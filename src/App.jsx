@@ -31,7 +31,7 @@ import {
   loadMealPlan, saveMealPlan, loadTuneTraining, saveTuneTraining,
 } from "./lib/storage.js";
 import { downloadBackup, backupReminderDue, monthKeyOf } from "./lib/backup.js";
-import { estimateTDEE, resolveTargets, weightTrend, bestE1RM, e1rm, shiftKey, daysBetween, mealTotals, weeklySummary, waterTargetOz, coachContext, proteinCadence, DEFAULT_TARGETS } from "./lib/nutrition.js";
+import { estimateTDEE, resolveTargets, weightTrend, bestE1RM, e1rm, shiftKey, daysBetween, mealTotals, weeklySummary, waterTargetOz, coachContext, proteinCadence, DEFAULT_TARGETS, KCAL_PER_LB } from "./lib/nutrition.js";
 import { MODELS, DEFAULT_MODEL } from "./lib/claude.js";
 import { S } from "./styles.js";
 import Demo from "./components/Demo.jsx";
@@ -807,6 +807,36 @@ function Trainer({
     () => resolveTargets(targets, tdee, bodyweight),
     [targets, tdee, bodyweight],
   );
+
+  // The weekly-summary insights that need your targets (which aren't defined
+  // until here). Merged onto `lastWeek` when the recap is shown. Protein
+  // adherence counts the days you cleared your goal; calorie balance is your
+  // average intake measured against your target and the weekly move that gap is
+  // worth. Both stay null until there's a target to measure against.
+  const weeklyExtra = useMemo(() => {
+    if (!lastWeek.hasActivity) return {};
+    const keys = [];
+    for (let k = lastWeek.startKey; k <= lastWeek.endKey; k = shiftKey(k, 1)) keys.push(k);
+
+    let proteinDaysHit = null;
+    if (resolvedTargets?.protein > 0) {
+      proteinDaysHit = keys.filter((k) => (meals?.[k]?.length || 0) > 0 && mealTotals(meals[k]).protein >= resolvedTargets.protein).length;
+    }
+
+    let kcalBalance = null, kcalImpliedLb = null;
+    if (resolvedTargets?.kcal > 0 && lastWeek.avgKcal) {
+      kcalBalance = Math.round(lastWeek.avgKcal - resolvedTargets.kcal);
+      kcalImpliedLb = Math.round(((kcalBalance * 7) / KCAL_PER_LB) * 10) / 10;
+    }
+
+    return {
+      proteinDaysHit,
+      proteinTarget: resolvedTargets?.protein || null,
+      kcalTarget: resolvedTargets?.kcal || null,
+      kcalBalance,
+      kcalImpliedLb,
+    };
+  }, [lastWeek, resolvedTargets, meals]);
 
   // Protein reminder scheduling — when on, arm a one-shot notification for the
   // moment the next dose comes due (last dose + 2 hrs), re-armed whenever today's
@@ -1602,7 +1632,7 @@ function Trainer({
       )}
       {showWeekly && (
         <WeeklySummaryModal
-          summary={lastWeek}
+          summary={{ ...lastWeek, ...weeklyExtra }}
           who={person.name}
           onAddPhoto={() => { dismissWeekly(); setShowPhotos(true); }}
           onClose={dismissWeekly}

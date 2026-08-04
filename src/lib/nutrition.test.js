@@ -13,7 +13,7 @@
 import { describe, it, expect } from "vitest";
 import {
   mealTotals, loggingStreak, weightTrend, estimateTDEE, resolveTargets,
-  bmi, waterTargetOz, intakeStats, shiftKey, proteinCadence,
+  bmi, waterTargetOz, intakeStats, shiftKey, proteinCadence, weeklySummary,
 } from "./nutrition.js";
 
 const TODAY = "2026-01-21";
@@ -220,5 +220,38 @@ describe("proteinCadence", () => {
     const meals = [{ time: "08:00", protein: 90 }, { time: "12:00", protein: 90 }];
     const c = proteinCadence(meals, at(13), 160);
     expect(c.status).toBe("done");
+  });
+});
+
+describe("weeklySummary — volume, sets and trends", () => {
+  const logs = {
+    Squat: [
+      { date: "2026-07-29", sets: [{ w: 100, r: 5 }, { w: 100, r: 5 }] }, // this week: 1,000 lb, 2 sets
+      { date: "2026-07-22", sets: [{ w: 90, r: 5 }] },                     // prior week: 450 lb
+    ],
+  };
+  const s = weeklySummary({ meals: {}, weights: {}, logs, startKey: "2026-07-27", endKey: "2026-08-02" });
+
+  it("sums tonnage and working sets for the week", () => {
+    expect(s.volume).toBe(1000);   // 100×5 + 100×5
+    expect(s.sets).toBe(2);
+    expect(s.workouts).toBe(1);
+  });
+
+  it("compares volume against the prior week", () => {
+    expect(s.volumePrev).toBe(450);
+    expect(s.volumeDeltaPct).toBe(122); // (1000-450)/450 ≈ 122%
+  });
+
+  it("reports the week's estimated-1RM change vs prior history", () => {
+    // e1RM: 100×5 = 116.7 this week vs 90×5 = 105 before → +11.1%
+    expect(s.strengthPct).toBe(11.1);
+    expect(s.prs).toContain("Squat");
+  });
+
+  it("nulls the trends when there's nothing prior to compare", () => {
+    const fresh = weeklySummary({ meals: {}, weights: {}, logs: { Squat: [{ date: "2026-07-29", sets: [{ w: 100, r: 5 }] }] }, startKey: "2026-07-27", endKey: "2026-08-02" });
+    expect(fresh.volumeDeltaPct).toBe(null);
+    expect(fresh.strengthPct).toBe(null);
   });
 });
