@@ -2,7 +2,7 @@
 // This is intentionally minimal; a designer/dev can swap in
 // Workbox or vite-plugin-pwa for a production-grade strategy.
 
-const CACHE = "ironclad-v4";
+const CACHE = "ironclad-v5";
 
 // NOTE: install no longer calls skipWaiting(). When a new worker is deployed it
 // installs and then WAITS, so the app can show an "update available" prompt and
@@ -22,15 +22,23 @@ self.addEventListener("activate", (event) => {
   self.clients.claim();
 });
 
-// Tapping a "Rest's up" notification focuses the app (or opens it).
+// Notification taps. A rest-timer notification just focuses the app. Any tap on
+// the protein reminder — its "Add a meal" button or the reminder itself — opens
+// the add-a-meal flow directly, so there's no landing on Fuel and hunting for
+// the button. The app gets the intent by postMessage when it's already open, or
+// as a ?n= param when it has to be launched.
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
+  const isProtein = event.notification.tag === "ironclad-protein" || event.notification.data?.kind === "protein";
+  const intent = isProtein ? "add-meal" : null; // null = just focus (e.g. the rest timer)
   event.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
       for (const c of clients) {
-        if ("focus" in c) return c.focus();
+        if ("focus" in c) { if (intent) c.postMessage({ type: "notif", intent }); return c.focus(); }
       }
-      if (self.clients.openWindow) return self.clients.openWindow("./");
+      if (self.clients.openWindow) {
+        return self.clients.openWindow(intent === "add-meal" ? "./?n=addmeal" : "./");
+      }
       return undefined;
     })
   );

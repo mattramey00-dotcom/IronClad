@@ -145,7 +145,7 @@ export default function FuelCard({
   // running regardless of this component; because busy/label live in the parent
   // too, coming back mid-search still shows "Searching…" so you know it's
   // working and don't re-fire the call. Wrapper setters keep the rest unchanged.
-  const { mode, draft, editingId, text, busy = false, busyLabel = "Reading the plate…", error = "" } = compose;
+  const { mode, draft, editingId, text, busy = false, busyLabel = "Reading the plate…", error = "", openMenu = false } = compose;
   const apply = (patch) => setCompose((c) => ({ ...c, ...patch }));
   const setMode = (v) => apply({ mode: typeof v === "function" ? v(mode) : v });
   const setDraft = (v) => apply({ draft: typeof v === "function" ? v(draft) : v });
@@ -172,6 +172,17 @@ export default function FuelCard({
       composerRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
     }
   }, [mode, editingId]);
+
+  // The protein reminder can ask to open the "+ Meal" sheet directly (openMenu
+  // rides in on the shared compose state). Honour it once, then clear the flag so
+  // it doesn't re-fire on the next render or tab switch.
+  useEffect(() => {
+    if (openMenu) {
+      setAddMenuOpen(true);
+      setError("");
+      apply({ openMenu: false });
+    }
+  }, [openMenu]);
 
   const hasHistory = Object.values(allMeals || {}).some((l) => l?.length);
 

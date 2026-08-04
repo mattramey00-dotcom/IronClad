@@ -287,6 +287,13 @@ function notifyProtein(doseText) {
       ?.then((reg) => reg.showNotification("Protein time", {
         body, tag: "ironclad-protein", renotify: true,
         icon: "./icon-192.png", badge: "./icon-192.png",
+        data: { kind: "protein" },
+        // An "Add a meal" button opens the add-a-meal flow straight from the
+        // notification. (Platforms without notification-action support, e.g. iOS,
+        // won't show the button; a plain tap on the reminder does the same.)
+        actions: [
+          { action: "add-meal", title: "Add a meal" },
+        ],
       }))
       .catch(() => { try { new Notification("Protein time", { body }); } catch (e) { /* ignore */ } });
   } catch (e) {
@@ -647,6 +654,37 @@ function Trainer({
 
   const addMeal = (meal) =>
     persistMeals({ ...meals, [selected]: [...(meals[selected] || []), meal] });
+
+  // Open the add-a-meal flow straight from the protein reminder: jump to today
+  // on the Fuel tab and pop the "+ Meal" sheet, so the notification IS the add
+  // button — no landing on Fuel and hunting for it. The openMenu flag rides on
+  // the (already-lifted) compose state, which FuelCard watches and then clears.
+  const openAddMeal = () => {
+    setSelected(today);
+    setTab("fuel");
+    setFuelCompose((c) => ({ ...c, mode: null, editingId: null, openMenu: true }));
+  };
+
+  // Route a notification tap (its "Add a meal" button, or a plain tap). A ref
+  // keeps the effect mounted once while always calling the latest handler, and a
+  // one-shot guard stops a cold-open ?n= param from firing twice under
+  // StrictMode's double-mount.
+  const notifRef = useRef(null);
+  notifRef.current = { addMeal: openAddMeal };
+  const notifParamDone = useRef(false);
+  useEffect(() => {
+    if (!notifParamDone.current) {
+      notifParamDone.current = true;
+      const n = new URLSearchParams(window.location.search).get("n");
+      if (n === "addmeal") notifRef.current.addMeal();
+      if (n) window.history.replaceState({}, "", window.location.pathname);
+    }
+    const onMsg = (e) => {
+      if (e.data?.type === "notif" && e.data.intent === "add-meal") notifRef.current.addMeal();
+    };
+    navigator.serviceWorker?.addEventListener?.("message", onMsg);
+    return () => navigator.serviceWorker?.removeEventListener?.("message", onMsg);
+  }, []);
 
   // Fix a logged meal in place — a fat-fingered macro shouldn't mean delete and
   // re-add. Only the edited day is touched.
