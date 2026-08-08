@@ -1179,7 +1179,7 @@ function Trainer({
           <div style={{ display: "flex", flexDirection: "column", gap: 6, flex: "0 0 auto" }}>
             <button
               style={{ background: "#E0B44A", border: "none", color: "#2a2410", borderRadius: 10, padding: "7px 14px", fontSize: 12.5, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}
-              onClick={() => { dismissProteinBanner(); setTab("fuel"); }}
+              onClick={() => { dismissProteinBanner(); openAddMeal(); }}
             >
               Log
             </button>
