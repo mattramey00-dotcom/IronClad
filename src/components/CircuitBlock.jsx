@@ -31,14 +31,16 @@ export default function CircuitBlock({
   const activeRound = allComplete ? rounds : currentRound;
   const doneThisRound = stations.filter((s) => isStationDone(s.ex.n, activeRound)).length;
 
-  // Finishing a round (that isn't the last) drops a rest timer before the next.
+  // Finishing a round (that isn't the last) drops a rest timer before the next —
+  // unless the stations already alternate work/recovery (e.g. Sprint + Walk),
+  // where the last station IS the rest and a second countdown would double it.
   const [resting, setResting] = useState(null);
   const prevRoundRef = useRef(currentRound);
   useEffect(() => {
     const prev = prevRoundRef.current;
-    if (currentRound > prev && currentRound <= rounds) setResting({ round: prev });
+    if (restSecs && currentRound > prev && currentRound <= rounds) setResting({ round: prev });
     prevRoundRef.current = currentRound;
-  }, [currentRound, rounds]);
+  }, [currentRound, rounds, restSecs]);
 
   return (
     <div>
@@ -62,7 +64,9 @@ export default function CircuitBlock({
       <div style={ST.sub}>
         {allComplete
           ? `All ${rounds} rounds done — nice work.`
-          : `${doneThisRound} of ${stations.length} stations this round · ${restSecs}s rest between rounds`}
+          : restSecs
+            ? `${doneThisRound} of ${stations.length} stations this round · ${restSecs}s rest between rounds`
+            : `${doneThisRound} of ${stations.length} this round`}
       </div>
 
       {resting && (

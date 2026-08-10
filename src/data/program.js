@@ -352,6 +352,9 @@ export const WORKOUTS = [
         // with heavy leg work in the same session or the next one.
         name: "HIIT Finisher — 8 rounds",
         note: "All-out. 30 sec sprint, 30 sec easy, ×8 — about 8 minutes. Keep the effort maximal; that's the whole point.",
+        // A round here is one sprint + its easy recovery, so no extra between-round
+        // rest timer (the recovery interval already is the rest).
+        circuit: { rounds: 8 },
         exercises: [
           {
             n: "Sprint",
@@ -393,6 +396,9 @@ export const WORKOUTS = [
       },
       {
         name: "Conditioning — 8 rounds",
+        // A round is one sprint + its walk, so the walk itself is the rest — no
+        // extra between-round rest timer on top of it.
+        circuit: { rounds: 8 },
         exercises: [
           {
             n: "Sprint",
