@@ -224,6 +224,14 @@ export default function ExerciseModal({
   // skip them and surface the rest of the library.
   const suggestedNames = new Set([...suggest.keep, ...suggest.shift].map((c) => c.n));
   const catalogOptions = EXERCISE_CATALOG.filter((c) => c.n !== ex.n && !suggestedNames.has(c.n));
+  // A browsable, tappable list beats a native <datalist> — it renders nothing
+  // until you type on iOS Safari (no dropdown support at all) and shows nothing
+  // to browse elsewhere either, so you have to already know a name. Blank filter
+  // shows the whole library; typing narrows it.
+  const libraryMatches = useMemo(() => {
+    const q = swapName.trim().toLowerCase();
+    return q ? catalogOptions.filter((c) => c.n.toLowerCase().includes(q)) : catalogOptions;
+  }, [swapName, catalogOptions]);
   // A rest belongs to this modal only when the running clock is for this
   // exercise — a stale rest from a set you logged elsewhere shouldn't surface.
   const restHere = rest && rest.label === ex.n ? rest : null;
@@ -510,11 +518,10 @@ export default function ExerciseModal({
                   </>
                 )}
 
-                <div style={{ ...ST.swapLabel, marginTop: 10 }}>Or pick from the library</div>
+                <div style={{ ...ST.swapLabel, marginTop: 10 }}>Or browse the library</div>
                 <input
-                  list="swap-ex-list"
-                  style={{ ...S.textInput, marginBottom: 4 }}
-                  placeholder="Start typing — e.g. Leg Press, Face Pull…"
+                  style={{ ...S.textInput, marginBottom: 6 }}
+                  placeholder="Filter the list below, or type a name of your own…"
                   value={swapName}
                   onChange={(e) => {
                     const v = e.target.value;
@@ -525,11 +532,24 @@ export default function ExerciseModal({
                     if (m) setSwapScheme(m.s || baseScheme);
                   }}
                 />
-                <datalist id="swap-ex-list">
-                  {catalogOptions.map((c) => (
-                    <option key={c.n} value={c.n}>{c.s}</option>
-                  ))}
-                </datalist>
+                <div style={ST.libraryList}>
+                  {libraryMatches.length === 0 ? (
+                    <div style={{ fontSize: 12, color: "var(--text-faint)", padding: "8px 4px" }}>
+                      No match in the library — it'll still log fine under the name you typed.
+                    </div>
+                  ) : (
+                    libraryMatches.map((c) => (
+                      <button
+                        key={c.n}
+                        style={{ ...ST.libraryRow, ...(c.n === swapMatch?.n ? ST.libraryRowActive : {}) }}
+                        onClick={() => { setSwapName(c.n); setSwapScheme(c.s || baseScheme); }}
+                      >
+                        <span style={ST.libraryName}>{c.n}</span>
+                        <span style={ST.libraryScheme}>{c.s}</span>
+                      </button>
+                    ))
+                  )}
+                </div>
                 {swapName.trim() && (
                   <div style={{ fontSize: 11.5, marginBottom: 6, color: swapMatch ? "#54b37e" : "var(--text-faint)", lineHeight: 1.4 }}>
                     {swapMatch
@@ -670,4 +690,17 @@ const ST = {
     borderRadius: 999, padding: "7px 12px", fontSize: 12.5, cursor: "pointer", fontFamily: "inherit",
   },
   swapChipShift: { border: "1px solid rgba(224,180,74,.4)", color: "#e6cf9a", background: "rgba(224,180,74,.06)" },
+  libraryList: {
+    maxHeight: 190, overflowY: "auto", display: "flex", flexDirection: "column", gap: 4,
+    marginBottom: 8, border: "1px solid var(--border)", borderRadius: 12, padding: 5,
+    background: "var(--surface)",
+  },
+  libraryRow: {
+    display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10,
+    width: "100%", textAlign: "left", background: "transparent", border: "none",
+    borderRadius: 9, padding: "8px 8px", cursor: "pointer", fontFamily: "inherit",
+  },
+  libraryRowActive: { background: "rgba(129,140,248,.12)" },
+  libraryName: { fontSize: 13.5, fontWeight: 600, color: "var(--text)" },
+  libraryScheme: { fontSize: 11.5, color: "var(--text-faint)", flex: "0 0 auto" },
 };
