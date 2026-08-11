@@ -353,8 +353,10 @@ export const WORKOUTS = [
         name: "HIIT Finisher — 8 rounds",
         note: "All-out. 30 sec sprint, 30 sec easy, ×8 — about 8 minutes. Keep the effort maximal; that's the whole point.",
         // A round here is one sprint + its easy recovery, so no extra between-round
-        // rest timer (the recovery interval already is the rest).
-        circuit: { rounds: 8 },
+        // rest timer (the recovery interval already is the rest). Both stations are
+        // pure timed intervals, so the round auto-chains: the sprint's timer running
+        // out starts the recovery timer, and the round is marked done when that ends.
+        circuit: { rounds: 8, auto: true },
         exercises: [
           {
             n: "Sprint",
@@ -397,8 +399,10 @@ export const WORKOUTS = [
       {
         name: "Conditioning — 8 rounds",
         // A round is one sprint + its walk, so the walk itself is the rest — no
-        // extra between-round rest timer on top of it.
-        circuit: { rounds: 8 },
+        // extra between-round rest timer on top of it. Both stations are pure timed
+        // intervals, so the round auto-chains: the sprint timer running out starts
+        // the walk timer, and the round is marked done when that ends.
+        circuit: { rounds: 8, auto: true },
         exercises: [
           {
             n: "Sprint",

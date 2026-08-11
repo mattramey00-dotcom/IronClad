@@ -16,8 +16,8 @@ import ExerciseGif from "./ExerciseGif.jsx";
 import RestTimer from "./RestTimer.jsx";
 
 export default function CircuitBlock({
-  rounds, restSecs, stations,
-  isStationDone, onToggleStation, onOpenEx, onStartTimer,
+  rounds, restSecs, auto, stations,
+  isStationDone, onToggleStation, onCompleteRound, onOpenEx, onStartTimer,
 }) {
   const roundComplete = (r) => stations.length > 0 && stations.every((s) => isStationDone(s.ex.n, r));
 
@@ -81,7 +81,19 @@ export default function CircuitBlock({
         </div>
       )}
 
-      {stations.map((s, i) => {
+      {/* An all-timed round (e.g. Sprint 30s / Walk 90s) chains itself: starting the
+          first station auto-starts the next the moment its timer ends, and the round
+          is marked done the instant the last one finishes — nothing to tap mid-round.
+          Only while the round is in progress; once every round is done the plain
+          checklist below takes over so a mistaken auto-completion is still undoable. */}
+      {auto && !allComplete && stations.length > 0 && stations.every((s) => s.ex.timer) ? (
+        <AutoRound
+          key={activeRound}
+          stations={stations}
+          onOpenEx={onOpenEx}
+          onComplete={() => onCompleteRound(stations.map((s) => s.ex.n), activeRound)}
+        />
+      ) : stations.map((s, i) => {
         const { ex } = s;
         const done = isStationDone(ex.n, activeRound);
         return (
@@ -118,6 +130,115 @@ export default function CircuitBlock({
       })}
     </div>
   );
+}
+
+// One station's countdown running out auto-starts the next — so a Sprint/Walk
+// round is "tap Start, then just move" instead of a timer per station plus a
+// checkbox per station. The round completes itself the moment the last station's
+// clock hits zero. Keyed by round in the parent, so a fresh round always mounts
+// idle rather than resuming mid-sequence from the last one.
+function AutoRound({ stations, onOpenEx, onComplete }) {
+  const [stageIdx, setStageIdx] = useState(null); // null = not started yet
+  const [remaining, setRemaining] = useState(0);
+  const finishedRef = useRef(false); // guards against double-firing onComplete
+  const tickRef = useRef(null);
+
+  useEffect(() => {
+    if (stageIdx === null) return undefined;
+    const dur = stations[stageIdx]?.ex.timer || 0;
+    setRemaining(dur);
+    if (!dur) return undefined;
+    tickRef.current = setInterval(() => {
+      setRemaining((r) => {
+        if (r > 1) return r - 1;
+        clearInterval(tickRef.current);
+        const next = stageIdx + 1;
+        if (next < stations.length) {
+          beep(false);
+          setStageIdx(next);
+        } else {
+          beep(true);
+          if (!finishedRef.current) { finishedRef.current = true; onComplete(); }
+        }
+        return 0;
+      });
+    }, 1000);
+    return () => clearInterval(tickRef.current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stageIdx]);
+
+  const idle = stageIdx === null;
+  const stage = stations[idle ? 0 : stageIdx];
+  const next = stations[(idle ? 0 : stageIdx) + 1] || null;
+  const dur = stage?.ex.timer || 0;
+  const pct = idle ? 100 : dur ? (remaining / dur) * 100 : 0;
+  const mm = String(Math.floor(remaining / 60)).padStart(2, "0");
+  const ss = String(remaining % 60).padStart(2, "0");
+
+  return (
+    <div style={ST.autoWrap}>
+      <button style={ST.autoStage} onClick={() => onOpenEx(stage.ex)} title="View the movement">
+        <div style={ST.thumb}>
+          <ExerciseGif
+            name={stage.ex.n}
+            size={44}
+            cacheOnly
+            fallback={<Demo kind={DEMOS[stage.ex.d]?.kind || "core"} name={stage.ex.n} size={44} />}
+          />
+        </div>
+        <div style={{ minWidth: 0 }}>
+          <div style={ST.name}>{stage.ex.n}</div>
+          <div style={ST.reps}>{idle ? `${dur}s` : `${mm}:${ss}`}</div>
+        </div>
+      </button>
+
+      <div style={ST.autoBarTrack}>
+        <div style={{ ...ST.autoBarFill, width: `${pct}%` }} />
+      </div>
+
+      {next && <div style={ST.autoNext}>Then: {next.ex.n} — {next.ex.s}</div>}
+
+      {idle ? (
+        <button style={{ ...S.btnAccent, width: "100%", padding: 10, marginTop: 8 }} onClick={() => setStageIdx(0)}>
+          Start round
+        </button>
+      ) : (
+        <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+          <button style={{ ...S.btnGhost, flex: 1, padding: 9 }} onClick={() => setStageIdx(null)}>Cancel</button>
+          <button
+            style={{ ...S.btnGhost, flex: 1, padding: 9 }}
+            onClick={() => { if (!finishedRef.current) { finishedRef.current = true; onComplete(); } }}
+          >
+            Skip to done
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Two quick rising blips between stations ("go"), a slightly brighter pair when
+// the whole round finishes — enough to tell the two apart without looking.
+function beep(final) {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const tones = final ? [880, 1320] : [660];
+    tones.forEach((freq, i) => {
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.connect(g);
+      g.connect(ctx.destination);
+      o.frequency.value = freq;
+      const t = ctx.currentTime + i * 0.16;
+      g.gain.setValueAtTime(0.001, t);
+      g.gain.exponentialRampToValueAtTime(0.32, t + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
+      o.start(t);
+      o.stop(t + 0.24);
+    });
+  } catch (e) {
+    /* audio blocked — the visual countdown still finishes */
+  }
 }
 
 const ST = {
@@ -158,4 +279,16 @@ const ST = {
     background: "transparent", border: "2px solid var(--border-hi)", color: "#0B1020",
   },
   checkDone: { background: "#54b37e", border: "2px solid #54b37e", color: "#0B1020" },
+  autoWrap: {
+    borderRadius: 14, background: "var(--surface-2)", border: "1px solid var(--border-hi)", padding: 10,
+  },
+  autoStage: {
+    display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left",
+    background: "transparent", border: "none", padding: 0, cursor: "pointer", fontFamily: "inherit",
+  },
+  autoBarTrack: {
+    height: 6, borderRadius: 999, background: "var(--sunken)", overflow: "hidden", marginTop: 10,
+  },
+  autoBarFill: { height: "100%", background: ACCENT, transition: "width 1s linear" },
+  autoNext: { fontSize: 11.5, color: "var(--text-faint)", marginTop: 6 },
 };

@@ -553,6 +553,21 @@ function Trainer({
     persistProgress(next);
   };
 
+  // Mark every station of a round done in one shot — an auto-sequenced circuit
+  // (e.g. a chained Sprint/Walk timer) finishes both stations back to back, and
+  // two separate toggleCircuit calls in the same tick would each read the same
+  // pre-update `progress` snapshot and clobber each other.
+  const completeCircuitRound = (block, names, round, rounds) => {
+    const next = { ...progress };
+    names.forEach((name) => { next[circuitKey(block, name, round)] = true; });
+    names.forEach((name) => {
+      const allRounds = Array.from({ length: rounds }, (_, i) => i + 1).every((r) => next[circuitKey(block, name, r)]);
+      const mk = doneKey(block, name);
+      if (allRounds) next[mk] = true; else delete next[mk];
+    });
+    persistProgress(next);
+  };
+
   // Finish an exercise from its modal: apply its master check, then open the
   // next not-yet-done exercise's modal — or close, if this was the last.
   // Mark an exercise done without moving on — so the row turns green (and the
@@ -1400,9 +1415,11 @@ function Trainer({
             <CircuitBlock
               rounds={block.circuit.rounds}
               restSecs={block.circuit.restSecs}
+              auto={!!block.circuit.auto}
               stations={block.exercises.map((raw) => { const ex = resolveEx(raw); return { ex }; })}
               isStationDone={(name, round) => isCircuitDone(block.name, name, round)}
               onToggleStation={(name, round) => toggleCircuit(block.name, name, round, block.circuit.rounds)}
+              onCompleteRound={(names, round) => completeCircuitRound(block.name, names, round, block.circuit.rounds)}
               onOpenEx={(ex) => setOpenEx({ blockName: block.name, ex, circuit: true })}
               onStartTimer={(seconds, label) => setTimer({ seconds, label })}
             />
