@@ -31,10 +31,22 @@
 import { planWeightChange } from "./nutrition.js";
 
 export const MODELS = {
-  "claude-opus-4-8": { label: "Opus 4.8 — most accurate", cost: "~2¢ / photo" },
-  "claude-haiku-4-5": { label: "Haiku 4.5 — cheapest", cost: "~0.4¢ / photo" },
+  "claude-opus-5-5": { label: "Opus 5.5 — most accurate", cost: "~3¢ / photo" },
+  "claude-haiku-5-5": { label: "Haiku 5.5 — cheapest", cost: "~0.1¢ / photo" },
 };
-export const DEFAULT_MODEL = "claude-opus-4-8";
+export const DEFAULT_MODEL = "claude-opus-5-5";
+
+// A model picked in Settings before an upgrade is still saved on the phone. Map
+// the retired picks to their successors so nobody keeps paying for (or gets
+// errors from) an old model they never chose to stay on.
+const SUCCESSOR = {
+  "claude-opus-4-8": "claude-opus-5-5",
+  "claude-haiku-4-5": "claude-haiku-5-5",
+};
+export function resolveModel(saved) {
+  if (MODELS[saved]) return saved;
+  return SUCCESSOR[saved] || DEFAULT_MODEL;
+}
 
 // The SDK is ~350 KB, and most of the app never touches it — you can train, log
 // every set, weigh in, enter meals by hand and read every number on the Insights
@@ -73,6 +85,45 @@ const client = async (apiKey) => {
     dangerouslyAllowBrowser: true,
   });
 };
+
+// ---- one request, the way every call here makes it ----------------------
+//  · Opus 5.5 runs safety classifiers that can (rarely) decline a benign
+//    request. Opting into a server-side fallback lets the API re-run a declined
+//    request on another model inside the same call instead of failing. Haiku 5.5
+//    has no server-side fallback, so it goes through the plain endpoint.
+//  · Thinking is always on for these models; effort is set explicitly on each
+//    call (the API default is "medium"), and max_tokens leaves room for the
+//    thinking as well as the answer.
+//  · A decline that survives the fallback comes back as stop_reason "refusal",
+//    checked before anything reads the content.
+const FALLBACK_BETA = "server-side-fallback-2026-06-01";
+const FALLBACK_MODEL = "claude-opus-5";
+
+async function create(anthropic, params) {
+  const res = /opus/i.test(params.model)
+    ? await anthropic.beta.messages.create({ ...params, betas: [FALLBACK_BETA], fallbacks: [{ model: FALLBACK_MODEL }] })
+    : await anthropic.messages.create(params);
+  if (res.stop_reason === "refusal") {
+    throw new Error("The model declined this one. Try rewording it, or enter the meal by hand.");
+  }
+  return res;
+}
+
+// These models don't accept a forced tool_choice, so the tool is offered with
+// "auto", strict schemas keep its arguments valid, the prompt says to call it,
+// and if a reply comes back without the call we ask once more — passing the
+// first reply back unchanged so its reasoning carries over.
+async function callForTool(anthropic, params, toolName) {
+  const messages = [...params.messages];
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const res = await create(anthropic, { ...params, messages, tool_choice: { type: "auto" } });
+    const call = res.content.find((b) => b.type === "tool_use" && b.name === toolName);
+    if (call?.input) return call.input;
+    messages.push({ role: "assistant", content: res.content });
+    messages.push({ role: "user", content: `Call ${toolName} now with your answer.` });
+  }
+  return null;
+}
 
 // ---- the shape a meal estimate comes back in --------------------------
 //  `caveat` is load-bearing. A photo cannot show you the oil in the pan, the
@@ -129,16 +180,16 @@ const MEAL_SCHEMA = {
   additionalProperties: false,
 };
 
-// We get structured JSON back by giving the model exactly one tool and forcing
-// it to call that tool — its arguments ARE the meal estimate. This is the
-// oldest, most portable way to constrain Claude's output: no beta headers, no
-// `output_config`, works on every model and every key. (An earlier version used
-// output_config.format and the API rejected it outright — "Extra inputs are not
-// permitted" — so tool-forcing is both the safer and the more compatible path.)
+// We get structured JSON back by giving the model one tool whose arguments ARE
+// the meal estimate. `strict` makes the API hold those arguments to the schema
+// exactly. (An earlier version used output_config.format and the API rejected it
+// outright — "Extra inputs are not permitted" — so the tool is the path that
+// works on every key.) See callForTool for why it isn't forced.
 const MEAL_TOOL = {
   name: "log_meal",
-  description: "Record the estimated nutrition for the meal shown or described.",
+  description: "Record the estimated nutrition for the meal shown or described. Always call this exactly once with your estimate.",
   input_schema: MEAL_SCHEMA,
+  strict: true,
 };
 
 const SYSTEM = `You estimate the nutrition content of meals for a strength-training app.
@@ -154,15 +205,15 @@ Be a good estimator, not a confident one. Specifically:
 - Set confidence honestly. A mixed curry or a casserole is 'low' and you should say so. Grilled chicken, plain rice and steamed broccoli on a white plate is 'high'.
 - The caveat field must name a real, specific source of error in *this* meal. Never write "estimates may vary".
 
-The user will correct anything you get wrong before it is saved. An honest wide estimate is far more useful to them than a precise-looking wrong one.`;
+The user will correct anything you get wrong before it is saved. An honest wide estimate is far more useful to them than a precise-looking wrong one.
 
-// Pull the meal out of a response. We forced `log_meal`, so the estimate rides
-// in as the input of a tool_use block. Content is a union that may also carry
-// text/thinking blocks, so find the tool call rather than trusting content[0].
-function parseMeal(response) {
-  const call = response.content.find((b) => b.type === "tool_use" && b.name === "log_meal");
-  if (!call || !call.input) throw new Error("The model returned no meal estimate.");
-  return call.input;
+Record your estimate by calling log_meal.`;
+
+// The estimate rides in as the input of the log_meal call (callForTool finds it
+// by type — a response also carries thinking blocks, so never content[0]).
+function parseMeal(input) {
+  if (!input) throw new Error("The model returned no meal estimate.");
+  return input;
 }
 
 // The wire format wants raw base64 and a media type; a canvas gives us a data
@@ -206,9 +257,10 @@ export function compressImage(file, maxDim = 1200) {
 
 export async function estimateMealFromPhoto({ apiKey, model = DEFAULT_MODEL, image, note }) {
   const anthropic = await client(apiKey);
-  const response = await anthropic.messages.create({
+  const input = await callForTool(anthropic, {
     model,
-    max_tokens: 2000,
+    max_tokens: 8000,
+    output_config: { effort: "medium" },
     system: SYSTEM,
     messages: [
       {
@@ -225,10 +277,9 @@ export async function estimateMealFromPhoto({ apiKey, model = DEFAULT_MODEL, ima
       },
     ],
     tools: [MEAL_TOOL],
-    tool_choice: { type: "tool", name: "log_meal" },
-  });
+  }, "log_meal");
 
-  return parseMeal(response);
+  return parseMeal(input);
 }
 
 // ---- 2. text → meal ---------------------------------------------------
@@ -237,9 +288,10 @@ export async function estimateMealFromPhoto({ apiKey, model = DEFAULT_MODEL, ima
 
 export async function estimateMealFromText({ apiKey, model = DEFAULT_MODEL, text }) {
   const anthropic = await client(apiKey);
-  const response = await anthropic.messages.create({
+  const input = await callForTool(anthropic, {
     model,
-    max_tokens: 2000,
+    max_tokens: 8000,
+    output_config: { effort: "medium" },
     system: SYSTEM,
     messages: [
       {
@@ -250,10 +302,9 @@ If a portion isn't given, assume an ordinary serving for an adult who lifts, and
       },
     ],
     tools: [MEAL_TOOL],
-    tool_choice: { type: "tool", name: "log_meal" },
-  });
+  }, "log_meal");
 
-  return parseMeal(response);
+  return parseMeal(input);
 }
 
 // ---- 2b. a named chain / packaged item → meal, from the web -----------
@@ -274,11 +325,17 @@ const CHAIN_SYSTEM = `You look up the PUBLISHED nutrition for a named food — u
 
 Once you have the numbers, call log_meal with the per-serving totals.`;
 
+// Search models answer from their training data unless told how stale it is,
+// and chain menus change. Give the date on every call.
+const chainSystem = () => `${CHAIN_SYSTEM}
+
+The current date is ${new Date().toISOString().slice(0, 10)}. Menus and published nutrition change over time, so search rather than relying on what you remember.`;
+
 export async function lookupChainMeal({ apiKey, model = DEFAULT_MODEL, query }) {
   const anthropic = await client(apiKey);
 
-  // The dynamic-filtering web search needs Opus/Sonnet-tier; Haiku takes the
-  // basic variant. Either one runs server-side with no beta header.
+  // The dynamic-filtering web search needs Opus/Sonnet-tier; Haiku (5.5 too)
+  // takes the basic variant. Either one runs server-side with no beta header.
   const webTool = /haiku/i.test(model)
     ? { type: "web_search_20250305", name: "web_search", max_uses: 6 }
     : { type: "web_search_20260209", name: "web_search", max_uses: 6 };
@@ -288,10 +345,11 @@ export async function lookupChainMeal({ apiKey, model = DEFAULT_MODEL, query }) 
   ];
 
   for (let hop = 0; hop < 5; hop++) {
-    const res = await anthropic.messages.create({
+    const res = await create(anthropic, {
       model,
-      max_tokens: 3000,
-      system: CHAIN_SYSTEM,
+      max_tokens: 8000,
+      output_config: { effort: "medium" },
+      system: chainSystem(),
       tools: [webTool, MEAL_TOOL],
       messages,
     });
@@ -317,7 +375,7 @@ export async function lookupChainMeal({ apiKey, model = DEFAULT_MODEL, query }) 
 //  The optional Meal Plan feature. A person brings a rigid plan — a coach's PDF,
 //  a spreadsheet, a screenshot, or pasted text — or asks for one to be
 //  generated, and this turns it into the structured shape lib/mealplan.js stores
-//  and the card checks off. Same tool-forcing trick as the meal estimators.
+//  and the card checks off. Same strict-tool approach as the meal estimators.
 //
 //  Two honest constraints carried in the schema:
 //    · every meal is pinned to a slot (breakfast/lunch/dinner/snack) so the day
@@ -370,8 +428,9 @@ const PLAN_SCHEMA = {
 
 const PLAN_TOOL = {
   name: "save_plan",
-  description: "Record the structured multi-day meal plan.",
+  description: "Record the structured multi-day meal plan. Always call this exactly once with the whole plan.",
   input_schema: PLAN_SCHEMA,
+  strict: true,
 };
 
 const PLAN_PARSE_SYSTEM = `You convert a person's own meal plan — from a document, spreadsheet, screenshot or pasted text — into a structured multi-day schedule for a strength-training app.
@@ -395,10 +454,9 @@ const PLAN_GEN_SYSTEM = `You design a rigid, repeating meal plan for a strength 
 
 Call save_plan with the full cycle.`;
 
-function parsePlan(response) {
-  const call = response.content.find((b) => b.type === "tool_use" && b.name === "save_plan");
-  if (!call || !call.input) throw new Error("The model returned no plan.");
-  return call.input;
+function parsePlan(input) {
+  if (!input) throw new Error("The model returned no plan.");
+  return input;
 }
 
 // Build the user content block for a parse — pasted text, an image/screenshot,
@@ -422,15 +480,15 @@ function planSourceContent({ text, image }) {
 export async function parseMealPlan({ apiKey, model = DEFAULT_MODEL, text, image }) {
   if (!text?.trim() && !image) throw new Error("Nothing to read — paste your plan or attach a file.");
   const anthropic = await client(apiKey);
-  const response = await anthropic.messages.create({
+  const input = await callForTool(anthropic, {
     model,
-    max_tokens: 8000,
+    max_tokens: 16000,
+    output_config: { effort: "medium" },
     system: PLAN_PARSE_SYSTEM,
     messages: [{ role: "user", content: planSourceContent({ text, image }) }],
     tools: [PLAN_TOOL],
-    tool_choice: { type: "tool", name: "save_plan" },
-  });
-  return parsePlan(response);
+  }, "save_plan");
+  return parsePlan(input);
 }
 
 export async function generateMealPlan({
@@ -453,15 +511,15 @@ export async function generateMealPlan({
     `Design a ${days}-day repeating cycle with some variety.`,
   ].filter(Boolean).join("\n");
 
-  const response = await anthropic.messages.create({
+  const input = await callForTool(anthropic, {
     model,
-    max_tokens: 8000,
+    max_tokens: 16000,
+    output_config: { effort: "medium" },
     system: PLAN_GEN_SYSTEM,
     messages: [{ role: "user", content: `Build me a meal plan.\n\n${lines}\n\nThen call save_plan with the full cycle.` }],
     tools: [PLAN_TOOL],
-    tool_choice: { type: "tool", name: "save_plan" },
-  });
-  return parsePlan(response);
+  }, "save_plan");
+  return parsePlan(input);
 }
 
 // ---- 3. the coach -----------------------------------------------------
@@ -471,10 +529,12 @@ export async function generateMealPlan({
 
 export async function coachNote({ apiKey, model = DEFAULT_MODEL, snapshot }) {
   const anthropic = await client(apiKey);
-  const response = await anthropic.messages.create({
+  // A short read of computed numbers — low effort keeps it quick; thinking
+  // counts toward max_tokens, so leave room for it on top of 3-5 sentences.
+  const response = await create(anthropic, {
     model,
-    max_tokens: 1200,
-    thinking: { type: "adaptive" },
+    max_tokens: 4000,
+    output_config: { effort: "low" },
     system: `You are reading a strength trainee's measured data and telling them what it means.
 
 The numbers below were computed from their own logs — measured, not predicted. Do not recompute them, do not second-guess the arithmetic, and do not restate figures they can already see on the screen. Your job is the interpretation, not the calculation.
@@ -549,9 +609,12 @@ ${JSON.stringify(snapshot, null, 2)}`;
   // measured data, hand back the result, and let it answer. Capped so a model
   // that keeps calling tools can't spin forever.
   for (let hop = 0; hop < 4; hop++) {
-    const res = await anthropic.messages.create({
+    // Each reply (thinking blocks included) is passed back unchanged, so the
+    // conversation stays append-only and the model keeps its reasoning.
+    const res = await create(anthropic, {
       model,
-      max_tokens: 1500,
+      max_tokens: 4000,
+      output_config: { effort: "low" },
       system,
       tools: [WEIGHT_PLAN_TOOL],
       messages: convo,

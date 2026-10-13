@@ -13,7 +13,7 @@ import {
   ACCENT, DEMOS, EX_VIDEO, TOGETHER, REST_DAY, forMachine, forTravel, forSub, musclesFor, MUSCLE_LABELS,
 } from "./data/program.js";
 import {
-  agendaFor, weekAgenda, blocksFor, exercisesFor, dateKey, mondayOf,
+  agendaFor, weekAgenda, blocksFor, exercisesFor, dateKey, rollSelected, mondayOf,
   personById, partnerOf, WORKOUT_SHORTS, autoOrderRotation,
 } from "./lib/schedule.js";
 import {
@@ -32,7 +32,7 @@ import {
 } from "./lib/storage.js";
 import { downloadBackup, backupReminderDue, monthKeyOf } from "./lib/backup.js";
 import { estimateTDEE, resolveTargets, weightTrend, bestE1RM, e1rm, shiftKey, daysBetween, mealTotals, weeklySummary, waterTargetOz, coachContext, proteinCadence, DEFAULT_TARGETS, KCAL_PER_LB } from "./lib/nutrition.js";
-import { MODELS, DEFAULT_MODEL } from "./lib/claude.js";
+import { MODELS, resolveModel } from "./lib/claude.js";
 import { S } from "./styles.js";
 import Demo from "./components/Demo.jsx";
 import { VideoModal } from "./components/Modals.jsx";
@@ -93,7 +93,7 @@ export default function App() {
   const [targets, setTargets] = useState(DEFAULT_TARGETS);
   const [mealPlan, setMealPlan] = useState(null);
   const [apiKey, setApiKey] = useState(() => loadApiKey());
-  const [model, setModel] = useState(() => loadModel() || DEFAULT_MODEL);
+  const [model, setModel] = useState(() => resolveModel(loadModel()));
   const [wxKey, setWxKey] = useState(() => loadWxKey());
   const [travel, setTravel] = useState(() => loadTravel());
   const [theme, setTheme] = useState(() => loadTheme());
@@ -148,7 +148,7 @@ export default function App() {
   useEffect(() => {
     const prev = prevTodayRef.current;
     prevTodayRef.current = todayKey;
-    if (prev !== todayKey) setSelected((sel) => (sel === prev ? todayKey : sel));
+    if (prev !== todayKey) setSelected((sel) => rollSelected(sel, prev, todayKey));
   }, [todayKey]);
 
   // load this profile's data whenever the signed-in person changes

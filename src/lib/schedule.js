@@ -32,6 +32,12 @@ export const WORKOUT_SHORTS = Object.fromEntries(WORKOUTS.map((w) => [w.id, w.sh
 // day number for arithmetic. Using UTC *only* inside the conversion keeps the
 // arithmetic free of DST landmines while the keys stay local-calendar correct.
 
+// The day to show once the date has rolled over (at midnight, or when a resumed
+// app notices it's a new day): follow along to the new today only if you were
+// on the old today — a past day you deliberately browsed to stays put.
+export const rollSelected = (selected, prevToday, today) =>
+  prevToday !== today && selected === prevToday ? today : selected;
+
 export const dateKey = (d) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 

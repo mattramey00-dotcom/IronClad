@@ -18,6 +18,7 @@ import { ACCENT, DEMOS } from "../data/program.js";
 import { S } from "../styles.js";
 import Demo from "./Demo.jsx";
 import ExerciseGif from "./ExerciseGif.jsx";
+import { advanceRun } from "../lib/intervals.js";
 
 const STORE = "ironclad-interval:";
 // The card and the exercise sheet can show the same run at once; this event keeps
@@ -99,13 +100,9 @@ export default function IntervalTimer({ stations, persistKey, startLabel = "Star
   // Advance past every stage that has run out (more than one if the phone was
   // locked through a whole stage), then finish when the last one ends.
   useEffect(() => {
-    if (!run || now < run.endAt) return;
-    let { stageIdx, endAt } = run;
-    while (now >= endAt && stageIdx + 1 < stations.length) {
-      stageIdx += 1;
-      endAt += durOf(stageIdx) * 1000;
-    }
-    if (now >= endAt) {
+    const step = advanceRun(run, now, stations.map((s, i) => durOf(i)));
+    if (!step.advanced && !step.finished) return;
+    if (step.finished) {
       beep(true);
       // Clear the saved run now, not in the save effect: completing usually
       // unmounts this card before that effect would run, and a leftover expired
@@ -115,7 +112,7 @@ export default function IntervalTimer({ stations, persistKey, startLabel = "Star
       if (!finishedRef.current) { finishedRef.current = true; onComplete(); }
     } else {
       beep(false);
-      setRun({ stageIdx, endAt });
+      setRun(step.run);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [now, run]);
