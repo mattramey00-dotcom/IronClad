@@ -10,7 +10,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense } from "react";
 import {
-  ACCENT, DEMOS, EX_VIDEO, TOGETHER, REST_DAY, forMachine, forTravel, forSub, musclesFor, MUSCLE_LABELS,
+  ACCENT, DEMOS, EQ, EX_VIDEO, TOGETHER, REST_DAY, forMachine, forTravel, forSub, musclesFor, MUSCLE_LABELS,
 } from "./data/program.js";
 import {
   agendaFor, weekAgenda, blocksFor, exercisesFor, dateKey, mondayOf,
@@ -38,6 +38,7 @@ import Demo from "./components/Demo.jsx";
 import { TimerModal, VideoModal } from "./components/Modals.jsx";
 import ExerciseModal from "./components/ExerciseModal.jsx";
 import CircuitBlock from "./components/CircuitBlock.jsx";
+import IntervalTimer from "./components/IntervalTimer.jsx";
 import ExerciseGif, { preloadGifs, allGifIds } from "./components/ExerciseGif.jsx";
 import Hint from "./components/Hint.jsx";
 import PhotosModal from "./components/PhotosModal.jsx";
@@ -137,6 +138,19 @@ export default function App() {
     const t = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(t);
   }, []);
+
+  // Roll the viewed day forward at midnight. A home-screen app is usually
+  // resumed, not reloaded, so without this it would still be showing yesterday
+  // the next morning — logging sets to the wrong date and skipping the rest
+  // timer (which only auto-starts for sets logged on today). Only follows along
+  // when you were on "today"; a past day you deliberately browsed to stays put.
+  const todayKey = dateKey(now);
+  const prevTodayRef = useRef(todayKey);
+  useEffect(() => {
+    const prev = prevTodayRef.current;
+    prevTodayRef.current = todayKey;
+    if (prev !== todayKey) setSelected((sel) => (sel === prev ? todayKey : sel));
+  }, [todayKey]);
 
   // load this profile's data whenever the signed-in person changes
   useEffect(() => {
@@ -577,6 +591,16 @@ function Trainer({
     const k = doneKey(blockName, exName);
     if (!progress[k]) persistProgress({ ...progress, [k]: true });
   };
+  // Several at once (a multi-stage cardio timer finishing) — one update, so the
+  // marks don't clobber each other the way back-to-back markDone calls would.
+  const markManyDone = (blockName, names) => {
+    const next = { ...progress };
+    names.forEach((n) => { next[doneKey(blockName, n)] = true; });
+    persistProgress(next);
+  };
+  // Where a cardio timer saves its in-progress run — shared by the card and the
+  // exercise sheet so both show the same clock.
+  const cardioTimerKey = (blockName, names) => `${selected}::${blockName}::${names.join("+")}`;
 
   const completeAndAdvance = (blockName, exName) => {
     const k = doneKey(blockName, exName);
@@ -1416,15 +1440,34 @@ function Trainer({
               rounds={block.circuit.rounds}
               restSecs={block.circuit.restSecs}
               auto={!!block.circuit.auto}
+              persistKey={`${selected}::${block.name}`}
               stations={block.exercises.map((raw) => { const ex = resolveEx(raw); return { ex }; })}
               isStationDone={(name, round) => isCircuitDone(block.name, name, round)}
               onToggleStation={(name, round) => toggleCircuit(block.name, name, round, block.circuit.rounds)}
               onCompleteRound={(names, round) => completeCircuitRound(block.name, names, round, block.circuit.rounds)}
-              onOpenEx={(ex) => setOpenEx({ blockName: block.name, ex, circuit: true })}
+              onOpenEx={(ex) => setOpenEx({ blockName: block.name, ex, circuit: true, auto: !!block.circuit.auto })}
               onStartTimer={(seconds, label) => setTimer({ seconds, label })}
             />
           ) : (
-          block.exercises.map((raw, ei) => {
+          <>
+          {/* A block that's all timed cardio (a finisher walk/jog, the off-day run)
+              gets the same draining-meter timer as the sprint circuits, right on
+              the card; it checks the block off when the clock runs out. */}
+          {(() => {
+            const cardio = block.exercises.map((raw) => ({ ex: resolveEx(raw) }));
+            const timedCardio = cardio.length > 0 && cardio.every((c) => c.ex.eq === EQ.CARDIO && c.ex.timer);
+            if (!timedCardio || cardio.every((c) => isDone(block.name, c.ex.n))) return null;
+            return (
+              <IntervalTimer
+                key={cardioTimerKey(block.name, cardio.map((c) => c.ex.n))}
+                stations={cardio}
+                persistKey={cardioTimerKey(block.name, cardio.map((c) => c.ex.n))}
+                onOpenEx={(ex) => setOpenEx({ blockName: block.name, ex })}
+                onComplete={() => markManyDone(block.name, cardio.map((c) => c.ex.n))}
+              />
+            );
+          })()}
+          {block.exercises.map((raw, ei) => {
             const ex = resolveEx(raw);
             const done = isDone(block.name, ex.n);
             const tSession = sessionOn(ex.n, selected);
@@ -1504,7 +1547,8 @@ function Trainer({
                 )}
               </div>
             );
-          })
+          })}
+          </>
           )}
         </div>
       ))}
@@ -1674,6 +1718,8 @@ function Trainer({
           ex={openEx.ex}
           blockName={openEx.blockName}
           circuit={!!openEx.circuit}
+          autoCircuit={!!openEx.auto}
+          timerKey={cardioTimerKey(openEx.blockName, [openEx.ex.n])}
           isDone={isDone(openEx.blockName, openEx.ex.n)}
           todaySession={sessionOn(openEx.ex.n, selected)}
           lastSession={lastSession(openEx.ex.n)}

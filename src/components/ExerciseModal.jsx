@@ -21,6 +21,7 @@ import MuscleMap from "./MuscleMap.jsx";
 import Icon from "./Icon.jsx";
 import RestTimer from "./RestTimer.jsx";
 import HoldTimer from "./HoldTimer.jsx";
+import IntervalTimer from "./IntervalTimer.jsx";
 
 const clock = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 
@@ -206,7 +207,7 @@ function BarLoader({ w, setW }) {
 }
 
 export default function ExerciseModal({
-  ex, blockName, circuit = false, isDone, todaySession, lastSession, pr, origName, subbed, onSwap, muscles = [], video,
+  ex, blockName, circuit = false, autoCircuit = false, timerKey, isDone, todaySession, lastSession, pr, origName, subbed, onSwap, muscles = [], video,
   rest, restPref, onSetRestPref, onCloseRest, wxKey,
   onLogSet, onStartRest, onStartTimer, onOpenVideo, onMarkDone, onRemoveLastSet, onUnmarkDone, onComplete, onClose,
 }) {
@@ -307,12 +308,11 @@ export default function ExerciseModal({
     }
     const wv = parseFloat(w);
     const rv = parseFloat(r);
-    if (Number.isFinite(wv) && Number.isFinite(rv)) {
-      // logSet already starts the rest clock for non-final sets logged today
-      onLogSet(ex.n, wv, rv, isLast ? 0 : effRest);
-    } else if (!isLast && effRest) {
-      onStartRest(ex.n, effRest);
-    }
+    if (Number.isFinite(wv) && Number.isFinite(rv)) onLogSet(ex.n, wv, rv, 0);
+    // Rest is started here, not by logSet, so every set gets its rest clock the
+    // same way whether or not numbers were entered (logSet only auto-rests sets
+    // logged on today, which made the timer appear on some exercises only).
+    if (!isLast && effRest) onStartRest(ex.n, effRest);
   };
 
   // Stopping the stopwatch checks off the next unfinished hold.
@@ -446,10 +446,18 @@ export default function ExerciseModal({
           </>
         ) : (
           <>
-            {ex.timer && (
-              <button style={{ ...S.timerBtn, width: "100%", justifyContent: "center", padding: "12px", fontSize: 14, marginBottom: 8 }} onClick={() => onStartTimer(ex.timer, ex.n)}>
-                <Icon name="timer" size={15} /> Start {clock(ex.timer)} timer
-              </button>
+            {/* The draining-meter timer — the same one the sprint circuits use.
+                In an auto-chained circuit the round timer on the card runs this
+                station, so a second clock here would only fight it. */}
+            {ex.timer && !autoCircuit && (
+              <div style={{ marginBottom: 8 }}>
+                <IntervalTimer
+                  stations={[{ ex }]}
+                  persistKey={timerKey}
+                  startLabel={`Start ${clock(ex.timer)} timer`}
+                  onComplete={() => { if (!circuit) onMarkDone?.(blockName, ex.n); }}
+                />
+              </div>
             )}
             {/* Circuit stations are checked off per round in the circuit list, not
                 here — so this view is just the movement, not a completion. */}

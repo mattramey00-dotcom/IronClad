@@ -241,7 +241,7 @@ export const WORKOUTS = [
             d: "cardio",
             timer: 600,
             eq: EQ.CARDIO,
-            bike: { n: "Steady ride", s: "12 minutes, moderate resistance" },
+            bike: { n: "Steady ride", s: "12 minutes, moderate resistance", timer: 720 },
           },
         ],
       },
@@ -275,7 +275,7 @@ export const WORKOUTS = [
             d: "cardio",
             timer: 900,
             eq: EQ.CARDIO,
-            bike: { n: "Steady ride", s: "18 minutes, moderate–hard" },
+            bike: { n: "Steady ride", s: "18 minutes, moderate–hard", timer: 1080 },
           },
         ],
       },
@@ -317,7 +317,7 @@ export const WORKOUTS = [
             d: "cardio",
             timer: 600,
             eq: EQ.CARDIO,
-            bike: { n: "Easy spin", s: "12 minutes, light resistance" },
+            bike: { n: "Easy spin", s: "12 minutes, light resistance", timer: 720 },
           },
         ],
       },
@@ -448,7 +448,12 @@ export const WORKOUTS = [
         ],
       },
       {
-        name: "Intervals — 6–8 rounds",
+        name: "Intervals — 6 rounds",
+        // A round is one fast run + its easy walk, chained like the sprint
+        // finishers: the run's timer running out starts the walk, and the round
+        // is marked done when the walk ends. The walk is the rest, so no extra
+        // between-round timer.
+        circuit: { rounds: 6, auto: true },
         exercises: [
           {
             n: "Fast run",
@@ -538,7 +543,9 @@ export const MOBILITY = {
 // machine-independent and passes straight through.
 export function forMachine(ex, machine) {
   if (ex.eq !== EQ.CARDIO || machine !== "bike" || !ex.bike) return ex;
-  return { ...ex, n: ex.bike.n, s: ex.bike.s };
+  // A ride can run longer than the treadmill version (12 min vs 10), so it
+  // carries its own timer where it differs.
+  return { ...ex, n: ex.bike.n, s: ex.bike.s, timer: ex.bike.timer ?? ex.timer };
 }
 
 // ============================================================
@@ -621,10 +628,11 @@ export function forSub(ex, subs) {
 // rep scheme already says how hard the set is. Cardio/timed rows ("12 minutes…")
 // have no "N ×" and return null — no set count, no auto-rest.
 export function prescription(s) {
-  const m = /^\s*(\d+)\s*[×x]\s*(\d+)/.exec(s || "");
+  // "3 × AMRAP" is still three sets — just with no rep target to prefill.
+  const m = /^\s*(\d+)\s*[×x]\s*(\d+|AMRAP)/i.exec(s || "");
   if (!m) return null;
   const sets = +m[1];
-  const lowReps = +m[2];
+  const lowReps = /^\d+$/.test(m[2]) ? +m[2] : null;
   // A short 45s default keeps the pace up; the timer's 1:00 / 1:30 chips are
   // there for the heavier sets where you want a longer breather.
   const restSecs = 45;
