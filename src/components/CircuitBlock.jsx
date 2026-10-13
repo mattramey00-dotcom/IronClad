@@ -18,8 +18,10 @@ import IntervalTimer from "./IntervalTimer.jsx";
 
 export default function CircuitBlock({
   rounds, restSecs, auto, stations, persistKey,
-  isStationDone, onToggleStation, onCompleteRound, onOpenEx, onStartTimer,
+  isStationDone, onToggleStation, onCompleteRound, onOpenEx,
 }) {
+  // The station whose timer is open inline (e.g. the 45s plank), or null.
+  const [timing, setTiming] = useState(null);
   const roundComplete = (r) => stations.length > 0 && stations.every((s) => isStationDone(s.ex.n, r));
 
   let completedRounds = 0;
@@ -100,7 +102,8 @@ export default function CircuitBlock({
         const { ex } = s;
         const done = isStationDone(ex.n, activeRound);
         return (
-          <div key={i} style={{ ...ST.row, ...(done ? ST.rowDone : {}) }}>
+          <React.Fragment key={i}>
+          <div style={{ ...ST.row, ...(done ? ST.rowDone : {}) }}>
             <button style={ST.rowMain} onClick={() => onOpenEx(ex)} title="View the movement">
               <div style={ST.thumb}>
                 <ExerciseGif
@@ -116,7 +119,12 @@ export default function CircuitBlock({
               </div>
             </button>
             {ex.timer && !done && (
-              <button style={ST.timerBtn} onClick={() => onStartTimer(ex.timer, ex.n)} title={`Start ${ex.timer}s timer`} aria-label={`Start ${ex.timer} second timer`}>
+              <button
+                style={{ ...ST.timerBtn, ...(timing === ex.n ? { borderColor: ACCENT, color: ACCENT } : {}) }}
+                onClick={() => setTiming((t) => (t === ex.n ? null : ex.n))}
+                title={`${ex.timer}s timer`}
+                aria-label={`${timing === ex.n ? "Hide" : "Show"} ${ex.timer} second timer`}
+              >
                 <Icon name="timer" size={15} />
               </button>
             )}
@@ -129,6 +137,18 @@ export default function CircuitBlock({
               {done ? <span style={{ animation: "pop .3s ease" }}>✓</span> : ""}
             </button>
           </div>
+          {/* The same draining-meter timer as everywhere else, inline under the
+              station; running out checks the station off for this round. */}
+          {timing === ex.n && ex.timer && !done && (
+            <IntervalTimer
+              key={`${ex.n}-${activeRound}`}
+              stations={[{ ex }]}
+              persistKey={persistKey && `${persistKey}::${ex.n}##r${activeRound}`}
+              startLabel={`Start ${ex.timer}s timer`}
+              onComplete={() => { setTiming(null); if (!isStationDone(ex.n, activeRound)) onToggleStation(ex.n, activeRound); }}
+            />
+          )}
+          </React.Fragment>
         );
       })}
     </div>

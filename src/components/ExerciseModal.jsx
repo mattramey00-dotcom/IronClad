@@ -209,7 +209,7 @@ function BarLoader({ w, setW }) {
 export default function ExerciseModal({
   ex, blockName, circuit = false, autoCircuit = false, timerKey, isDone, todaySession, lastSession, pr, origName, subbed, onSwap, muscles = [], video,
   rest, restPref, onSetRestPref, onCloseRest, wxKey,
-  onLogSet, onStartRest, onStartTimer, onOpenVideo, onMarkDone, onRemoveLastSet, onUnmarkDone, onComplete, onClose,
+  onLogSet, onStartRest, onOpenVideo, onMarkDone, onRemoveLastSet, onUnmarkDone, onComplete, onClose,
 }) {
   const [swapping, setSwapping] = useState(false);
   const [swapName, setSwapName] = useState("");

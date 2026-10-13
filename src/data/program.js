@@ -633,9 +633,10 @@ export function prescription(s) {
   if (!m) return null;
   const sets = +m[1];
   const lowReps = /^\d+$/.test(m[2]) ? +m[2] : null;
-  // A short 45s default keeps the pace up; the timer's 1:00 / 1:30 chips are
-  // there for the heavier sets where you want a longer breather.
-  const restSecs = 45;
+  // Heavy (≤6 reps) 2:30 · moderate (7–10) 1:30 · light/pump (11+) 1:00. AMRAP
+  // has no rep target, and it's to failure, so it rests like a moderate set. A
+  // timed hold ("3 × 45 sec") reads its seconds as lowReps and lands on 1:00.
+  const restSecs = lowReps == null ? 90 : lowReps <= 6 ? 150 : lowReps <= 10 ? 90 : 60;
   return { sets, lowReps, restSecs };
 }
 

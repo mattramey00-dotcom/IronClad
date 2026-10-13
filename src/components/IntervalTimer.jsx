@@ -25,6 +25,23 @@ const STORE = "ironclad-interval:";
 const SYNC = "ironclad-interval";
 const same = (a, b) => (a && b ? a.stageIdx === b.stageIdx && a.endAt === b.endAt : a === b);
 
+// Saved runs are keyed by date first ("2026-10-13::Finisher::…"). Drop any from
+// before today once per app load so they don't pile up day after day.
+(function pruneOldRuns() {
+  try {
+    const d = new Date();
+    const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    const stale = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith(STORE) && k.slice(STORE.length, STORE.length + 10) < today) stale.push(k);
+    }
+    stale.forEach((k) => localStorage.removeItem(k));
+  } catch (e) {
+    /* storage blocked — nothing to prune */
+  }
+})();
+
 function loadRun(key) {
   if (!key) return null;
   try {

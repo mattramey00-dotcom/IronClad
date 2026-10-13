@@ -10,7 +10,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense } from "react";
 import {
-  ACCENT, DEMOS, EQ, EX_VIDEO, TOGETHER, REST_DAY, forMachine, forTravel, forSub, musclesFor, MUSCLE_LABELS,
+  ACCENT, DEMOS, EX_VIDEO, TOGETHER, REST_DAY, forMachine, forTravel, forSub, musclesFor, MUSCLE_LABELS,
 } from "./data/program.js";
 import {
   agendaFor, weekAgenda, blocksFor, exercisesFor, dateKey, mondayOf,
@@ -35,7 +35,7 @@ import { estimateTDEE, resolveTargets, weightTrend, bestE1RM, e1rm, shiftKey, da
 import { MODELS, DEFAULT_MODEL } from "./lib/claude.js";
 import { S } from "./styles.js";
 import Demo from "./components/Demo.jsx";
-import { TimerModal, VideoModal } from "./components/Modals.jsx";
+import { VideoModal } from "./components/Modals.jsx";
 import ExerciseModal from "./components/ExerciseModal.jsx";
 import CircuitBlock from "./components/CircuitBlock.jsx";
 import IntervalTimer from "./components/IntervalTimer.jsx";
@@ -127,7 +127,6 @@ export default function App() {
     }
   }, [plan]);
   const [openLog, setOpenLog] = useState(null);
-  const [timer, setTimer] = useState(null);
   const [video, setVideo] = useState(null);
   const [showHistory, setShowHistory] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -244,8 +243,6 @@ export default function App() {
       onSetTravel={(v) => { saveTravel(v); setTravel(v); }}
       openLog={openLog}
       setOpenLog={setOpenLog}
-      timer={timer}
-      setTimer={setTimer}
       video={video}
       setVideo={setVideo}
       showHistory={showHistory}
@@ -321,7 +318,7 @@ function Trainer({
   supps, setSupps, suppLog, setSuppLog, photos, setPhotos, showPhotos, setShowPhotos,
   weights, setWeights, targets, setTargets, mealPlan, setMealPlan,
   apiKey, model, onSetApiKey, onSetModel, wxKey, onSetWxKey, travel, onSetTravel,
-  openLog, setOpenLog, timer, setTimer, video, setVideo,
+  openLog, setOpenLog, video, setVideo,
   showHistory, setShowHistory,
   showSettings, setShowSettings, now, theme, onToggleTheme, onSwitchPerson,
 }) {
@@ -340,7 +337,10 @@ function Trainer({
   // you switch to another tab and back, instead of restarting.
   const [fuelCompose, setFuelCompose] = useState({ mode: null, draft: null, editingId: null, text: "", busy: false, busyLabel: "Reading the plate…", error: "" });
   const [rest, setRest] = useState(null); // { id, secs, label } — the sticky rest timer
-  const [restPref, setRestPref] = useState(null); // last rest length you set — remembered across sets
+  // The rest length you last picked, per exercise ({ [exName]: secs }) — so 1:30
+  // on bench carries to bench's next set, not to the lateral raises after it.
+  const [restPrefs, setRestPrefs] = useState({});
+  const setRestPref = (exName, secs) => setRestPrefs((p) => ({ ...p, [exName]: secs }));
   const [celebrate, setCelebrate] = useState(0); // bump to fire a confetti burst
   const [prFlash, setPrFlash] = useState(null); // { ex, e1rm, w, r } — a just-hit PR toast
   const [showMuscleTarget, setShowMuscleTarget] = useState(false); // the tap-a-muscle picker
@@ -590,13 +590,6 @@ function Trainer({
   const markDone = (blockName, exName) => {
     const k = doneKey(blockName, exName);
     if (!progress[k]) persistProgress({ ...progress, [k]: true });
-  };
-  // Several at once (a multi-stage cardio timer finishing) — one update, so the
-  // marks don't clobber each other the way back-to-back markDone calls would.
-  const markManyDone = (blockName, names) => {
-    const next = { ...progress };
-    names.forEach((n) => { next[doneKey(blockName, n)] = true; });
-    persistProgress(next);
   };
   // Where a cardio timer saves its in-progress run — shared by the card and the
   // exercise sheet so both show the same clock.
@@ -1409,7 +1402,7 @@ function Trainer({
       {(agenda.trains || blocks.length > 0) && (
         <Hint id="train">
           Tap any exercise to open it — check off each set as you finish, a rest timer runs
-          between sets, and planks get a stopwatch. The last set checks the whole exercise off.
+          between sets, and planks get a stopwatch. Runs and walks get a countdown bar that moves to the next interval on its own. The last set checks the whole exercise off.
         </Hint>
       )}
 
@@ -1446,27 +1439,9 @@ function Trainer({
               onToggleStation={(name, round) => toggleCircuit(block.name, name, round, block.circuit.rounds)}
               onCompleteRound={(names, round) => completeCircuitRound(block.name, names, round, block.circuit.rounds)}
               onOpenEx={(ex) => setOpenEx({ blockName: block.name, ex, circuit: true, auto: !!block.circuit.auto })}
-              onStartTimer={(seconds, label) => setTimer({ seconds, label })}
             />
           ) : (
           <>
-          {/* A block that's all timed cardio (a finisher walk/jog, the off-day run)
-              gets the same draining-meter timer as the sprint circuits, right on
-              the card; it checks the block off when the clock runs out. */}
-          {(() => {
-            const cardio = block.exercises.map((raw) => ({ ex: resolveEx(raw) }));
-            const timedCardio = cardio.length > 0 && cardio.every((c) => c.ex.eq === EQ.CARDIO && c.ex.timer);
-            if (!timedCardio || cardio.every((c) => isDone(block.name, c.ex.n))) return null;
-            return (
-              <IntervalTimer
-                key={cardioTimerKey(block.name, cardio.map((c) => c.ex.n))}
-                stations={cardio}
-                persistKey={cardioTimerKey(block.name, cardio.map((c) => c.ex.n))}
-                onOpenEx={(ex) => setOpenEx({ blockName: block.name, ex })}
-                onComplete={() => markManyDone(block.name, cardio.map((c) => c.ex.n))}
-              />
-            );
-          })()}
           {block.exercises.map((raw, ei) => {
             const ex = resolveEx(raw);
             const done = isDone(block.name, ex.n);
@@ -1474,9 +1449,22 @@ function Trainer({
             const pr = isPR(ex.n, selected);
             const muscles = musclesFor(ex);
             const full = muscles.includes("fullbody");
+            // A timed walk/jog/ride (a finisher, the off-day run, the mobility
+            // walk) gets the same draining-meter timer as the sprint circuits,
+            // right on the card; it checks the exercise off when the clock runs out.
+            const runTimer = ex.d === "cardio" && ex.timer && !done && (
+              <IntervalTimer
+                key={cardioTimerKey(block.name, [ex.n])}
+                stations={[{ ex }]}
+                persistKey={cardioTimerKey(block.name, [ex.n])}
+                onOpenEx={(e) => setOpenEx({ blockName: block.name, ex: e })}
+                onComplete={() => markDone(block.name, ex.n)}
+              />
+            );
             return (
+              <React.Fragment key={ei}>
+              {runTimer}
               <div
-                key={ei}
                 style={{
                   ...S.exRow,
                   ...(block.isTogether ? S.exRowTogether : {}),
@@ -1546,6 +1534,7 @@ function Trainer({
                   </button>
                 )}
               </div>
+              </React.Fragment>
             );
           })}
           </>
@@ -1730,13 +1719,12 @@ function Trainer({
           muscles={musclesFor(openEx.ex)}
           video={EX_VIDEO[openEx.ex.n]}
           rest={rest}
-          restPref={restPref}
-          onSetRestPref={setRestPref}
+          restPref={restPrefs[openEx.ex.n]}
+          onSetRestPref={(secs) => setRestPref(openEx.ex.n, secs)}
           onCloseRest={() => setRest(null)}
           wxKey={wxKey}
           onLogSet={logSet}
           onStartRest={startRest}
-          onStartTimer={(seconds, label) => setTimer({ seconds, label })}
           onOpenVideo={(e) => setVideo({ video: EX_VIDEO[e.n], name: e.n })}
           onMarkDone={markDone}
           onRemoveLastSet={removeLastSet}
@@ -1759,7 +1747,6 @@ function Trainer({
           onClose={dismissWeekly}
         />
       )}
-      {timer && <TimerModal seconds={timer.seconds} label={timer.label} onClose={() => setTimer(null)} />}
       {video && <VideoModal video={video.video} name={video.name} onClose={() => setVideo(null)} />}
       {showHistory && (
         <Suspense fallback={null}>
@@ -1811,7 +1798,7 @@ function Trainer({
           key={rest.id}
           seconds={rest.secs}
           label={rest.label}
-          onSetDuration={setRestPref}
+          onSetDuration={(secs) => setRestPref(rest.label, secs)}
           onClose={() => setRest(null)}
         />
       )}

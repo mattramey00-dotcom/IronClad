@@ -30,3 +30,10 @@ ReactDOM.createRoot(document.getElementById("root")).render(
 // Register the service worker (installable / offline) and wire up update
 // detection so the app can offer a one-tap reload when a new build is deployed.
 registerSW();
+
+// Ask the browser to keep this app's storage (logs, meals, photos) rather than
+// treat it as clearable when the phone runs low on space. Installed home-screen
+// apps are usually granted this silently; elsewhere it's a quiet no-op.
+try {
+  navigator.storage?.persisted?.().then((already) => { if (!already) navigator.storage.persist?.(); });
+} catch { /* unsupported */ }

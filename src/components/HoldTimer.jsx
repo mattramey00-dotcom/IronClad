@@ -35,11 +35,16 @@ export default function HoldTimer({ targetLo, targetHi, onStop }) {
   const [elapsed, setElapsed] = useState(0);
   const [running, setRunning] = useState(false);
   const signalled = useRef(false);
+  const startedAt = useRef(0);
 
+  // Counted from a start timestamp, not by ticks, so a locked screen mid-hold
+  // doesn't lose seconds.
   useEffect(() => {
     if (!running) return undefined;
-    const id = setInterval(() => setElapsed((e) => e + 1), 1000);
-    return () => clearInterval(id);
+    const tick = () => setElapsed(Math.floor((Date.now() - startedAt.current) / 1000));
+    const id = setInterval(tick, 250);
+    document.addEventListener("visibilitychange", tick);
+    return () => { clearInterval(id); document.removeEventListener("visibilitychange", tick); };
   }, [running]);
 
   // Fire once when the prescribed time is reached — the "you've hit it" cue.
@@ -51,7 +56,7 @@ export default function HoldTimer({ targetLo, targetHi, onStop }) {
     }
   }, [elapsed, running, targetLo]);
 
-  const start = () => { setElapsed(0); signalled.current = false; setRunning(true); };
+  const start = () => { startedAt.current = Date.now(); setElapsed(0); signalled.current = false; setRunning(true); };
   const stop = () => { setRunning(false); signalled.current = false; onStop?.(elapsed); setElapsed(0); };
 
   const hit = targetLo && elapsed >= targetLo;
