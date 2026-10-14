@@ -173,7 +173,7 @@ export default function RestTimer({ seconds, label, onClose, onSetDuration, embe
   const ss = String(remaining % 60).padStart(2, "0");
   const pct = total ? Math.max(0, Math.min(100, (remaining / total) * 100)) : 0;
 
-  const QUICK = embedded ? [60, 90] : [45, 60, 90, 120];
+  const QUICK = embedded ? [15, 30, 45, 60, 90] : [15, 30, 45, 60, 90, 120];
   const clock = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 
   const wrapStyle = embedded

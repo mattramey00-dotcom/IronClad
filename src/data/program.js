@@ -548,6 +548,24 @@ export function forMachine(ex, machine) {
   return { ...ex, n: ex.bike.n, s: ex.bike.s, timer: ex.bike.timer ?? ex.timer };
 }
 
+// The bike version of a run, offered as a swap when the treadmill isn't an
+// option (sore knees, someone else on it). Uses the cardio's own bike
+// prescription where it has one, and the off-day ride for the off-day run.
+// Null for anything that isn't a treadmill run — including one already on the
+// bike, and the deliberately machine-free mobility walk.
+export function bikeSwap(ex) {
+  if (ex?.d !== "cardio") return null;
+  if (ex.bike) {
+    if (ex.n === ex.bike.n) return null;
+    return { n: ex.bike.n, s: ex.bike.s, d: "cardio", timer: ex.bike.timer ?? ex.timer };
+  }
+  if (ex.n === OFF_DAY_CARDIO.treadmill.n) {
+    const b = OFF_DAY_CARDIO.bike;
+    return { n: b.n, s: b.s, d: "cardio", timer: b.timer };
+  }
+  return null;
+}
+
 // ============================================================
 //  Travel mode — the weight-free version of the whole program
 // ============================================================
