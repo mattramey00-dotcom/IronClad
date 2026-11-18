@@ -87,15 +87,17 @@ export default function CircuitBlock({
       {/* An all-timed round (e.g. Sprint 30s / Walk 90s) chains itself: starting the
           first station auto-starts the next the moment its timer ends, and the round
           is marked done the instant the last one finishes — nothing to tap mid-round.
-          Only while the round is in progress; once every round is done the plain
-          checklist below takes over so a mistaken auto-completion is still undoable. */}
+          No exercise modal here either (Matt's call, 2026-11-17): the auto-chaining
+          timer IS the sprint window, so the stage header stays a plain display and
+          tapping it opens nothing. Only while the round is in progress; once every
+          round is done the plain checklist below takes over so a mistaken
+          auto-completion is still undoable. */}
       {auto && !allComplete && stations.length > 0 && stations.every((s) => s.ex.timer) ? (
         <IntervalTimer
           key={activeRound}
           stations={stations}
           persistKey={persistKey && `${persistKey}##r${activeRound}`}
           startLabel={`Start round ${activeRound}`}
-          onOpenEx={onOpenEx}
           onComplete={() => onCompleteRound(stations.map((s) => s.ex.n), activeRound)}
         />
       ) : stations.map((s, i) => {

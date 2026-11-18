@@ -138,23 +138,36 @@ export default function IntervalTimer({ stations, persistKey, startLabel = "Star
   const pct = idle ? 100 : dur ? (remaining / dur) * 100 : 0;
   if (!stage) return null;
 
+  // The stage header opens the exercise sheet only when a caller passes
+  // onOpenEx. Without one (sprinting rounds, the timer inside the sheet
+  // itself) it is a plain display — mid-round there is nothing to open.
+  const stageInner = (
+    <>
+      <div style={ST.thumb}>
+        <ExerciseGif
+          name={stage.ex.n}
+          size={44}
+          cacheOnly
+          fallback={<Demo kind={DEMOS[stage.ex.d]?.kind || "core"} name={stage.ex.n} size={44} />}
+        />
+      </div>
+      <div style={{ minWidth: 0, flex: 1 }}>
+        <div style={ST.name}>{stage.ex.n}</div>
+        <div style={ST.reps}>{stage.ex.s}</div>
+      </div>
+      <div style={ST.clock}>{fmt(remaining)}</div>
+    </>
+  );
+
   return (
     <div style={ST.wrap}>
-      <button style={ST.stage} onClick={() => onOpenEx?.(stage.ex)} title="View the movement">
-        <div style={ST.thumb}>
-          <ExerciseGif
-            name={stage.ex.n}
-            size={44}
-            cacheOnly
-            fallback={<Demo kind={DEMOS[stage.ex.d]?.kind || "core"} name={stage.ex.n} size={44} />}
-          />
-        </div>
-        <div style={{ minWidth: 0, flex: 1 }}>
-          <div style={ST.name}>{stage.ex.n}</div>
-          <div style={ST.reps}>{stage.ex.s}</div>
-        </div>
-        <div style={ST.clock}>{fmt(remaining)}</div>
-      </button>
+      {onOpenEx ? (
+        <button style={ST.stage} onClick={() => onOpenEx(stage.ex)} title="View the movement">
+          {stageInner}
+        </button>
+      ) : (
+        <div style={{ ...ST.stage, cursor: "default" }}>{stageInner}</div>
+      )}
 
       <div style={ST.barTrack}>
         <div style={{ ...ST.barFill, width: `${pct}%` }} />
