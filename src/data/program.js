@@ -943,17 +943,19 @@ export function exercisesForMuscle(token) {
 //  One library move is dealt into every lifting session on a weekly
 //  rotation, so the library isn't just a manual add-on list. Only moves the
 //  home gym can actually do can rotate in — barbell, bench, dumbbells,
-//  bodyweight, the rack's pull-up bar. The cable and machine entries below
-//  stay in the library (they're valid movements, and the picker still shows
-//  them) but they can never be scheduled: there is no cable station or
-//  machine in the garage for them.
-const NEEDS_COMMERCIAL_GYM = new Set([
+//  bodyweight. The entries below stay in the library (they're valid
+//  movements, and the picker still shows them) but they can never be
+//  scheduled: the cable and machine moves need a commercial gym, and the
+//  pull-up-bar moves (Pull-Ups, Chin-Ups, Hanging Leg Raise) have no bar
+//  to hang from in the garage.
+const NOT_HOME_GYM = new Set([
   "Cable Chest Fly", "Machine Chest Press", "Cable Lateral Raise", "Face Pull",
   "Lat Pulldown", "Seated Cable Row", "Cable Curl", "Tricep Pushdown",
   "Overhead Cable Extension", "Leg Press", "Lying Leg Curl", "Leg Extension",
   "Seated Calf Raise", "Cable Crunch",
+  "Pull-Ups", "Chin-Ups", "Hanging Leg Raise",
 ]);
-export const HOME_LIBRARY = LIBRARY.filter((e) => !NEEDS_COMMERCIAL_GYM.has(e.n));
+export const HOME_LIBRARY = LIBRARY.filter((e) => !NOT_HOME_GYM.has(e.n));
 
 // Which primary muscles each workout's rotating slot draws from — the move
 // should belong to the day, not fight it. Full-body day draws from the
