@@ -1382,7 +1382,7 @@ function Trainer({
           summary. Phone-only; it never touches the shared plan or your
           partner's week. */}
       {!agenda.isRest && (
-        <div style={{ marginBottom: 14 }}>
+        <div style={{ marginBottom: 14, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 16, padding: 12 }}>
           <div style={S.segRow}>
             <button
               style={{ ...S.seg, ...(!travel ? S.segActive : {}), fontSize: 12, padding: "8px 4px", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }}
