@@ -90,26 +90,9 @@ export const EX_IMG = {
 // so the URLs can't drift. Needs network on first view; on any failure the
 // demo quietly falls back to its icon, exactly like a missing local photo.
 export const EX_IMG_REMOTE = {
-  // Cardio — a real person on the machine, for every machine variant name the
-  // scheduler or a swap can put on screen (these used to fall to a bare icon).
-  "Incline walk": "Walking_Treadmill",
-  Walk: "Walking_Treadmill",
-  "Easy walk": "Walking_Treadmill",
-  "Light walk": "Walking_Treadmill",
-  "Steady jog": "Running_Treadmill",
-  Sprint: "Running_Treadmill",
-  "Fast run": "Running_Treadmill",
-  "Easy run": "Running_Treadmill",
-  "Recovery jog": "Jogging_Treadmill",
-  "Steady ride": "Recumbent_Bike",
-  "Easy spin": "Recumbent_Bike",
-  "Hard sprint": "Recumbent_Bike",
-  "Hard effort": "Recumbent_Bike",
-  "Easy ride": "Recumbent_Bike",
-  "Steady row": "Rowing_Stationary",
-  "Easy row": "Rowing_Stationary",
-  "Hard row": "Rowing_Stationary",
-  // Swap-library movements that had no photo.
+  // Swap-library movements that had no photo. (Cardio deliberately carries
+  // none: a stock photo of someone running adds nothing, and the same photo
+  // repeated under every machine variant was just noise.)
   "Arnold Press": "Arnold_Dumbbell_Press",
   "Barbell Overhead Press": "Barbell_Shoulder_Press",
   "Bench Dips": "Bench_Dips",
