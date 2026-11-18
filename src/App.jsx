@@ -1106,6 +1106,10 @@ function Trainer({
     : agenda.together
       ? { main: "Core block", detail: TOGETHER.exercises.map((e) => e.n).join(" · ") }
       : { main: "Nothing today" };
+  // The summary rows' icons, following the old partner card's logic: the
+  // machine you're on, a dumbbell for a lifting day, a moon for the rest day.
+  const youIcon = agenda.isRest ? "moon" : agenda.trains ? "dumbbell" : agenda.run ? (MACHINE_ICON[machine] ?? "run") : "stretch";
+  const partnerIcon = agenda.isRest ? "moon" : agenda.partner.trains ? "dumbbell" : agenda.partner.runs ? (MACHINE_ICON[agenda.partner.machine] ?? "run") : "stretch";
 
   return (
     <Shell>
@@ -1336,15 +1340,20 @@ function Trainer({
           {/* The day in plain words: you, your partner, and what's together.
               The workouts themselves are the blocks below. */}
           {[
-            { label: "You", line: youLine },
-            { label: other.name, line: partnerLine },
-            { label: "Together", line: togetherLine },
-          ].map(({ label, line }) => (
-            <div key={label} style={S.sumRow}>
-              <div style={S.sumLabel}>{label}</div>
+            { label: "You", line: youLine, icon: youIcon },
+            { label: other.name, line: partnerLine, icon: partnerIcon },
+            { label: "Together", line: togetherLine, icon: "sparkle", accent: !!agenda.together },
+          ].map(({ label, line, icon, accent }, i) => (
+            <div key={label} style={{ ...S.sumRow, ...(i > 0 ? { borderTop: "1px solid var(--border)" } : { paddingTop: 2 }) }}>
+              <div style={{ ...S.sumTile, ...(accent ? { color: ACCENT, borderColor: "rgba(129,140,248,.35)" } : {}) }}>
+                <Icon name={icon} size={17} />
+              </div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <span style={S.sumMain}>{line.main}</span>
-                {line.detail ? <span style={S.sumDetail}> · {line.detail}</span> : null}
+                <div style={{ ...S.sumLabel, ...(accent ? { color: ACCENT } : {}) }}>{label}</div>
+                <div>
+                  <span style={S.sumMain}>{line.main}</span>
+                  {line.detail ? <span style={S.sumDetail}> · {line.detail}</span> : null}
+                </div>
               </div>
             </div>
           ))}

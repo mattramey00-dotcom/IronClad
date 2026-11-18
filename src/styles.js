@@ -110,10 +110,15 @@ export const S = {
   dayTitle: { fontFamily: "'Inter', sans-serif", fontWeight: 800, fontSize: 26, letterSpacing: -.6, lineHeight: 1.1 },
   daySub: { color: ACCENT, fontSize: 13, letterSpacing: 1, textTransform: "uppercase", marginTop: 2 },
   warmup: { fontSize: 13, color: "var(--text-mute)", marginTop: 10 },
-  // The plain three-line day summary: You / partner / Together.
-  sumRow: { display: "flex", alignItems: "baseline", gap: 10, padding: "5px 0" },
-  sumLabel: { flex: "0 0 74px", fontSize: 11, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", color: "var(--text-dim)" },
-  sumMain: { fontSize: 15, fontWeight: 650, color: "var(--text)" },
+  // The plain three-line day summary: You / partner / Together — styled like
+  // the partner card it replaced (icon tile, small-caps label, hairlines).
+  sumRow: { display: "flex", alignItems: "center", gap: 10, padding: "9px 0" },
+  sumTile: {
+    flex: "0 0 auto", width: 34, height: 34, borderRadius: 10, background: "var(--sunken)",
+    display: "grid", placeItems: "center", border: "1px solid var(--surface-2)", color: "var(--text-mute)",
+  },
+  sumLabel: { fontSize: 10.5, fontWeight: 700, letterSpacing: 2, textTransform: "uppercase", color: "var(--text-dim)", marginBottom: 1 },
+  sumMain: { fontSize: 14.5, fontWeight: 650, color: "var(--text)" },
   sumDetail: { fontSize: 13, color: "var(--text-mute)" },
   progBar: { height: 8, background: "var(--border)", borderRadius: 99, overflow: "hidden", marginTop: 14 },
   progFill: { height: "100%", background: `linear-gradient(90deg,${ACCENT_DIM},${ACCENT})`, transition: "width .4s ease", borderRadius: 99 },
