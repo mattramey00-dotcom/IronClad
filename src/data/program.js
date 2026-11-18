@@ -939,6 +939,49 @@ export function exercisesForMuscle(token) {
   return list;
 }
 
+// ---- the rotating accessory -------------------------------------------
+//  One library move is dealt into every lifting session on a weekly
+//  rotation, so the library isn't just a manual add-on list. Only moves the
+//  home gym can actually do can rotate in — barbell, bench, dumbbells,
+//  bodyweight, the rack's pull-up bar. The cable and machine entries below
+//  stay in the library (they're valid movements, and the picker still shows
+//  them) but they can never be scheduled: there is no cable station or
+//  machine in the garage for them.
+const NEEDS_COMMERCIAL_GYM = new Set([
+  "Cable Chest Fly", "Machine Chest Press", "Cable Lateral Raise", "Face Pull",
+  "Lat Pulldown", "Seated Cable Row", "Cable Curl", "Tricep Pushdown",
+  "Overhead Cable Extension", "Leg Press", "Lying Leg Curl", "Leg Extension",
+  "Seated Calf Raise", "Cable Crunch",
+]);
+export const HOME_LIBRARY = LIBRARY.filter((e) => !NEEDS_COMMERCIAL_GYM.has(e.n));
+
+// Which primary muscles each workout's rotating slot draws from — the move
+// should belong to the day, not fight it. Full-body day draws from the
+// whole home library.
+const ROTATION_FOCUS = {
+  push: ["chest", "shoulders", "triceps"],
+  pull: ["lats", "traps", "biceps", "forearms"],
+  legs: ["quads", "glutes", "hamstrings", "calves", "abs", "obliques"],
+  upper: ["chest", "shoulders", "triceps", "lats", "traps", "biceps", "forearms"],
+  lower: ["quads", "glutes", "hamstrings", "calves", "abs", "obliques"],
+  full: null,
+};
+
+// This week's rotating accessory for a workout: a pure function of the
+// workout and the week number, so both phones deal the same move without
+// syncing, and the pick steps forward one pool entry each week.
+export function rotatingAccessory(workoutId, weekIndex) {
+  const focus = ROTATION_FOCUS[workoutId];
+  const pool = HOME_LIBRARY.filter((e) => !focus || focus.includes(e.m[0]));
+  if (!pool.length) return null;
+  // A per-workout offset, so two workouts sharing a pool don't march in
+  // lockstep through it.
+  const offset = [...workoutId].reduce((a, c) => a + c.charCodeAt(0), 0);
+  const idx = (((weekIndex + offset) % pool.length) + pool.length) % pool.length;
+  const pick = pool[idx];
+  return { n: pick.n, s: pick.s, d: pick.d };
+}
+
 // Every strength movement the app knows — the program's own lifts plus the
 // accessory library, deduped and alphabetised. Powers the swap field's
 // autocomplete so a manual replacement is picked from real, mapped movements

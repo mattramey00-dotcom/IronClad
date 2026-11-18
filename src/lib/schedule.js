@@ -23,7 +23,7 @@
 // ============================================================
 
 import {
-  WORKOUTS, WORKOUT_BY_ID, OFF_DAY_CARDIO, MOBILITY, TOGETHER, EQ,
+  WORKOUTS, WORKOUT_BY_ID, OFF_DAY_CARDIO, MOBILITY, TOGETHER, EQ, rotatingAccessory,
 } from "../data/program.js";
 
 export const WORKOUT_SHORTS = Object.fromEntries(WORKOUTS.map((w) => [w.id, w.short]));
@@ -347,6 +347,10 @@ export function agendaFor(plan, personId, key) {
   const isRest = isoWeekday(key) === 7;
 
   const workout = isRest ? null : workoutOn(plan, person, key);
+  // The week's rotating library accessory for this workout (see program.js).
+  // A function of the workout and the week only — your partner gets the same
+  // move when the same workout lands in their week.
+  const rotating = workout ? rotatingAccessory(workout.id, wIdx) : null;
   const running = !isRest && runsOn(plan, person, key);
   const machine = isRest ? null : machineFor(plan, person, key);
   const together = !isRest && togetherOn(plan, key);
@@ -367,6 +371,7 @@ export function agendaFor(plan, personId, key) {
     person,
     isRest,
     workout,
+    rotating,
     trains: !!workout,
     // Your off-day run, on whichever machine your partner left you.
     run: running && machine ? { ...OFF_DAY_CARDIO[machine], machine } : null,
@@ -404,6 +409,7 @@ export function exercisesFor(agenda) {
     agenda.workout.blocks.forEach((b) =>
       b.exercises.forEach((e) => out.push({ ...e, block: b.name }))
     );
+    if (agenda.rotating) out.push({ ...agenda.rotating, block: "Rotating accessory" });
   }
   if (agenda.run) out.push({ ...agenda.run, block: "Run" });
   if (agenda.recovery) {
@@ -419,7 +425,25 @@ export function exercisesFor(agenda) {
 export function blocksFor(agenda) {
   const blocks = [];
   if (agenda.isRest) return blocks;
-  if (agenda.trains) blocks.push(...agenda.workout.blocks);
+  if (agenda.trains) {
+    const wb = agenda.workout.blocks;
+    // The rotating accessory slots in just before the finisher, so the
+    // session still ends on the finisher the way it always has.
+    if (agenda.rotating && wb.length > 1) {
+      blocks.push(
+        ...wb.slice(0, -1),
+        {
+          name: "Rotating accessory",
+          exercises: [agenda.rotating],
+          isRotating: true,
+          note: "A library move on a weekly rotation, for variety.",
+        },
+        wb[wb.length - 1],
+      );
+    } else {
+      blocks.push(...wb);
+    }
+  }
   if (agenda.run) {
     blocks.push({
       name: { bike: "Your ride", rower: "Your row" }[agenda.run.machine] ?? "Your run",

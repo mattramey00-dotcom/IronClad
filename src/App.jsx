@@ -1437,7 +1437,7 @@ function Trainer({
             {block.isExtra && <Icon name="plus" size={12} />}
             {block.isTogether ? `${block.name} · with ${other.name}` : block.name}
           </div>
-          {(block.isTogether || block.isRecovery || block.isExtra) && (
+          {(block.isTogether || block.isRecovery || block.isExtra || block.isRotating) && (
             <div style={S.blockNote}>{block.note}</div>
           )}
 
