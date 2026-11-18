@@ -10,7 +10,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense } from "react";
 import {
-  ACCENT, DEMOS, EX_VIDEO, TOGETHER, REST_DAY, forMachine, forTravel, forSub, musclesFor, MUSCLE_LABELS,
+  ACCENT, DEMOS, EX_VIDEO, TOGETHER, forMachine, forTravel, forSub, musclesFor, MUSCLE_LABELS,
 } from "./data/program.js";
 import {
   agendaFor, weekAgenda, blocksFor, exercisesFor, dateKey, rollSelected, mondayOf,
@@ -1084,6 +1084,29 @@ function Trainer({
 
   const warmup = agenda.workout?.warmup?.[machine] ?? agenda.workout?.warmup?.treadmill;
 
+  // The day's header, in plain words: what you're doing, what your partner
+  // is doing, and what you're doing together. Each line is a main item plus
+  // an optional muted detail — no flavor text, no prose.
+  const youLine = agenda.isRest
+    ? { main: "Rest day" }
+    : agenda.trains
+      ? { main: agenda.workout.title, detail: [agenda.workout.subtitle, machine ? MACHINE_NAME[machine] : null].filter(Boolean).join(" · ") }
+      : agenda.run
+        ? { main: agenda.run.n, detail: [agenda.run.mins, machine ? MACHINE_NAME[machine] : null].filter(Boolean).join(" · ") }
+        : { main: "Mobility", detail: "Walking and stretching" };
+  const partnerLine = agenda.isRest
+    ? { main: "Rest day" }
+    : agenda.partner.trains
+      ? { main: agenda.partner.workout.title, detail: agenda.partner.machine ? MACHINE_NAME[agenda.partner.machine] : null }
+      : agenda.partner.runs
+        ? { main: `Out for a ${RUN_WORD[agenda.partner.machine] ?? "run"}`, detail: agenda.partner.machine ? MACHINE_NAME[agenda.partner.machine] : null }
+        : { main: "Mobility", detail: "Walking and stretching" };
+  const togetherLine = agenda.isRest
+    ? { main: "Both off" }
+    : agenda.together
+      ? { main: "Core block", detail: TOGETHER.exercises.map((e) => e.n).join(" · ") }
+      : { main: "Nothing today" };
+
   return (
     <Shell>
       {/* Header */}
@@ -1310,78 +1333,25 @@ function Trainer({
       {/* The day */}
       <div style={S.dayCard} key={selected}>
         <div style={{ animation: "fade .4s ease" }}>
-          {agenda.isRest ? (
-            // The one day you're both off. No exercises, no checkmarks, no
-            // progress bar — a rest day with a to-do list isn't a rest day.
-            <>
-              <div style={S.dayTitle}>{REST_DAY.title}</div>
-              <div style={S.daySub}>{REST_DAY.subtitle}</div>
-              <div style={S.warmup}>{REST_DAY.note}</div>
-            </>
-          ) : agenda.trains ? (
-            <>
-              <div style={S.dayTitle}>{agenda.workout.title}</div>
-              <div style={S.daySub}>{agenda.workout.subtitle}</div>
-              {warmup && (
-                <div style={{ ...S.warmup, display: "flex", alignItems: "center", gap: 6 }}>
-                  <Icon name="flame" size={14} style={{ color: ACCENT }} /> Warm-Up · {warmup}
-                </div>
-              )}
-            </>
-          ) : (
-            <>
-              <div style={S.dayTitle}>
-                {agenda.recovery ? agenda.recovery.title : "Cardio Day"}
+          {/* The day in plain words: you, your partner, and what's together.
+              The workouts themselves are the blocks below. */}
+          {[
+            { label: "You", line: youLine },
+            { label: other.name, line: partnerLine },
+            { label: "Together", line: togetherLine },
+          ].map(({ label, line }) => (
+            <div key={label} style={S.sumRow}>
+              <div style={S.sumLabel}>{label}</div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <span style={S.sumMain}>{line.main}</span>
+                {line.detail ? <span style={S.sumDetail}> · {line.detail}</span> : null}
               </div>
-              <div style={S.daySub}>
-                {agenda.partner.trains ? `${other.name}'s gym day` : "Off the bar"}
-              </div>
-              <div style={S.warmup}>
-                {agenda.recovery
-                  ? agenda.together
-                    ? `Easy movement, plus core with ${other.name}. A leg day follows this one — keep it light.`
-                    : agenda.recovery.note
-                  : agenda.together
-                    ? `Your ${RUN_WORD[agenda.run.machine] ?? "run"}, plus core with ${other.name}.`
-                    : `No lifting — just your ${RUN_WORD[agenda.run.machine] ?? "run"}.`}
-              </div>
-            </>
-          )}
-
-          {machine && (
-            // Just your machine here — clearly yours. What your partner's on
-            // lives in their own card below, so it isn't said twice.
-            <div style={S.machineChip}>
-              <Icon name={MACHINE_ICON[machine]} size={14} /> You · {MACHINE_NAME[machine]}
             </div>
-          )}
-
-          {/* Training mode — swap the whole session to a no-gym version, right
-              here on the day rather than buried in Settings. Phone-only; it
-              never touches the shared plan or your partner's week. */}
-          {!agenda.isRest && (
-            <>
-              <div style={{ ...S.segRow, marginTop: 12 }}>
-                <button
-                  style={{ ...S.seg, ...(!travel ? S.segActive : {}), fontSize: 12, padding: "8px 4px", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }}
-                  onClick={() => onSetTravel(false)}
-                >
-                  <Icon name="dumbbell" size={14} /> Full gym
-                </button>
-                <button
-                  style={{ ...S.seg, ...(travel ? S.segActive : {}), fontSize: 12, padding: "8px 4px", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }}
-                  onClick={() => onSetTravel(true)}
-                >
-                  <Icon name="plane" size={13} /> Weight-free
-                </button>
-              </div>
-              {travel && (
-                <div style={{ ...S.blockNote, marginTop: 6 }}>
-                  Every barbell and dumbbell lift is swapped for a bodyweight version that trains the same
-                  movement — your runs and planks carry over. This phone only; it doesn't touch {other.name}'s week.
-                </div>
-              )}
-            </>
+          ))}
+          {warmup && agenda.trains && (
+            <div style={{ ...S.warmup, display: "flex", alignItems: "center", gap: 6, marginTop: 10 }}>
+              <Icon name="flame" size={14} style={{ color: ACCENT }} /> Warm-Up · {warmup}
+            </div>
           )}
 
           {total > 0 && (
@@ -1399,8 +1369,33 @@ function Trainer({
         </div>
       </div>
 
-      {/* What the other one is doing */}
-      <PartnerCard agenda={agenda} other={other} />
+      {/* Weights or no weights — its own section, right after the day's
+          summary. Phone-only; it never touches the shared plan or your
+          partner's week. */}
+      {!agenda.isRest && (
+        <div style={{ marginBottom: 14 }}>
+          <div style={S.segRow}>
+            <button
+              style={{ ...S.seg, ...(!travel ? S.segActive : {}), fontSize: 12, padding: "8px 4px", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+              onClick={() => onSetTravel(false)}
+            >
+              <Icon name="dumbbell" size={14} /> Full gym
+            </button>
+            <button
+              style={{ ...S.seg, ...(travel ? S.segActive : {}), fontSize: 12, padding: "8px 4px", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+              onClick={() => onSetTravel(true)}
+            >
+              <Icon name="plane" size={13} /> Weight-free
+            </button>
+          </div>
+          {travel && (
+            <div style={{ ...S.blockNote, marginTop: 6 }}>
+              Every barbell and dumbbell lift is swapped for a bodyweight version that trains the same
+              movement — your runs and planks carry over. This phone only; it doesn't touch {other.name}'s week.
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Target a muscle — a blown-up, tappable body map for adding accessory
           work on top of the day's plan. */}
@@ -1882,34 +1877,6 @@ function Trainer({
 }
 
 // ---- what your partner is doing today -------------------------------
-function PartnerCard({ agenda, other }) {
-  const p = agenda.partner;
-  let what;
-  if (agenda.isRest) what = "Off today as well — the gym stays shut";
-  else if (p.trains) what = `${p.workout.title} · cardio on the ${p.machine}`;
-  else if (p.runs) what = `Out for a ${RUN_WORD[p.machine] ?? "run"} · on the ${p.machine}`;
-  else what = "Mobility — walking and stretching";
-
-  const partnerIcon = p.trains ? "dumbbell" : p.runs ? "run" : agenda.isRest ? "moon" : "stretch";
-
-  return (
-    <div style={S.partnerCard}>
-      <div style={{ ...S.demoWrap, width: 34, height: 34, color: "var(--text-mute)" }}>
-        <Icon name={partnerIcon} size={17} />
-      </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={S.partnerName}>{other.name}</div>
-        <div style={S.partnerWhat}>{what}</div>
-      </div>
-      {agenda.together && (
-        <div style={{ ...S.machineChip, marginTop: 0, border: "1px solid rgba(129,140,248,.3)", color: ACCENT }}>
-          <Icon name="sparkle" size={12} /> Core together
-        </div>
-      )}
-    </div>
-  );
-}
-
 // ---- settings ---------------------------------------------------------
 function SettingsModal({ plan, me, apiKey, model, wxKey, onSetWxKey, onSetApiKey, onSetModel, onSwitchPerson, onExportBackup, onExportMealsCSV, backupBusy, lastBackup, tuneTraining, onSetTuneTraining, goalLabel, onClose }) {
   const [copied, setCopied] = useState(false);
