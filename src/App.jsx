@@ -48,7 +48,6 @@ import Setup from "./components/Setup.jsx";
 import FuelCard from "./components/FuelCard.jsx";
 import TabBar from "./components/TabBar.jsx";
 import RestTimer from "./components/RestTimer.jsx";
-import MuscleMap from "./components/MuscleMap.jsx";
 import MuscleTargetModal from "./components/MuscleTargetModal.jsx";
 import WeeklySummaryModal from "./components/WeeklySummaryModal.jsx";
 import CopyMealsModal from "./components/CopyMealsModal.jsx";
@@ -1511,7 +1510,6 @@ function Trainer({
                       {tSession ? <span style={{ color: ACCENT }}> · {tSession.sets.length} logged</span> : null}
                     </div>
                     <div style={S.muscleRow}>
-                      <MuscleMap muscles={muscles} height={84} />
                       <div style={S.muscleText}>
                         <div style={S.muscleLabel}>Targets</div>
                         <div style={S.muscleList}>
