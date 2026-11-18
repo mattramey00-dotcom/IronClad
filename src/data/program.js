@@ -965,7 +965,7 @@ const ROTATION_FOCUS = {
   pull: ["lats", "traps", "biceps", "forearms"],
   legs: ["quads", "glutes", "hamstrings", "calves", "abs", "obliques"],
   upper: ["chest", "shoulders", "triceps", "lats", "traps", "biceps", "forearms"],
-  lower: ["quads", "glutes", "hamstrings", "calves", "abs", "obliques"],
+  lower: ["quads", "glutes", "hamstrings", "calves"],
   full: null,
 };
 

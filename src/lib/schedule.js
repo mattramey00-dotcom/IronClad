@@ -23,7 +23,7 @@
 // ============================================================
 
 import {
-  WORKOUTS, WORKOUT_BY_ID, OFF_DAY_CARDIO, MOBILITY, TOGETHER, EQ, rotatingAccessory,
+  WORKOUTS, WORKOUT_BY_ID, OFF_DAY_CARDIO, MOBILITY, TOGETHER, EQ, rotatingAccessory, musclesFor,
 } from "../data/program.js";
 
 export const WORKOUT_SHORTS = Object.fromEntries(WORKOUTS.map((w) => [w.id, w.short]));
@@ -406,10 +406,9 @@ export function exercisesFor(agenda) {
   const out = [];
   if (agenda.isRest) return out;
   if (agenda.trains) {
-    agenda.workout.blocks.forEach((b) =>
+    displayBlocks(agenda).forEach((b) =>
       b.exercises.forEach((e) => out.push({ ...e, block: b.name }))
     );
-    if (agenda.rotating) out.push({ ...agenda.rotating, block: "Rotating accessory" });
   }
   if (agenda.run) out.push({ ...agenda.run, block: "Run" });
   if (agenda.recovery) {
@@ -421,29 +420,44 @@ export function exercisesFor(agenda) {
   return out;
 }
 
+// The workout's blocks as you'll actually train them: the week's rotating
+// accessory is swapped IN, replacing a regular exercise rather than adding
+// to the day — the session takes the same time it always did. The swap
+// target is the last exercise before the finisher that trains the same
+// primary muscle as the pick, so the day still trains what it planned; the
+// opening lift of a non-circuit block is never the one swapped out.
+export function displayBlocks(agenda) {
+  const wb = agenda.workout.blocks.map((b) => ({ ...b, exercises: [...b.exercises] }));
+  const pick = agenda.rotating;
+  if (!pick) return wb;
+  const pickMuscles = musclesFor(pick);
+  const candBlocks = wb.length > 1 ? wb.slice(0, -1) : wb;
+  let primaryMatch = null;
+  let anyMatch = null;
+  let kindMatch = null;
+  candBlocks.forEach((b, bi) => {
+    b.exercises.forEach((e, ei) => {
+      if (e.d === "cardio") return;
+      if (bi === 0 && ei === 0 && !b.circuit) return; // the day's opening lift stays
+      const ePrimary = musclesFor(e)[0];
+      if (pickMuscles.includes(ePrimary)) anyMatch = { bi, ei };
+      if (ePrimary === pickMuscles[0]) primaryMatch = { bi, ei };
+      if (e.d === pick.d) kindMatch = { bi, ei };
+    });
+  });
+  // Best first: same primary muscle, then any shared muscle, then the same
+  // movement kind. No reasonable match → no swap this week, rather than a
+  // nonsense one (a core move for the day's only calf work, say).
+  const target = primaryMatch || anyMatch || kindMatch;
+  if (target) candBlocks[target.bi].exercises[target.ei] = { ...pick, rotating: true };
+  return wb;
+}
+
 // The blocks to render for a date, machine-resolved.
 export function blocksFor(agenda) {
   const blocks = [];
   if (agenda.isRest) return blocks;
-  if (agenda.trains) {
-    const wb = agenda.workout.blocks;
-    // The rotating accessory slots in just before the finisher, so the
-    // session still ends on the finisher the way it always has.
-    if (agenda.rotating && wb.length > 1) {
-      blocks.push(
-        ...wb.slice(0, -1),
-        {
-          name: "Rotating accessory",
-          exercises: [agenda.rotating],
-          isRotating: true,
-          note: "A library move on a weekly rotation, for variety.",
-        },
-        wb[wb.length - 1],
-      );
-    } else {
-      blocks.push(...wb);
-    }
-  }
+  if (agenda.trains) blocks.push(...displayBlocks(agenda));
   if (agenda.run) {
     blocks.push({
       name: { bike: "Your ride", rower: "Your row" }[agenda.run.machine] ?? "Your run",

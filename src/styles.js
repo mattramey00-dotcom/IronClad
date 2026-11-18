@@ -393,4 +393,11 @@ export const S = {
     background: "rgba(224,180,74,.14)", border: "1px solid rgba(224,180,74,.42)",
     color: "#E0B44A", verticalAlign: "middle", whiteSpace: "nowrap",
   },
+  // The week's rotating accessory, swapped in for a regular exercise.
+  rotTag: {
+    display: "inline-flex", alignItems: "center", marginLeft: 7,
+    padding: "1px 6px", borderRadius: 6, fontSize: 10, fontWeight: 800, letterSpacing: 0.4,
+    background: "rgba(129,140,248,.13)", border: "1px solid rgba(129,140,248,.4)",
+    color: ACCENT, verticalAlign: "middle", whiteSpace: "nowrap",
+  },
 };

@@ -23,30 +23,53 @@ describe("rollSelected (midnight rollover)", () => {
 describe("rotating accessory", () => {
   const plan = makePlan({ anchor: "2026-11-16", you: "Matt", partner: "Jacque" });
 
-  it("deals a home-gym move into every lifting day, and nothing on rest days", () => {
+  it("swaps one regular exercise out — the day never gets longer", () => {
     const homeNames = new Set(HOME_LIBRARY.map((e) => e.n));
     let lifting = 0;
+    let swapDays = 0;
     for (let i = 0; i < 28; i++) {
       const key = addDays("2026-11-16", i);
       for (const p of plan.people) {
         const ag = agendaFor(plan, p.id, key);
         if (ag.isRest) expect(ag.rotating).toBeNull();
-        if (ag.trains) {
-          lifting++;
-          expect(ag.rotating).not.toBeNull();
-          expect(homeNames.has(ag.rotating.n)).toBe(true);
-          const blocks = blocksFor(ag);
-          const rb = blocks.find((b) => b.isRotating);
-          expect(rb.exercises[0].n).toBe(ag.rotating.n);
-          // The finisher still closes the workout blocks.
-          expect(blocks.indexOf(rb)).toBe(ag.workout.blocks.length - 1);
+        if (!ag.trains) continue;
+        lifting++;
+        const rawCount = ag.workout.blocks.reduce((a, b) => a + b.exercises.length, 0);
+        const shown = blocksFor(ag).filter((b) => ag.workout.blocks.some((wb) => wb.name === b.name));
+        const shownCount = shown.reduce((a, b) => a + b.exercises.length, 0);
+        expect(shownCount).toBe(rawCount); // a swap, never an addition
+        const swapped = shown.flatMap((b) => b.exercises).filter((e) => e.rotating);
+        expect(swapped.length).toBeLessThanOrEqual(1);
+        if (swapped.length) {
+          swapDays++;
+          expect(swapped[0].n).toBe(ag.rotating.n);
+          expect(homeNames.has(swapped[0].n)).toBe(true);
         }
+        // The finisher is never the swap target.
+        const last = shown[shown.length - 1];
+        expect(last.exercises.some((e) => e.rotating)).toBe(false);
       }
     }
     expect(lifting).toBeGreaterThan(0);
+    // Most lifting days do get their swap — a week with no reasonable match
+    // is the exception, not the rule.
+    expect(swapDays).toBeGreaterThan(lifting / 2);
   });
 
-  it("never schedules a cable or machine move, in any week", () => {
+  it("never swaps out the day's opening lift (non-circuit workouts)", () => {
+    for (let i = 0; i < 56; i++) {
+      const key = addDays("2026-11-16", i);
+      for (const p of plan.people) {
+        const ag = agendaFor(plan, p.id, key);
+        if (!ag.trains || ag.workout.blocks[0].circuit) continue;
+        const opener = ag.workout.blocks[0].exercises[0].n;
+        const names = blocksFor(ag)[0].exercises.map((e) => e.n);
+        expect(names[0]).toBe(opener);
+      }
+    }
+  });
+
+  it("never schedules a cable, machine or pull-up-bar move, in any week", () => {
     const banned = new Set(LIBRARY.map((e) => e.n).filter((n) => !HOME_LIBRARY.some((h) => h.n === n)));
     for (let w = -10; w < 60; w++) {
       for (const id of ["push", "pull", "legs", "upper", "lower", "full"]) {

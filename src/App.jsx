@@ -1441,7 +1441,7 @@ function Trainer({
             {block.isExtra && <Icon name="plus" size={12} />}
             {block.isTogether ? `${block.name} · with ${other.name}` : block.name}
           </div>
-          {(block.isTogether || block.isRecovery || block.isExtra || block.isRotating) && (
+          {(block.isTogether || block.isRecovery || block.isExtra) && (
             <div style={S.blockNote}>{block.note}</div>
           )}
 
@@ -1513,6 +1513,7 @@ function Trainer({
                     <div style={{ ...S.exName, ...(done ? { textDecoration: "line-through", color: "#6f9c82" } : {}) }}>
                       {ex.n}
                       {pr && <span style={S.prBadge}><Icon name="star" size={10} /> PR</span>}
+                      {ex.rotating && <span style={S.rotTag}>Rotating</span>}
                     </div>
                     <div style={S.exSets}>
                       {ex.s}
