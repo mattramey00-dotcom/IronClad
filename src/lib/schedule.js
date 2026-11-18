@@ -260,6 +260,25 @@ const RUN_DEMAND_OF_AN_OFF_DAY_RUN = 2;
 // from the date key alone so both phones agree without syncing anything.
 const secondaryMachineFor = (key) => (dayNum(key) % 2 === 0 ? "bike" : "rower");
 
+// How many solo days this person has had from the anchor through `key`,
+// inclusive — a solo day being one where they train or run and their
+// partner needs no machine at all. The solo-day machine hangs off this
+// count rather than the calendar date: date parity let the off days land
+// on the same machine again and again, so one person could row every
+// time and the other never. Counting solo days makes the treadmill and
+// the rower strictly alternate, first solo day on the treadmill.
+function soloDayCount(plan, person, key) {
+  const other = partnerOf(plan, person.id);
+  let n = 0;
+  for (let d = dayNum(plan.anchor); d <= dayNum(key); d++) {
+    const k = addDays(plan.anchor, d - dayNum(plan.anchor));
+    if (!workoutOn(plan, person, k) && !runsOn(plan, person, k)) continue;
+    if (workoutOn(plan, other, k) || runsOn(plan, other, k)) continue;
+    n++;
+  }
+  return n;
+}
+
 export function machineFor(plan, person, key) {
   const workout = workoutOn(plan, person, key);
   const running = runsOn(plan, person, key);
@@ -271,9 +290,10 @@ export function machineFor(plan, person, key) {
   const otherNeedsMachine = !!otherWorkout || otherRunning;
 
   if (!otherNeedsMachine) {
-    // The gym is all yours — treadmill and rower alternate by day (see the
-    // floor rule above: solo, the rower can't clash with anyone).
-    return dayNum(key) % 2 === 0 ? "treadmill" : "rower";
+    // The gym is all yours — treadmill and rower strictly alternate, solo
+    // day by solo day (see the floor rule above: solo, the rower can't
+    // clash with anyone).
+    return soloDayCount(plan, person, key) % 2 === 1 ? "treadmill" : "rower";
   }
 
   const myDemand = running ? RUN_DEMAND_OF_AN_OFF_DAY_RUN : workout.load.run;

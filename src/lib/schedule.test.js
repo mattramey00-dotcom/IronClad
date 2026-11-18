@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { rollSelected, dateKey, makePlan, agendaFor, blocksFor, addDays } from "./schedule.js";
+import { rollSelected, dateKey, makePlan, agendaFor, blocksFor, addDays, machineFor, workoutOn, runsOn, partnerOf } from "./schedule.js";
 import { rotatingAccessory, HOME_LIBRARY, LIBRARY } from "../data/program.js";
 
 describe("rollSelected (midnight rollover)", () => {
@@ -84,5 +84,38 @@ describe("rotating accessory", () => {
     const picks = new Set();
     for (let w = 0; w < 6; w++) picks.add(rotatingAccessory("push", w).n);
     expect(picks.size).toBeGreaterThan(1);
+  });
+});
+
+describe("solo-day machine alternation", () => {
+  const plan = makePlan({ anchor: "2026-11-16", you: "Matt", partner: "Jacque" });
+  const isSoloDay = (p, key) => {
+    const other = partnerOf(plan, p.id);
+    const mine = !!workoutOn(plan, p, key) || runsOn(plan, p, key);
+    const theirs = !!workoutOn(plan, other, key) || runsOn(plan, other, key);
+    return mine && !theirs;
+  };
+
+  it("strictly alternates treadmill and rower across each person's solo days", () => {
+    for (const p of plan.people) {
+      const seq = [];
+      for (let i = 0; i < 56; i++) {
+        const key = addDays("2026-11-16", i);
+        if (isSoloDay(p, key)) seq.push(machineFor(plan, p, key));
+      }
+      expect(seq.length).toBeGreaterThan(3);
+      seq.forEach((m, i) => expect(m).toBe(i % 2 === 0 ? "treadmill" : "rower"));
+    }
+  });
+
+  it("never assigns the rower while the partner is lifting (floor rule)", () => {
+    for (let i = 0; i < 56; i++) {
+      const key = addDays("2026-11-16", i);
+      for (const p of plan.people) {
+        if (machineFor(plan, p, key) !== "rower") continue;
+        const other = partnerOf(plan, p.id);
+        expect(workoutOn(plan, other, key)).toBeNull();
+      }
+    }
   });
 });
