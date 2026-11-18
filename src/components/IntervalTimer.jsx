@@ -69,7 +69,7 @@ const fmt = (secs) => {
   return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 };
 
-export default function IntervalTimer({ stations, persistKey, startLabel = "Start", onOpenEx, onComplete, onSkip = onComplete }) {
+export default function IntervalTimer({ stations, persistKey, startLabel = "Start", onOpenEx, onComplete, onSkip = onComplete, done = false, onToggleDone = null }) {
   const durOf = (i) => stations[i]?.ex.timer || 0;
   // { stageIdx, endAt } while running; null = idle.
   const [run, setRun] = useState(() => loadRun(persistKey));
@@ -152,7 +152,7 @@ export default function IntervalTimer({ stations, persistKey, startLabel = "Star
         />
       </div>
       <div style={{ minWidth: 0, flex: 1 }}>
-        <div style={ST.name}>{stage.ex.n}</div>
+        <div style={{ ...ST.name, ...(done ? { textDecoration: "line-through", color: "#6f9c82" } : {}) }}>{stage.ex.n}</div>
         <div style={ST.reps}>{stage.ex.s}</div>
       </div>
       <div style={ST.clock}>{fmt(remaining)}</div>
@@ -161,13 +161,27 @@ export default function IntervalTimer({ stations, persistKey, startLabel = "Star
 
   return (
     <div style={ST.wrap}>
-      {onOpenEx ? (
-        <button style={ST.stage} onClick={() => onOpenEx(stage.ex)} title="View the movement">
-          {stageInner}
-        </button>
-      ) : (
-        <div style={{ ...ST.stage, cursor: "default" }}>{stageInner}</div>
-      )}
+      {/* The check lives in the timer card when the caller passes one, so a
+          timed cardio exercise is a single section — timer and done state
+          together — instead of a timer card plus a separate row underneath. */}
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        {onOpenEx ? (
+          <button style={{ ...ST.stage, flex: 1, minWidth: 0 }} onClick={() => onOpenEx(stage.ex)} title="View the movement">
+            {stageInner}
+          </button>
+        ) : (
+          <div style={{ ...ST.stage, flex: 1, minWidth: 0, cursor: "default" }}>{stageInner}</div>
+        )}
+        {onToggleDone && (
+          <button
+            onClick={onToggleDone}
+            style={{ ...S.check, ...(done ? S.checkDone : {}) }}
+            aria-label="complete"
+          >
+            {done ? <span style={{ animation: "pop .35s ease" }}>✓</span> : ""}
+          </button>
+        )}
+      </div>
 
       <div style={ST.barTrack}>
         <div style={{ ...ST.barFill, width: `${pct}%` }} />
@@ -175,7 +189,7 @@ export default function IntervalTimer({ stations, persistKey, startLabel = "Star
 
       {next && <div style={ST.next}>Then: {next.ex.n} — {next.ex.s}</div>}
 
-      {idle ? (
+      {done ? null : idle ? (
         <button style={{ ...S.btnAccent, width: "100%", padding: 10, marginTop: 8 }} onClick={start}>
           {startLabel}
         </button>

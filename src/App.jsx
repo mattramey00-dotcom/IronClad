@@ -1464,19 +1464,24 @@ function Trainer({
             const full = muscles.includes("fullbody");
             // A timed walk/jog/ride (a finisher, the off-day run, the mobility
             // walk) gets the same draining-meter timer as the sprint circuits,
-            // right on the card; it checks the exercise off when the clock runs out.
-            const runTimer = ex.d === "cardio" && ex.timer && !done && (
+            // right on the card; it checks the exercise off when the clock runs
+            // out. The timer card carries the check itself, so a timed cardio
+            // exercise renders as that one section — no separate row under it.
+            const runTimer = ex.d === "cardio" && ex.timer && !block.isExtra && (
               <IntervalTimer
                 key={cardioTimerKey(block.name, [ex.n])}
                 stations={[{ ex }]}
                 persistKey={cardioTimerKey(block.name, [ex.n])}
                 onOpenEx={(e) => setOpenEx({ blockName: block.name, ex: e })}
                 onComplete={() => markDone(block.name, ex.n)}
+                done={done}
+                onToggleDone={() => toggle(block.name, ex.n)}
               />
             );
             return (
               <React.Fragment key={ei}>
               {runTimer}
+              {!runTimer && (
               <div
                 style={{
                   ...S.exRow,
@@ -1546,6 +1551,7 @@ function Trainer({
                   </button>
                 )}
               </div>
+              )}
               </React.Fragment>
             );
           })}
