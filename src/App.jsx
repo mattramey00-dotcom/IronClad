@@ -1730,7 +1730,6 @@ function Trainer({
           origName={openEx.ex._orig || openEx.ex.n}
           subbed={!!openEx.ex._sub}
           onSwap={(rep) => { swapExercise(openEx.ex._orig || openEx.ex.n, rep); setOpenEx(null); }}
-          muscles={musclesFor(openEx.ex)}
           video={EX_VIDEO[openEx.ex.n]}
           rest={rest}
           restPref={restPrefs[openEx.ex.n]}

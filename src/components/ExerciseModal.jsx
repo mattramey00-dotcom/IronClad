@@ -1,11 +1,11 @@
 // ============================================================
 //  IRONCLAD — the exercise modal
 // ============================================================
-//  Tapping an exercise opens this focused view: a large look at the movement, a
-//  full-size map of the muscles it works, and a set-by-set checklist. You tick
-//  each set as you finish it; the last tick applies the exercise's master check,
-//  closes the modal, and drops you onto the next exercise — so a workout is a
-//  sequence of "open, do the sets, next" rather than hunting a tiny checkbox.
+//  Tapping an exercise opens this focused view: a large look at the movement
+//  and a set-by-set checklist. You tick each set as you finish it; the last
+//  tick applies the exercise's master check, closes the modal, and drops you
+//  onto the next exercise — so a workout is a sequence of "open, do the sets,
+//  next" rather than hunting a tiny checkbox.
 //
 //  Weight × reps is optional: fill it and each ticked set is logged to history
 //  (and starts the rest clock, exactly as logging did before); leave it blank
@@ -13,11 +13,10 @@
 // ============================================================
 
 import React, { useState, useEffect, useMemo } from "react";
-import { ACCENT, DEMOS, MUSCLE_LABELS, prescription, swapSuggestions, programScheme, EXERCISE_CATALOG, findExercise, bikeSwap, rowerSwap } from "../data/program.js";
+import { ACCENT, DEMOS, prescription, swapSuggestions, programScheme, EXERCISE_CATALOG, findExercise, bikeSwap, rowerSwap } from "../data/program.js";
 import { S } from "../styles.js";
 import Demo from "./Demo.jsx";
 import ExerciseGif from "./ExerciseGif.jsx";
-import MuscleMap from "./MuscleMap.jsx";
 import Icon from "./Icon.jsx";
 import RestTimer from "./RestTimer.jsx";
 import HoldTimer from "./HoldTimer.jsx";
@@ -207,7 +206,7 @@ function BarLoader({ w, setW }) {
 }
 
 export default function ExerciseModal({
-  ex, blockName, circuit = false, autoCircuit = false, timerKey, isDone, todaySession, lastSession, pr, origName, subbed, onSwap, muscles = [], video,
+  ex, blockName, circuit = false, autoCircuit = false, timerKey, isDone, todaySession, lastSession, pr, origName, subbed, onSwap, video,
   rest, restPref, onSetRestPref, onCloseRest, wxKey,
   onLogSet, onStartRest, onOpenVideo, onMarkDone, onRemoveLastSet, onUnmarkDone, onComplete, onClose,
 }) {
@@ -326,7 +325,6 @@ export default function ExerciseModal({
   };
 
   const stop = (e) => e.stopPropagation();
-  const targetsFull = muscles.includes("fullbody");
 
   return (
     <div style={S.modalWrap} onClick={onClose}>
@@ -364,24 +362,6 @@ export default function ExerciseModal({
           </button>
         )}
 
-        {/* the muscles */}
-        <div style={ST.muscleBox}>
-          <MuscleMap muscles={muscles} height={104} />
-          <div style={{ minWidth: 0 }}>
-            <div style={S.muscleLabel}>Targets</div>
-            <div style={{ ...S.muscleList, fontSize: 14 }}>
-              {targetsFull
-                ? "Full body"
-                : muscles.map((m, i) => (
-                    <span key={m} style={i === 0 ? S.musclePrimary : undefined}>
-                      {MUSCLE_LABELS[m]}
-                      {i < muscles.length - 1 ? " · " : ""}
-                    </span>
-                  ))}
-            </div>
-          </div>
-        </div>
-
         {/* the sets */}
         {nSets > 0 ? (
           <>
@@ -411,7 +391,6 @@ export default function ExerciseModal({
                   />
                   <span style={ST.unit}>reps</span>
                 </div>
-                <span style={ST.optional}>optional · logs to history</span>
               </div>
             )}
 
@@ -440,13 +419,9 @@ export default function ExerciseModal({
               >
                 <Icon name="check" size={16} strokeWidth={2.6} /> Complete → next exercise
               </button>
-            ) : (
-              <div style={ST.hint}>
-                {timed
-                  ? "Start the stopwatch for each hold — it buzzes when you hit the target. Stopping it checks the set off; the last one finishes the exercise."
-                  : "Tap each set as you finish it — the last one checks off the exercise. Tapped one by mistake? Tap it again to undo."}
-              </div>
-            )}
+            ) : timed ? (
+              <div style={ST.hint}>Stopping the stopwatch checks the set off.</div>
+            ) : null}
           </>
         ) : (
           <>
@@ -655,10 +630,6 @@ const ST = {
   videoBtn: {
     ...S.demoBtn, width: "100%", justifyContent: "center", padding: "8px", fontSize: 13, marginBottom: 10,
   },
-  muscleBox: {
-    display: "flex", alignItems: "center", gap: 14, padding: "8px 12px",
-    background: "var(--sunken)", border: "1px solid var(--surface-2)", borderRadius: 12, marginBottom: 12,
-  },
   setsHead: { display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 6 },
   count: { fontSize: 14, fontWeight: 700, fontVariantNumeric: "tabular-nums" },
   logRow: { display: "flex", alignItems: "center", gap: 8, marginBottom: 10, flexWrap: "wrap" },
@@ -668,7 +639,6 @@ const ST = {
     color: "var(--text)", fontSize: 16, padding: "9px 30px 9px 10px", fontFamily: "inherit", outline: "none",
   },
   unit: { position: "absolute", right: 9, fontSize: 11, color: "var(--text-dim)" },
-  optional: { fontSize: 11, color: "var(--text-faint)", marginLeft: "auto" },
   loader: { marginTop: 10, marginBottom: 2, padding: "9px 10px", background: "var(--sunken)", border: "1px solid var(--border)", borderRadius: 12 },
   loaderToggle: { display: "flex", alignItems: "center", gap: 8, width: "100%", background: "transparent", border: "none", padding: 0, cursor: "pointer", fontFamily: "inherit", textAlign: "left" },
   loaderPerSide: { fontSize: 11, color: "var(--text-dim)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 130, fontVariantNumeric: "tabular-nums" },

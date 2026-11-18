@@ -84,6 +84,66 @@ export const EX_IMG = {
   "Push-Ups": "Pushups",
 };
 
+// The same two-frame photos, for movements whose images aren't bundled with
+// the app: they're served from the free-exercise-db repo (CC0, the same
+// source as the bundled ones) through the jsDelivr CDN, pinned to a commit
+// so the URLs can't drift. Needs network on first view; on any failure the
+// demo quietly falls back to its icon, exactly like a missing local photo.
+export const EX_IMG_REMOTE = {
+  // Cardio — a real person on the machine, for every machine variant name the
+  // scheduler or a swap can put on screen (these used to fall to a bare icon).
+  "Incline walk": "Walking_Treadmill",
+  Walk: "Walking_Treadmill",
+  "Easy walk": "Walking_Treadmill",
+  "Light walk": "Walking_Treadmill",
+  "Steady jog": "Running_Treadmill",
+  Sprint: "Running_Treadmill",
+  "Fast run": "Running_Treadmill",
+  "Easy run": "Running_Treadmill",
+  "Recovery jog": "Jogging_Treadmill",
+  "Steady ride": "Recumbent_Bike",
+  "Easy spin": "Recumbent_Bike",
+  "Hard sprint": "Recumbent_Bike",
+  "Hard effort": "Recumbent_Bike",
+  "Easy ride": "Recumbent_Bike",
+  "Steady row": "Rowing_Stationary",
+  "Easy row": "Rowing_Stationary",
+  "Hard row": "Rowing_Stationary",
+  // Swap-library movements that had no photo.
+  "Arnold Press": "Arnold_Dumbbell_Press",
+  "Barbell Overhead Press": "Barbell_Shoulder_Press",
+  "Bench Dips": "Bench_Dips",
+  "Bicycle Crunch": "Air_Bike",
+  "Cable Chest Fly": "Cable_Crossover",
+  "Cable Crunch": "Cable_Crunch",
+  "Cable Lateral Raise": "Cable_Seated_Lateral_Raise",
+  "Chin-Ups": "Chin-Up",
+  "Close-Grip Bench Press": "Close-Grip_Barbell_Bench_Press",
+  "Concentration Curl": "Concentration_Curls",
+  "Decline Push-Ups": "Decline_Push-Up",
+  "Dumbbell Shrug": "Dumbbell_Shrug",
+  "Face Pull": "Face_Pull",
+  "Front Squat": "Front_Barbell_Squat",
+  "Hanging Leg Raise": "Hanging_Leg_Raise",
+  "Hip Thrust": "Barbell_Hip_Thrust",
+  "Incline Barbell Press": "Barbell_Incline_Bench_Press_-_Medium_Grip",
+  "Lat Pulldown": "Wide-Grip_Lat_Pulldown",
+  "Leg Extension": "Leg_Extensions",
+  "Leg Press": "Leg_Press",
+  "Lying Leg Curl": "Lying_Leg_Curls",
+  "Machine Chest Press": "Machine_Bench_Press",
+  "Overhead Cable Extension": "Cable_Rope_Overhead_Triceps_Extension",
+  "Preacher Curl": "Preacher_Curl",
+  "Pull-Ups": "Pullups",
+  "Seated Cable Row": "Seated_Cable_Rows",
+  "Seated Calf Raise": "Seated_Calf_Raise",
+  "Tricep Pushdown": "Triceps_Pushdown",
+  "Wrist Curls": "Seated_Palm-Up_Barbell_Wrist_Curl",
+};
+
+export const exImgRemote = (slug, frame) =>
+  `https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/exercises/${slug}/${frame}.jpg`;
+
 // Resolve a bundled image path, honoring Vite's base path (e.g. /IronClad/).
 export const exImg = (slug, frame) =>
   `${import.meta.env.BASE_URL}exercises/${slug}/${frame}.jpg`;

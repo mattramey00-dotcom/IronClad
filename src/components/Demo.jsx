@@ -3,7 +3,9 @@
 // ============================================================
 //  Three tiers, best first:
 //    1. the real animated demo   (components/ExerciseGif.jsx, when we have it)
-//    2. a real photo flipbook    (here — two frames cross-faded into a rep)
+//    2. a real photo flipbook    (here — two frames cross-faded into a rep;
+//                                 bundled with the app, or the same CC0 photos
+//                                 served from CDN for the wider library)
 //    3. a quiet icon             (here — when there's neither)
 //
 //  Tier 3 used to be a hand-drawn animated stick figure per movement pattern.
@@ -14,16 +16,16 @@
 // ============================================================
 
 import React, { useState } from "react";
-import { ACCENT, EX_IMG, exImg } from "../data/program.js";
+import { ACCENT, EX_IMG, EX_IMG_REMOTE, exImg, exImgRemote } from "../data/program.js";
 import Icon from "./Icon.jsx";
 
 // Cross-fades two real photos (start -> end position) into a looping rep.
-function Flipbook({ slug, size = 64, onError }) {
+function Flipbook({ urlFor, size = 64, onError }) {
   const imgStyle = { position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" };
   return (
     <div style={{ position: "relative", width: size, height: size, borderRadius: 10, overflow: "hidden", background: "var(--sunken)" }}>
-      <img src={exImg(slug, 0)} alt="" loading="lazy" decoding="async" onError={onError} style={imgStyle} />
-      <img src={exImg(slug, 1)} alt="" loading="lazy" decoding="async" onError={onError} style={{ ...imgStyle, animation: "flip 1.8s ease-in-out infinite" }} />
+      <img src={urlFor(0)} alt="" loading="lazy" decoding="async" onError={onError} style={imgStyle} />
+      <img src={urlFor(1)} alt="" loading="lazy" decoding="async" onError={onError} style={{ ...imgStyle, animation: "flip 1.8s ease-in-out infinite" }} />
       <div style={{ position: "absolute", inset: 0, boxShadow: `inset 0 0 0 1px ${ACCENT}33`, borderRadius: 10, pointerEvents: "none" }} />
     </div>
   );
@@ -38,10 +40,16 @@ const ICON_FOR = {
 
 export default function Demo({ kind, name, size = 64 }) {
   const [imgFailed, setImgFailed] = useState(false);
-  const slug = name && EX_IMG[name];
+  const local = name && EX_IMG[name];
+  const remote = !local && name && EX_IMG_REMOTE[name];
+  const urlFor = local
+    ? (f) => exImg(local, f)
+    : remote
+      ? (f) => exImgRemote(remote, f)
+      : null;
 
-  if (slug && !imgFailed) {
-    return <Flipbook slug={slug} size={size} onError={() => setImgFailed(true)} />;
+  if (urlFor && !imgFailed) {
+    return <Flipbook urlFor={urlFor} size={size} onError={() => setImgFailed(true)} />;
   }
 
   const glyph = ICON_FOR[kind] || "dumbbell";
