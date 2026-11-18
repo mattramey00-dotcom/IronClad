@@ -134,7 +134,11 @@ export default function RestTimer({ seconds, label, onClose, onSetDuration, embe
     doneRef.current = false;
     setRunning(true);
     endRef.current = Math.max(Date.now() + 5000, endRef.current + delta * 1000);
-    setTotal((t) => Math.max(5, t + delta));
+    const next = Math.max(5, total + delta);
+    setTotal(next);
+    // A bump is a choice too — remember it, or the next set snaps back to the
+    // old length and the same adjustment has to be made all over again.
+    onSetDuration?.(next);
     requestWake();
     recompute();
   };

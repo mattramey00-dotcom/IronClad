@@ -29,6 +29,7 @@ import {
   loadPhotoNudge, savePhotoNudge,
   loadProteinAlerts, saveProteinAlerts, loadProteinNotified, saveProteinNotified,
   loadMealPlan, saveMealPlan, loadTuneTraining, saveTuneTraining,
+  loadRestPrefs, saveRestPrefs,
 } from "./lib/storage.js";
 import { downloadBackup, backupReminderDue, monthKeyOf } from "./lib/backup.js";
 import { estimateTDEE, resolveTargets, weightTrend, bestE1RM, e1rm, shiftKey, daysBetween, mealTotals, weeklySummary, waterTargetOz, coachContext, proteinCadence, DEFAULT_TARGETS, KCAL_PER_LB } from "./lib/nutrition.js";
@@ -339,8 +340,15 @@ function Trainer({
   const [rest, setRest] = useState(null); // { id, secs, label } — the sticky rest timer
   // The rest length you last picked, per exercise ({ [exName]: secs }) — so 1:30
   // on bench carries to bench's next set, not to the lateral raises after it.
-  const [restPrefs, setRestPrefs] = useState({});
-  const setRestPref = (exName, secs) => setRestPrefs((p) => ({ ...p, [exName]: secs }));
+  // Persisted on this device (loadRestPrefs/saveRestPrefs): closing the app
+  // used to wipe it, which meant re-picking the same lengths every session.
+  const [restPrefs, setRestPrefs] = useState(() => loadRestPrefs());
+  const setRestPref = (exName, secs) =>
+    setRestPrefs((p) => {
+      const next = { ...p, [exName]: secs };
+      saveRestPrefs(next);
+      return next;
+    });
   const [celebrate, setCelebrate] = useState(0); // bump to fire a confetti burst
   const [prFlash, setPrFlash] = useState(null); // { ex, e1rm, w, r } — a just-hit PR toast
   const [showMuscleTarget, setShowMuscleTarget] = useState(false); // the tap-a-muscle picker
@@ -641,8 +649,12 @@ function Trainer({
 
     // Start the rest clock. Only for real strength sets logged on today — a
     // rest countdown for a workout you're back-filling from Tuesday is noise.
-    if (restSecs && selected === today) {
-      setRest({ id: `${exName}-${entry.sets.length}-${Date.now()}`, secs: restSecs, label: exName });
+    // A saved per-exercise preference beats the caller's prescription: sets
+    // logged from the quick panel pass the plan's rest, but if you've been
+    // running this lift at 1:30, that's where the clock starts.
+    const effRestSecs = restPrefs[exName] ?? restSecs;
+    if (effRestSecs && selected === today) {
+      setRest({ id: `${exName}-${entry.sets.length}-${Date.now()}`, secs: effRestSecs, label: exName });
     }
   };
 

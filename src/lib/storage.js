@@ -265,6 +265,25 @@ export const saveTuneTraining = (on) => write("tunetraining", on ? "1" : "0");
 export const loadNotify = () => read("restnotify") === "1";
 export const saveNotify = (on) => (on ? write("restnotify", "1") : remove("restnotify"));
 
+// ---- per-exercise rest preferences (this device only) -----------------
+//  The rest length last chosen for each exercise, keyed by exercise name, so
+//  the timer starts there next time instead of snapping back to the plan's
+//  prescription — and survives closing the app. A device preference: your
+//  partner's phone keeps its own.
+export const loadRestPrefs = () => {
+  try {
+    const v = JSON.parse(read("restprefs") || "{}");
+    if (!v || typeof v !== "object" || Array.isArray(v)) return {};
+    // Keep only sane entries (a name mapped to a positive number of seconds).
+    return Object.fromEntries(
+      Object.entries(v).filter(([, s]) => Number.isFinite(s) && s > 0)
+    );
+  } catch {
+    return {};
+  }
+};
+export const saveRestPrefs = (prefs) => write("restprefs", JSON.stringify(prefs || {}));
+
 // ---- full-device backup (export / import) ---------------------------
 //  There is no server, so a wiped phone is a wiped account. These two lift the
 //  entire `ironclad:*` namespace out to a plain object (for a JSON file the user
