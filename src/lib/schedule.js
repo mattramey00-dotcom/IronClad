@@ -243,6 +243,15 @@ export function runsOn(plan, person, key) {
 //  person whose session is genuinely a *run* gets the treadmill; the other
 //  takes the day's secondary machine, which is why the bike and rower
 //  prescriptions exist at all.
+//
+//  The rower comes with a floor rule: unfolded it takes the whole floor, so
+//  it can never be one person's machine while the other is lifting — bench,
+//  squats and ab work all need that same space. Together days count too
+//  (the core block is floor abs, side by side). So on a shared day the rower
+//  only appears when the partner is out running, and on a day the gym is
+//  all yours it rotates in as your own cardio — your own floor work never
+//  clashes with it, because in your own session the rowing comes last (a
+//  finisher) or is the whole session (an off-day row).
 
 const RUN_DEMAND_OF_AN_OFF_DAY_RUN = 2;
 
@@ -261,15 +270,26 @@ export function machineFor(plan, person, key) {
   const otherRunning = runsOn(plan, other, key);
   const otherNeedsMachine = !!otherWorkout || otherRunning;
 
-  if (!otherNeedsMachine) return "treadmill"; // gym's all yours
+  if (!otherNeedsMachine) {
+    // The gym is all yours — treadmill and rower alternate by day (see the
+    // floor rule above: solo, the rower can't clash with anyone).
+    return dayNum(key) % 2 === 0 ? "treadmill" : "rower";
+  }
 
   const myDemand = running ? RUN_DEMAND_OF_AN_OFF_DAY_RUN : workout.load.run;
   const theirDemand = otherRunning ? RUN_DEMAND_OF_AN_OFF_DAY_RUN : otherWorkout.load.run;
 
+  // The day's secondary machine, with the floor rule applied: if your
+  // partner is lifting (or it's a Together day), the rower stays folded
+  // and the bike takes its place in the alternation.
+  const partnerOnFloor =
+    !!otherWorkout || togetherDaysInWeek(plan, weekIndex(plan, key)).includes(key);
+  const secondary = partnerOnFloor ? "bike" : secondaryMachineFor(key);
+
   if (myDemand > theirDemand) return "treadmill";
-  if (myDemand < theirDemand) return secondaryMachineFor(key);
+  if (myDemand < theirDemand) return secondary;
   // Tied demand — break it deterministically so both phones agree.
-  return person.id < other.id ? "treadmill" : secondaryMachineFor(key);
+  return person.id < other.id ? "treadmill" : secondary;
 }
 
 // ---- the Together block ---------------------------------------------

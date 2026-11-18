@@ -16,8 +16,8 @@
 //             so when both people need cardio the same day, one takes the
 //             treadmill and the other takes the bike.
 //    rower  — and a water-rower equivalent alongside it: the scheduler hands
-//             the non-treadmill person the bike or the rower, alternating by
-//             day, so the rower is in the regular rotation too.
+//             it out in the rotation, but never while the other person is
+//             lifting — unfolded it takes the whole floor (see schedule.js).
 // ============================================================
 
 export const ACCENT = "#818CF8";
