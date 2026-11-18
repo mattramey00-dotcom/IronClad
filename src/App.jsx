@@ -72,8 +72,10 @@ const HistoryModal = lazy(() => import("./components/HistoryModal.jsx"));
 const CoachModal = lazy(() => import("./components/CoachModal.jsx"));
 
 const DOW = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-const MACHINE_ICON = { treadmill: "run", bike: "bike" };
-const MACHINE_NAME = { treadmill: "Treadmill", bike: "Bike" };
+const MACHINE_ICON = { treadmill: "run", bike: "bike", rower: "rower" };
+const MACHINE_NAME = { treadmill: "Treadmill", bike: "Bike", rower: "Water Rower" };
+// The verb for a cardio session on each machine: a run, a ride, a row.
+const RUN_WORD = { treadmill: "run", bike: "ride", rower: "row" };
 
 export default function App() {
   const [plan, setPlan] = useState(() => loadPlan());
@@ -1081,7 +1083,7 @@ function Trainer({
     s: String(secsLeft % 60).padStart(2, "0"),
   };
 
-  const warmup = agenda.workout?.warmup?.[machine === "bike" ? "bike" : "treadmill"];
+  const warmup = agenda.workout?.warmup?.[machine] ?? agenda.workout?.warmup?.treadmill;
 
   return (
     <Shell>
@@ -1271,7 +1273,7 @@ function Trainer({
             : a.trains
               ? a.workout.short
               : a.run
-                ? (a.run.machine === "bike" ? "Ride" : "Run")
+                ? ({ bike: "Ride", rower: "Row" }[a.run.machine] ?? "Run")
                 : "Mobility";
           return (
             <button
@@ -1341,8 +1343,8 @@ function Trainer({
                     ? `Easy movement, plus core with ${other.name}. A leg day follows this one — keep it light.`
                     : agenda.recovery.note
                   : agenda.together
-                    ? `Your ${agenda.run.machine === "bike" ? "ride" : "run"}, plus core with ${other.name}.`
-                    : `No lifting — just your ${agenda.run.machine === "bike" ? "ride" : "run"}.`}
+                    ? `Your ${RUN_WORD[agenda.run.machine] ?? "run"}, plus core with ${other.name}.`
+                    : `No lifting — just your ${RUN_WORD[agenda.run.machine] ?? "run"}.`}
               </div>
             </>
           )}
@@ -1882,7 +1884,7 @@ function PartnerCard({ agenda, other }) {
   let what;
   if (agenda.isRest) what = "Off today as well — the gym stays shut";
   else if (p.trains) what = `${p.workout.title} · cardio on the ${p.machine}`;
-  else if (p.runs) what = `Out for a ${p.machine === "bike" ? "ride" : "run"} · on the ${p.machine}`;
+  else if (p.runs) what = `Out for a ${RUN_WORD[p.machine] ?? "run"} · on the ${p.machine}`;
   else what = "Mobility — walking and stretching";
 
   const partnerIcon = p.trains ? "dumbbell" : p.runs ? "run" : agenda.isRest ? "moon" : "stretch";

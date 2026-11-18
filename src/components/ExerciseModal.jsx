@@ -13,7 +13,7 @@
 // ============================================================
 
 import React, { useState, useEffect, useMemo } from "react";
-import { ACCENT, DEMOS, MUSCLE_LABELS, prescription, swapSuggestions, programScheme, EXERCISE_CATALOG, findExercise, bikeSwap } from "../data/program.js";
+import { ACCENT, DEMOS, MUSCLE_LABELS, prescription, swapSuggestions, programScheme, EXERCISE_CATALOG, findExercise, bikeSwap, rowerSwap } from "../data/program.js";
 import { S } from "../styles.js";
 import Demo from "./Demo.jsx";
 import ExerciseGif from "./ExerciseGif.jsx";
@@ -218,9 +218,10 @@ export default function ExerciseModal({
   // same-muscle swap keeps the day's volume identical.
   const suggest = useMemo(() => swapSuggestions(origName), [origName]);
   const baseScheme = programScheme(origName) || ex.s;
-  // A run can always move to the bike — offered first, since the strength
-  // suggestions skip cardio entirely.
+  // A run can always move to the bike or the rower — offered first, since the
+  // strength suggestions skip cardio entirely.
   const bike = bikeSwap(ex);
+  const rower = rowerSwap(ex);
   // Does the typed replacement match a known library/program movement? If so the
   // swap can carry that movement's demo + muscle map instead of guessing.
   const swapMatch = findExercise(swapName);
@@ -507,6 +508,19 @@ export default function ExerciseModal({
                     <div style={{ ...ST.chipWrap, marginBottom: 10 }}>
                       <button style={ST.swapChip} onClick={() => onSwap(bike)}>
                         Bike — {bike.n} · {bike.s}
+                      </button>
+                    </div>
+                  </>
+                )}
+
+                {rower && (
+                  <>
+                    <div style={ST.swapLabel}>
+                      <span style={{ color: "#54b37e" }}>●</span> Row instead
+                    </div>
+                    <div style={{ ...ST.chipWrap, marginBottom: 10 }}>
+                      <button style={ST.swapChip} onClick={() => onSwap(rower)}>
+                        Rower — {rower.n} · {rower.s}
                       </button>
                     </div>
                   </>

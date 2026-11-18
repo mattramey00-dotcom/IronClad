@@ -17,7 +17,8 @@
 //    2. Which of the 6 workouts each of you gets, from a rotation ordered so a
 //       hard leg day never follows a hard run.
 //    3. Which off days you run on — never the day before a leg day.
-//    4. Who is on the treadmill and who is on the bike, any day you overlap.
+//    4. Who is on the treadmill and who is on the bike or the rower, any day
+//       you overlap.
 //    5. Which two days a week carry the machine-free Together core block.
 // ============================================================
 
@@ -237,12 +238,18 @@ export function runsOn(plan, person, key) {
 }
 
 // ---- machine assignment --------------------------------------------
-//  One treadmill, one bike. On a day where one of you is lifting (every
-//  workout has a cardio block) and the other is out for their run, the person
-//  whose session is genuinely a *run* gets the treadmill; the other takes the
-//  bike, which is why the bike prescriptions exist at all.
+//  One treadmill, one bike, one rower. On a day where one of you is lifting
+//  (every workout has a cardio block) and the other is out for their run, the
+//  person whose session is genuinely a *run* gets the treadmill; the other
+//  takes the day's secondary machine, which is why the bike and rower
+//  prescriptions exist at all.
 
 const RUN_DEMAND_OF_AN_OFF_DAY_RUN = 2;
+
+// Which non-treadmill machine is "the other machine" today. Bike and rower
+// alternate by day so the rower is in the regular rotation, and it's derived
+// from the date key alone so both phones agree without syncing anything.
+const secondaryMachineFor = (key) => (dayNum(key) % 2 === 0 ? "bike" : "rower");
 
 export function machineFor(plan, person, key) {
   const workout = workoutOn(plan, person, key);
@@ -260,9 +267,9 @@ export function machineFor(plan, person, key) {
   const theirDemand = otherRunning ? RUN_DEMAND_OF_AN_OFF_DAY_RUN : otherWorkout.load.run;
 
   if (myDemand > theirDemand) return "treadmill";
-  if (myDemand < theirDemand) return "bike";
+  if (myDemand < theirDemand) return secondaryMachineFor(key);
   // Tied demand — break it deterministically so both phones agree.
-  return person.id < other.id ? "treadmill" : "bike";
+  return person.id < other.id ? "treadmill" : secondaryMachineFor(key);
 }
 
 // ---- the Together block ---------------------------------------------
@@ -395,7 +402,7 @@ export function blocksFor(agenda) {
   if (agenda.trains) blocks.push(...agenda.workout.blocks);
   if (agenda.run) {
     blocks.push({
-      name: agenda.run.machine === "bike" ? "Your ride" : "Your run",
+      name: { bike: "Your ride", rower: "Your row" }[agenda.run.machine] ?? "Your run",
       exercises: [agenda.run],
     });
   }

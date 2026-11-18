@@ -15,6 +15,9 @@
 //    bike   — every cardio prescription now has a stationary-bike equivalent,
 //             so when both people need cardio the same day, one takes the
 //             treadmill and the other takes the bike.
+//    rower  — and a water-rower equivalent alongside it: the scheduler hands
+//             the non-treadmill person the bike or the rower, alternating by
+//             day, so the rower is in the regular rotation too.
 // ============================================================
 
 export const ACCENT = "#818CF8";
@@ -26,11 +29,11 @@ export const EQ = {
   BENCH: "bench",
   DUMBBELL: "dumbbell",
   BODYWEIGHT: "bodyweight",
-  CARDIO: "cardio", // treadmill or bike — machine assigned per day
+  CARDIO: "cardio", // treadmill, bike or rower — machine assigned per day
 };
 
 // Only bodyweight work is truly conflict-free: one bench, one barbell,
-// one set of dumbbells, one treadmill, one bike.
+// one set of dumbbells, one treadmill, one bike, one rower.
 export const isShareable = (ex) => ex.eq === EQ.BODYWEIGHT;
 
 // ---- Animated SVG demo registry (offline fallback) ----
@@ -203,6 +206,7 @@ export const EX_VIDEO = {
 const WARMUP_CARDIO = {
   treadmill: "Treadmill walk/jog: 5–10 minutes",
   bike: "Bike: 5–10 minutes, easy spin",
+  rower: "Rower: 5–10 minutes, easy pace",
 };
 
 // ============================================================
@@ -242,6 +246,7 @@ export const WORKOUTS = [
             timer: 600,
             eq: EQ.CARDIO,
             bike: { n: "Steady ride", s: "12 minutes, moderate resistance", timer: 720 },
+            rower: { n: "Steady row", s: "12 minutes, moderate pace", timer: 720 },
           },
         ],
       },
@@ -276,6 +281,7 @@ export const WORKOUTS = [
             timer: 900,
             eq: EQ.CARDIO,
             bike: { n: "Steady ride", s: "18 minutes, moderate–hard", timer: 1080 },
+            rower: { n: "Steady row", s: "18 minutes, moderate–hard pace", timer: 1080 },
           },
         ],
       },
@@ -318,6 +324,7 @@ export const WORKOUTS = [
             timer: 600,
             eq: EQ.CARDIO,
             bike: { n: "Easy spin", s: "12 minutes, light resistance", timer: 720 },
+            rower: { n: "Easy row", s: "12 minutes, light pace", timer: 720 },
           },
         ],
       },
@@ -328,7 +335,7 @@ export const WORKOUTS = [
     title: "Upper Body Strength",
     subtitle: "Heavy · Low Rep",
     short: "Upper",
-    warmup: { treadmill: "Light pressing & rowing to warm joints", bike: "Light pressing & rowing to warm joints" },
+    warmup: { treadmill: "Light pressing & rowing to warm joints", bike: "Light pressing & rowing to warm joints", rower: "Light pressing & rowing to warm joints" },
     // run bumped to 3 for the HIIT finisher: it earns this person the treadmill on
     // a shared day, and it tells the rotation scorer to keep this session out of
     // the slot right before a hard leg day.
@@ -365,6 +372,7 @@ export const WORKOUTS = [
             timer: 30,
             eq: EQ.CARDIO,
             bike: { n: "Hard sprint", s: "30 seconds, max resistance" },
+            rower: { n: "Hard row", s: "30 seconds, max effort" },
           },
           {
             n: "Recovery jog",
@@ -373,6 +381,7 @@ export const WORKOUTS = [
             timer: 30,
             eq: EQ.CARDIO,
             bike: { n: "Easy spin", s: "30 seconds, light" },
+            rower: { n: "Easy row", s: "30 seconds, light" },
           },
         ],
       },
@@ -383,7 +392,7 @@ export const WORKOUTS = [
     title: "Lower Body Strength",
     subtitle: "Strength + Conditioning",
     short: "Lower",
-    warmup: { treadmill: "Bodyweight squats & leg swings", bike: "Bodyweight squats & leg swings" },
+    warmup: { treadmill: "Bodyweight squats & leg swings", bike: "Bodyweight squats & leg swings", rower: "Bodyweight squats & leg swings" },
     load: { leg: 3, run: 3, upper: 0 },
     blocks: [
       {
@@ -411,6 +420,7 @@ export const WORKOUTS = [
             timer: 30,
             eq: EQ.CARDIO,
             bike: { n: "Hard sprint", s: "30 seconds, heavy resistance" },
+            rower: { n: "Hard row", s: "30 seconds, max effort" },
           },
           {
             n: "Walk",
@@ -419,6 +429,7 @@ export const WORKOUTS = [
             timer: 90,
             eq: EQ.CARDIO,
             bike: { n: "Easy spin", s: "90 seconds" },
+            rower: { n: "Easy row", s: "90 seconds" },
           },
         ],
       },
@@ -429,7 +440,7 @@ export const WORKOUTS = [
     title: "Full Body + Intervals",
     subtitle: "Circuit · 4 Rounds",
     short: "Full",
-    warmup: { treadmill: "Dynamic full-body warm-up: 5 minutes", bike: "Dynamic full-body warm-up: 5 minutes" },
+    warmup: { treadmill: "Dynamic full-body warm-up: 5 minutes", bike: "Dynamic full-body warm-up: 5 minutes", rower: "Dynamic full-body warm-up: 5 minutes" },
     load: { leg: 2, run: 3, upper: 2 },
     blocks: [
       {
@@ -462,6 +473,7 @@ export const WORKOUTS = [
             timer: 60,
             eq: EQ.CARDIO,
             bike: { n: "Hard effort", s: "1 minute, heavy resistance" },
+            rower: { n: "Hard row", s: "1 minute, max effort" },
           },
           {
             n: "Easy walk",
@@ -470,6 +482,7 @@ export const WORKOUTS = [
             timer: 120,
             eq: EQ.CARDIO,
             bike: { n: "Easy spin", s: "2 minutes" },
+            rower: { n: "Easy row", s: "2 minutes" },
           },
         ],
       },
@@ -515,6 +528,7 @@ export const TOGETHER = {
 export const OFF_DAY_CARDIO = {
   treadmill: { n: "Easy run", s: "20–30 minutes, conversational pace", d: "cardio", timer: 1200, eq: EQ.CARDIO },
   bike: { n: "Easy ride", s: "25–35 minutes, conversational pace", d: "cardio", timer: 1500, eq: EQ.CARDIO },
+  rower: { n: "Easy row", s: "20–25 minutes, conversational pace", d: "cardio", timer: 1200, eq: EQ.CARDIO },
 };
 
 // ============================================================
@@ -539,13 +553,14 @@ export const MOBILITY = {
 };
 
 // Resolve an exercise for the machine actually assigned to you that day.
-// Cardio exercises carry a bike-equivalent prescription; everything else is
-// machine-independent and passes straight through.
+// Cardio exercises carry a bike- and a rower-equivalent prescription;
+// everything else is machine-independent and passes straight through.
 export function forMachine(ex, machine) {
-  if (ex.eq !== EQ.CARDIO || machine !== "bike" || !ex.bike) return ex;
-  // A ride can run longer than the treadmill version (12 min vs 10), so it
-  // carries its own timer where it differs.
-  return { ...ex, n: ex.bike.n, s: ex.bike.s, timer: ex.bike.timer ?? ex.timer };
+  if (ex.eq !== EQ.CARDIO || !machine || machine === "treadmill" || !ex[machine]) return ex;
+  // An equivalent can run longer than the treadmill version (12 min vs 10),
+  // so it carries its own timer where it differs.
+  const alt = ex[machine];
+  return { ...ex, n: alt.n, s: alt.s, timer: alt.timer ?? ex.timer };
 }
 
 // The bike version of a run, offered as a swap when the treadmill isn't an
@@ -562,6 +577,23 @@ export function bikeSwap(ex) {
   if (ex.n === OFF_DAY_CARDIO.treadmill.n) {
     const b = OFF_DAY_CARDIO.bike;
     return { n: b.n, s: b.s, d: "cardio", timer: b.timer };
+  }
+  return null;
+}
+
+// The rower version of a run or ride, offered as a swap the same way the
+// bike is. Uses the cardio's own rower prescription where it has one, and
+// the off-day row for the off-day run/ride. Null for anything that isn't
+// cardio — including one already on the rower.
+export function rowerSwap(ex) {
+  if (ex?.d !== "cardio") return null;
+  if (ex.rower) {
+    if (ex.n === ex.rower.n) return null;
+    return { n: ex.rower.n, s: ex.rower.s, d: "cardio", timer: ex.rower.timer ?? ex.timer };
+  }
+  if (ex.n === OFF_DAY_CARDIO.treadmill.n || ex.n === OFF_DAY_CARDIO.bike.n) {
+    const r = OFF_DAY_CARDIO.rower;
+    return { n: r.n, s: r.s, d: "cardio", timer: r.timer };
   }
   return null;
 }
